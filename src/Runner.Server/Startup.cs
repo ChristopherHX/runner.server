@@ -76,7 +76,14 @@ namespace Runner.Server
 
             });
             var sqlitecon = Configuration.GetConnectionString("sqlite");
-            services.AddDbContext<SqLiteDb>(conf => sqlitecon?.Length > 0 ? conf.UseSqlite(sqlitecon) : conf.UseInMemoryDatabase("Agents"));
+            services.AddDbContext<SqLiteDb>(conf => {
+                if(sqlitecon?.Length > 0) {
+                    conf.UseSqlite(sqlitecon);
+                }
+                else {
+                    conf.UseInMemoryDatabase("Agents");
+                }
+            });
             
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
