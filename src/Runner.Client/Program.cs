@@ -121,9 +121,11 @@ namespace Runner.Client
             public bool NoSharedToolcache { get; set; }
             public bool KeepContainer { get; set; }
             public bool NoReuse { get; set; }
-            public bool GitServerUrl { get; set; }
-            public bool GitApiServerUrl { get; set; }
-            public bool GitGraphQlServerUrl { get; set; }
+            public string GitServerUrl { get; set; }
+            public string GitApiServerUrl { get; set; }
+            public string GitGraphQlServerUrl { get; set; }
+            public string GitTarballUrl { get; set; }
+            public string GitZipballUrl { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -459,6 +461,12 @@ namespace Runner.Client
                     "--git-graph-ql-server-url",
                     getDefaultValue: () => "https://api.github.com/graphql",
                     description: "Url to github graphql api."),
+                new Option<string>(
+                    "--git-tarball-url",
+                    description: "Url to github tarbal api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
+                new Option<string>(
+                    "--git-zipball-url",
+                    description: "Url to github tarbal api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -546,14 +554,13 @@ namespace Runner.Client
                                 GitServerUrl = parameters.GitServerUrl,
                                 GitApiServerUrl = parameters.GitApiServerUrl,
                                 GitGraphQlServerUrl = parameters.GitGraphQlServerUrl,
+                                ActionDownloadUrls = new [] {
+                                    new {
+                                        TarballUrl = parameters.GitTarballUrl ?? parameters.GitApiServerUrl + "/repos/{0}/tarball/{1}",
+                                        ZipballUrl = parameters.GitZipballUrl ?? parameters.GitApiServerUrl + "/repos/{0}/zipball/{1}",
+                                    }
+                                }
                             });
-                            try {
-                                JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
-                                orgserverconfig.Merge(serverconfig, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
-                                serverconfig = orgserverconfig;
-                            } catch {
-
-                            }
                             await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
                             using (AnonymousPipeServerStream pipeServer =
                                 new AnonymousPipeServerStream(PipeDirection.In,
