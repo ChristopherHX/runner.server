@@ -531,7 +531,7 @@ namespace Runner.Client
                             string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
                             JObject serverconfig = new JObject();
                             var connectionopts = new JObject();
-                            connectionopts["sqlite"] = /* "Data Source=Agents.db;"; */"Data Source=:memory:;";
+                            connectionopts["sqlite"] = "";
                             serverconfig["ConnectionStrings"] = connectionopts;
                             
                             serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
