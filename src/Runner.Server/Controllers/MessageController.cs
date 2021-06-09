@@ -1411,9 +1411,6 @@ namespace Runner.Server.Controllers
                 }
             }
 
-            var resources = new JobResources();
-            
-
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("github_token", new VariableValue(GITHUB_TOKEN, true));
@@ -1461,6 +1458,7 @@ namespace Runner.Server.Controllers
                         SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
                     };
 
+                    var resources = new JobResources();
                     var token = tokenHandler.CreateToken(tokenDescriptor);
                     var stoken = tokenHandler.WriteToken(token);
                     auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
