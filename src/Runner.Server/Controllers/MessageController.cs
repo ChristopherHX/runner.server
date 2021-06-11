@@ -1655,8 +1655,8 @@ namespace Runner.Server.Controllers
                                 using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
                                 using (var body = new MemoryStream())
                                 using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                    using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
-                                        bodyWriter.Write(JsonConvert.SerializeObject(res));
+                                    new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                    cryptoStream.FlushFinalBlock();
                                     HttpContext.RequestAborted.ThrowIfCancellationRequested();
                                     return await Ok(new TaskAgentMessage() {
                                         Body = Convert.ToBase64String(body.ToArray()),
