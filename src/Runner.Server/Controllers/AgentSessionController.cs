@@ -22,15 +22,13 @@ namespace Runner.Server.Controllers
     public class AgentSessionController : VssControllerBase
     {
 
-        private readonly ILogger<AgentSessionController> _logger;
         private IMemoryCache _cache;
 
         private SqLiteDb _context;
     
 
-        public AgentSessionController(ILogger<AgentSessionController> logger, IMemoryCache cache, SqLiteDb context)
+        public AgentSessionController(IMemoryCache cache, SqLiteDb context)
         {
-            _logger = logger;
             _cache = cache;
             _context = context;
         }
@@ -84,6 +82,7 @@ namespace Runner.Server.Controllers
             Session session;
             if(_cache.TryGetValue(sessionId, out session)) {
                 session.DropMessage?.Invoke();
+                session.DropMessage = null;
                 _cache.Remove(sessionId);
                 Session s2;
                 MessageController.sessions.TryRemove(session, out s2);

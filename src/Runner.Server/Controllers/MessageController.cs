@@ -802,6 +802,7 @@ namespace Runner.Server.Controllers
                                     }
 
                                     exctx.JobContext = jobitem;
+                                    Console.WriteLine($"Evaluate job-if Jobname: {jobitem.name}");
                                     var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
                                     var condition = new BasicExpressionToken(null, null, null, PipelineTemplateConverter.ConvertToIfCondition(templateContext, ifexpr, true));
                                     templateContext.ExpressionValues.Clear();
@@ -819,6 +820,7 @@ namespace Runner.Server.Controllers
                                         return;
                                     }
                                     
+                                    Console.WriteLine($"Evaluate strategy Jobname: {jobitem.name}");
                                     var rawstrategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value;
                                     var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
                                     var includematrix = new List<Dictionary<string, TemplateToken>> { };
@@ -924,11 +926,11 @@ namespace Runner.Server.Controllers
                                         Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                             foreach(var kv in mdict) {
                                                 TemplateToken val;
-                                                if (dict.TryGetValue(kv.Key, out val) && TemplateTokenEqual(kv.Value, val)) {
-                                                    return false;
+                                                if(!dict.TryGetValue(kv.Key, out val) || !TemplateTokenEqual(kv.Value, val)) {
+                                                    return true;
                                                 }
                                             }
-                                            return true;
+                                            return false;
                                         };
                                         flatmatrix.RemoveAll(match);
                                         includematrix.RemoveAll(match);
@@ -937,10 +939,11 @@ namespace Runner.Server.Controllers
                                                 jobgroup.Add(jobitem);
                                             }
                                             FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
+                                            return;
                                         }
                                     }
                                     var jobTotal = flatmatrix.Count + includematrix.Count;
-                                    if(keys.Length == 0 && jobTotal > 1) {
+                                    if(flatmatrix.Count == 1 && keys.Length == 0 && jobTotal > 1) {
                                         jobTotal--;
                                     }
                                     strategyctx["job-total"] = new NumberContextData( jobTotal );
@@ -1022,7 +1025,7 @@ namespace Runner.Server.Controllers
                                         handler2 = e => {
                                             Func<bool, Job> cb;
                                             if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
-                                                if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned)) {
+                                                if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null))?.ContinueOnError != true) {
                                                     cancelAll();
                                                 } else {
                                                     while(jobs.TryDequeue(out cb)) {
@@ -1215,23 +1218,32 @@ namespace Runner.Server.Controllers
                         }
                     };
                     ConcurrentQueue<JobCompletedEvent> queue = new ConcurrentQueue<JobCompletedEvent>();
+                    SemaphoreSlim s = new SemaphoreSlim(1, 1);
                     workflowcomplete = (e) => {
-                        if(Monitor.TryEnter(workflowcomplete)) {      
+                        if(s.Wait(0)) {      
                             try {
-                                withoutlock(e);
+                                if(e != null) {
+                                    withoutlock(e);
+                                }
                                 JobCompletedEvent ev;
                                 while(queue.TryDequeue(out ev)) {
                                     withoutlock(ev);
                                 }
                             } finally {
-                                Monitor.Exit(workflowcomplete);
+                                s.Release();
                             }
                         } else {
                             queue.Enqueue(e);
                         }
                     };
-                    FinishJobController.OnJobCompleted += workflowcomplete;
-                    jobCompleted(null);
+                    s.Wait();
+                    try {
+                        FinishJobController.OnJobCompleted += workflowcomplete;
+                        jobCompleted(null);
+                    } finally {
+                        s.Release();
+                    }
+                    workflowcomplete(null);
                 }
             } catch (Exception ex) {
                 List<string> _errors = new List<string>{ex.Message};
@@ -1248,59 +1260,33 @@ namespace Runner.Server.Controllers
 
         private class shared {
             public Channel<Task> Channel;
-            // public Channel<bool> Channel2;
             public HttpResponse response;
-
             public MemoryStream stream { get; internal set; }
-
-            // public string contentType { get; internal set; }
         }
 
         [HttpPost("multipartup/{id}")]
         public async Task UploadMulti(string id) {
             var sh = _cache.Get<shared>(id);
-            // sh.contentType = Request.Headers["Content-Type"].First();
-            // foreach (var item in Request.Headers) {
-            //     sh.response.Headers.Add(item.Key, item.Value);
-            // }
-            // await sh.response.StartAsync();
-            // var s = new MemoryStream();
             var type = Request.Headers["Content-Type"].First();
             var ntype = "multipart/form-data" + type.Substring("application/octet-stream".Length);
             sh.response.Headers["Content-Type"] = new StringValues(ntype);
             var task = Request.Body.CopyToAsync(sh.response.Body);
-            // sh.stream = s;
             await sh.Channel.Writer.WriteAsync(task, HttpContext.RequestAborted);
-            // await sh.Channel2.Reader.ReadAsync(HttpContext.RequestAborted);
             await task;
         }
-        
 
         [HttpGet("multipart/{runid}")]
-        public async Task GetMulti(long runid) {
+        public async Task GetMulti(long runid, [FromQuery] bool submodules, [FromQuery] bool nestedSubmodules) {
             var channel = Channel.CreateBounded<Task>(1);
             var sh = new shared();
             sh.Channel = channel;
-            // sh.Channel2 = Channel.CreateBounded<bool>(1);
             string id = runid + "__,dfuusnd" + reqId + "_" + new Random().NextDouble();
             _cache.Set(id, sh);
-            OnRepoDownload?.Invoke(runid, "/test/host/_apis/v1/Message/multipartup/" + id);
-            // var mp = new MultipartFormDataContent();
-            // mp.Add(new StringContent("Hello World"), "test", "test.yml");
-            // foreach (var item in mp.Headers) {
-            //     Response.Headers.Add(item.Key, new StringValues(item.Value.ToArray()));
-            // }
-            // var form = await Request.ReadFormAsync();
-            // form.Files.First().
-
-            // Response.OnCompleted(async cb => {
-            //     await sh.Channel2.Writer.WriteAsync(true);
-            // }, null);
+            OnRepoDownload?.Invoke(runid, "/test/host/_apis/v1/Message/multipartup/" + id, submodules, nestedSubmodules);
             sh.response = Response;
             var task = await channel.Reader.ReadAsync(HttpContext.RequestAborted);
             await task;
-            // await sh.stream.CopyToAsync(Response.Body);
-            // return new FileStreamResult(await channel.Reader.ReadAsync(HttpContext.RequestAborted));
+            _cache.Remove(id);
         }
         private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout)
         {
@@ -1394,6 +1380,10 @@ namespace Runner.Server.Controllers
                         var _localcheckout = astep.Clone() as ActionStep;
                         _localcheckout.Reference = new RepositoryPathReference { Name = "localcheckout", Ref = "V1", RepositoryType = RepositoryTypes.GitHub, Path = "" };
                         _localcheckout.ContextName = "_" + Guid.NewGuid().ToString();
+                        var inmap = _localcheckout.Inputs?.AssertMapping("inputs");
+                        if(inmap != null) {
+                            inmap.Add(new StringToken(null, null, null, "checkoutref"), new StringToken(null, null, null, p.Ref));
+                        }
                         astep.Condition = $"({astep.Condition}) && !fromJSON(steps.{_localcheckout.ContextName}.outputs.skip)";
                         steps.Insert(i++, _localcheckout);
                     }
@@ -1432,9 +1422,6 @@ namespace Runner.Server.Controllers
                     deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
                 }
             }
-
-            var resources = new JobResources();
-            
 
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
@@ -1483,6 +1470,7 @@ namespace Runner.Server.Controllers
                         SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
                     };
 
+                    var resources = new JobResources();
                     var token = tokenHandler.CreateToken(tokenDescriptor);
                     var stoken = tokenHandler.WriteToken(token);
                     auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
@@ -1568,7 +1556,7 @@ namespace Runner.Server.Controllers
         // }
 
         public static ConcurrentDictionary<Session, Session> sessions = new ConcurrentDictionary<Session, Session>();
-        public delegate void RepoDownload(long runid, string url);
+        public delegate void RepoDownload(long runid, string url, bool submodules, bool nestedSubmodules);
 
         public static event RepoDownload OnRepoDownload;
 
@@ -1599,6 +1587,7 @@ namespace Runner.Server.Controllers
                 return v;
             });
             session.DropMessage?.Invoke();
+            session.DropMessage = null;
             for (int i = 0; i < 10 && !HttpContext.RequestAborted.IsCancellationRequested; i++)
             {
                 if(session.Job == null) {
@@ -1668,8 +1657,8 @@ namespace Runner.Server.Controllers
                                 using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
                                 using (var body = new MemoryStream())
                                 using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                    using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
-                                        bodyWriter.Write(JsonConvert.SerializeObject(res));
+                                    new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                    cryptoStream.FlushFinalBlock();
                                     HttpContext.RequestAborted.ThrowIfCancellationRequested();
                                     return await Ok(new TaskAgentMessage() {
                                         Body = Convert.ToBase64String(body.ToArray()),
@@ -1691,8 +1680,8 @@ namespace Runner.Server.Controllers
                         using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
                         using (var body = new MemoryStream())
                         using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                            using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
-                                bodyWriter.Write(JsonConvert.SerializeObject(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes))));
+                            new ObjectContent<JobCancelMessage>(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                            cryptoStream.FlushFinalBlock();
                             return await Ok(new TaskAgentMessage() {
                                 Body = Convert.ToBase64String(body.ToArray()),
                                 MessageId = id++,
