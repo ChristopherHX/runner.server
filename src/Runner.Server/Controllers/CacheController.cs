@@ -15,7 +15,7 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/artifactcache")]
-    [Authorize("bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class CacheController : VssControllerBase{
         
         private string _targetFilePath;
@@ -45,7 +45,7 @@ namespace Runner.Server.Controllers {
         public CacheController(IMemoryCache memoryCache, IWebHostEnvironment environment)
         {
             _cache = memoryCache;
-            _targetFilePath = Path.Combine(environment.ContentRootPath, "cache");
+            _targetFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun", "cache");
             Directory.CreateDirectory(_targetFilePath);
         }
 

@@ -73,21 +73,6 @@ namespace Runner.Server.Controllers
         private delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
         private static event LogFeedEvent logfeed;
 
-        // private struct JsonRecord
-        // {
-        //     Guid timelineId;
-        //     Guid recordId;
-        //     TimelineRecordFeedLinesWrapper record;
-        // }
-
-        public class LowercaseContractResolver : DefaultContractResolver
-        {
-            protected override string ResolvePropertyName(string propertyName)
-            {
-                return propertyName.ToLower();
-            }
-        }
-
         [HttpGet]
         public IActionResult Message([FromQuery] Guid timelineId, [FromQuery] long[] runid)
         {
@@ -113,9 +98,9 @@ namespace Runner.Server.Controllers
                             queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
-                    MessageController.RepoDownload rd = (_runid, url) => {
+                    MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules) => {
                         if(runid.Contains(_runid)) {
-                            queue2.Enqueue(new KeyValuePair<string, string>("repodownload", url));
+                            queue2.Enqueue(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
 
