@@ -1202,7 +1202,7 @@ namespace Runner.Client
                                         }
                                         await Task.WhenAny(eventstream, Task.Delay(1000, source.Token));
                                     }
-                                    if(!source.IsCancellationRequested && !firstMessageReceived.IsCancellationRequested && pendingWorkflows.Count == 0) {
+                                    if(pendingWorkflows.Count == 0) {
                                         if(hasErrors) {
                                             Console.WriteLine("All Workflows finished, at least one workflow failed");
                                         } else {
