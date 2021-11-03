@@ -62,6 +62,7 @@ jobs:
         include:
         - os: windows-2022
           tag: ltsc2022
+        - test: y
     runs-on: ${{matrix.os}}
     steps:
     - uses: actions/checkout@v2
