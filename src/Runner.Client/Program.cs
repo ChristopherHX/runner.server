@@ -1179,39 +1179,54 @@ namespace Runner.Client
                                 var pendingWorkflows = (from h in hr where !h.skipped && !h.failed select h.run_id).ToList();
                                 timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
                                 var eventstream = client.GetStreamAsync(timeLineWebConsoleLog.ToString());
-                                while(!source.IsCancellationRequested && pendingWorkflows.Count > 0) {
-                                    bool lastRun = eventstream.IsCompleted;
-                                    foreach(var run_id in pendingWorkflows.ToArray()) {
-                                        var workflowstat = new UriBuilder(b.ToString());
-                                        workflowstat.Path = "runner/host/_apis/v1/Message/WorkflowStatus/" + run_id;
-                                        var workflowres = await client.GetStringAsync(workflowstat.ToString());
-                                        if(workflowres != "") {
-                                            pendingWorkflows.Remove(run_id);
-                                            var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(workflowres);
-                                            Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
-                                            if(!_workflow.Success) {
-                                                hasErrors = true;
+                                CancellationTokenSource workflowFinish = new CancellationTokenSource();
+                                CancellationTokenSource firstMessageReceived = new CancellationTokenSource();
+                                Task.Run(async () => {
+                                    while(!source.IsCancellationRequested && pendingWorkflows.Count > 0) {
+                                        bool lastRun = firstMessageReceived.IsCancellationRequested;
+                                        foreach(var run_id in pendingWorkflows.ToArray()) {
+                                            var workflowstat = new UriBuilder(b.ToString());
+                                            workflowstat.Path = "runner/host/_apis/v1/Message/WorkflowStatus/" + run_id;
+                                            var workflowres = await client.GetStringAsync(workflowstat.ToString());
+                                            if(workflowres != "") {
+                                                pendingWorkflows.Remove(run_id);
+                                                var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(workflowres);
+                                                Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
+                                                if(!_workflow.Success) {
+                                                    hasErrors = true;
+                                                }
                                             }
                                         }
+                                        if(lastRun) {
+                                            break;
+                                        }
+                                        await Task.WhenAny(eventstream, Task.Delay(1000, source.Token));
                                     }
-                                    if(lastRun) {
-                                        break;
+                                    if(!source.IsCancellationRequested && !firstMessageReceived.IsCancellationRequested && pendingWorkflows.Count == 0) {
+                                        if(hasErrors) {
+                                            Console.WriteLine("All Workflows finished, at least one workflow failed");
+                                        } else {
+                                            Console.WriteLine("All Workflows finished successfully");
+                                        }
+                                        workflowFinish.Cancel();
                                     }
-                                    await Task.WhenAny(eventstream, Task.Delay(1000, source.Token));
-                                }
-                                if(pendingWorkflows.Count == 0) {
-                                    if(hasErrors) {
-                                        Console.WriteLine("All Workflows finished, at least one workflow failed");
-                                    } else {
-                                        Console.WriteLine("All Workflows finished successfully");
-                                    }
-                                    return hasErrors ? 1 : 0;
-                                }
+                                });
                                 var runIds = new List<long>(pendingWorkflows);
                                 try {
+                                    if(await Task.WhenAny(eventstream, Task.Delay(-1, workflowFinish.Token)) != eventstream) {
+                                        return hasErrors ? 1 : 0;
+                                    }
                                     using(TextReader reader = new StreamReader(await eventstream)) {
                                         while(!source.IsCancellationRequested) {
-                                            var line = await reader.ReadLineAsync();
+                                            var readLineTask = reader.ReadLineAsync();
+                                            if(!firstMessageReceived.IsCancellationRequested) {
+                                                if(await Task.WhenAny(readLineTask, Task.Delay(-1, workflowFinish.Token)) != readLineTask) {
+                                                    return hasErrors ? 1 : 0;
+                                                } else {
+                                                    firstMessageReceived.Cancel();
+                                                }
+                                            }
+                                            var line = await readLineTask;
                                             if(line == null) {
                                                 break;
                                             }
