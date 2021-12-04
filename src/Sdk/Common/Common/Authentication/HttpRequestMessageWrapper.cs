@@ -12,9 +12,21 @@ namespace GitHub.Services.Common
             m_request = request;
         }
 
-        public IHttpHeaders Headers => this;
-        public Uri RequestUri => m_request.RequestUri;
-        public IDictionary<string,object> Properties => m_request.Options;
+        public IHttpHeaders Headers
+        {
+            get
+            {
+                return this;
+            }
+        }
+
+        public Uri RequestUri
+        {
+            get
+            {
+                return m_request.RequestUri;
+            }
+        }
 
         IEnumerable<String> IHttpHeaders.GetValues(String name)
         {

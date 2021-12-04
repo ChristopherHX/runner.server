@@ -28,6 +28,11 @@
 
 ## Known Issues
 
+- Add telemetry around runner update process. #1497
+- Improve telemetry to better diagnose runner configuration issues #1487
+- Clean up dependencies #1470
+
+
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 

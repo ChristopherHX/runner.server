@@ -8,7 +8,6 @@
     <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
     <NoWarn>NU1701;NU1603;CS4014</NoWarn>
     <Version>$(Version)</Version>
-    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
   </PropertyGroup>
   
   <ItemGroup>

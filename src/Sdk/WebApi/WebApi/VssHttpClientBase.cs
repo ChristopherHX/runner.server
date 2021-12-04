@@ -835,7 +835,7 @@ namespace GitHub.Services.WebApi
                 {
                     message.Options.Set(new HttpRequestOptionsKey<object>(UserStatePropertyName), userState);
                 }
-                
+
                 if (!message.Headers.Contains(Common.Internal.HttpHeaders.VssE2EID))
                 {
                     message.Headers.Add(Common.Internal.HttpHeaders.VssE2EID, Guid.NewGuid().ToString("D"));
@@ -872,7 +872,7 @@ namespace GitHub.Services.WebApi
         }
 
         protected virtual async Task HandleResponseAsync(
-            HttpResponseMessage response, 
+            HttpResponseMessage response,
             CancellationToken cancellationToken)
         {
             response.Trace();
@@ -1154,12 +1154,14 @@ namespace GitHub.Services.WebApi
         {
             if (BaseAddress != null)
             {
+#pragma warning disable SYSLIB0014
                 ServicePoint servicePoint = ServicePointManager.FindServicePoint(BaseAddress);
                 servicePoint.UseNagleAlgorithm = false;
                 servicePoint.SetTcpKeepAlive(
                     enabled: true,
                     keepAliveTime: c_keepAliveTime,
                     keepAliveInterval: c_keepAliveInterval);
+#pragma warning restore SYSLIB0014
             }
         }
 

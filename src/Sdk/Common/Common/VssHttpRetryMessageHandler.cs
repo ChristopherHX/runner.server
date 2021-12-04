@@ -36,7 +36,7 @@ namespace GitHub.Services.Common
         }
 
         public VssHttpRetryMessageHandler(
-            VssHttpRetryOptions options, 
+            VssHttpRetryOptions options,
             HttpMessageHandler innerHandler)
             : base(innerHandler)
         {
@@ -183,7 +183,7 @@ namespace GitHub.Services.Common
         {
             // implement in Server so retries are recorded in ProductTrace
         }
-        
+
         protected virtual void TraceHttpRequestFailed(VssTraceActivity activity, HttpRequestMessage request, HttpStatusCode statusCode, string afdRefInfo)
         {
             VssHttpEventSource.Log.HttpRequestFailed(activity, request, statusCode, afdRefInfo);
@@ -212,7 +212,7 @@ namespace GitHub.Services.Common
         private static bool IsLowPriority(HttpRequestMessage request)
         {
             bool isLowPriority = false;
-            
+
             IEnumerable<string> headers;
 
             if (request.Headers.TryGetValues(HttpHeaders.VssRequestPriority, out headers) && headers != null)
