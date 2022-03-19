@@ -1,6 +1,6 @@
 runs:
   using: docker
-  image: docker://mcr.microsoft.com/windows/nanoserver:20H2
+  image: docker://mcr.microsoft.com/windows/nanoserver:ltsc2022
   entrypoint: cmd
   args: 
   - /c

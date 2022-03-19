@@ -7,7 +7,7 @@ jobs:
       matrix:
         image:
           - ""
-          - "mcr.microsoft.com/windows/nanoserver:20H2"
+          - "mcr.microsoft.com/windows/nanoserver:ltsc2022"
     container: ${{matrix.image}}
     runs-on: self-hosted
     steps:
