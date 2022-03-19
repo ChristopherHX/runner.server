@@ -1,0 +1,5 @@
+runs:
+  using: docker
+  image: docker://mcr.microsoft.com/windows/nanoserver:20H2
+  entrypoint: cmd
+  args: [/c, ver]
