@@ -5,4 +5,4 @@ runs:
   args: 
   - -c
   - |-
-      echo GITHUB_WORKSPACE: $GITHUB_WORKSPACE && echo ::add-matcher::$GITHUB_WORKSPACE\problem.json && echo ::add-matcher::problem.json
+      echo GITHUB_WORKSPACE: $GITHUB_WORKSPACE && echo ::add-matcher::$GITHUB_WORKSPACE/problem.json && echo ::add-matcher::problem.json

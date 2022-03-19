@@ -94,9 +94,10 @@ jobs:
     - name: Test
       run: |
         gharun -W testworkflows/testlocalcheckout.yml
-        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
+        ${{matrix.image && 'echo "Skipping additional testcases" && exit 0' || ''}}
+        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
         gharun -W testworkflows/artifact.yml
         gharun -W testworkflows/issue70/main.yml
