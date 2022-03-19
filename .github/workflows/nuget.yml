@@ -126,9 +126,9 @@ jobs:
         # gharun -W testworkflows/artifact.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         gharun -W testworkflows/cachewindowscontainer.yml -P windows-latest=mcr.microsoft.com/powershell:lts-windowsservercore-${{matrix.tag}}
         gharun -W testworkflows/test-setup-node.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
-        gharun -C testworkflows\windows-container-test1
-        gharun -C testworkflows\windows-container-test2
-        gharun -C testworkflows\windows-container-test3-invalid-problem-matcher && exit 1 || [[ "$?" = "1" ]]
+        gharun -C testworkflows/windows-container-test1
+        gharun -C testworkflows/windows-container-test2
+        gharun -C testworkflows/windows-container-test3-invalid-problem-matcher && exit 1 || [[ "$?" = "1" ]]
     - name: Test Linux Container
       if: contains(matrix.os, 'ubuntu')
       run: |
@@ -137,6 +137,7 @@ jobs:
         gharun -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
         gharun -W testworkflows/test-setup-node.yml -P self-hosted=ubuntu:latest
         gharun -C testworkflows/linux-container-problem-matcher-test1
+        gharun -C testworkflows/linux-container-i386
       shell: bash
     - name: Test sqlite support
       if: contains(matrix.os, 'ubuntu')
