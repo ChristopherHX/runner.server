@@ -50,7 +50,7 @@ jobs:
     defaults:
       run:
         # It seems pwsh doesn't failfast, windows jobs succeeded with errors
-        shell: ${{ !job.container && 'bash' || 'sh' }}
+        shell: ${{ matrix.shell || 'bash' }}
     needs:
     - package
     strategy:
@@ -71,6 +71,7 @@ jobs:
           tag: ltsc2022
         - os: ubuntu-latest
           image: mcr.microsoft.com/dotnet/sdk:6.0-alpine3.15
+          shell: sh
     runs-on: ${{matrix.os}}
     container: ${{matrix.image}}
     steps:
