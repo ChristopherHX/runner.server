@@ -50,7 +50,7 @@ jobs:
     defaults:
       run:
         # It seems pwsh doesn't failfast, windows jobs succeeded with errors
-        shell: bash
+        shell: ${{ !job.container && 'bash' || 'sh' }}
     needs:
     - package
     strategy:
