@@ -150,7 +150,7 @@ jobs:
         gharun -C testworkflows/linux-container-i386
       shell: bash
     - name: Test sqlite support
-      if: contains(matrix.os, 'ubuntu')
+      if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
         mkdir gharun
         cd gharun
