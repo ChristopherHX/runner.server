@@ -1483,7 +1483,8 @@ namespace Runner.Server.Controllers
                                     var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name };
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
-                                    var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value.ToString()).FirstOrDefault() ?? jobitem.name;
+                                    var jobNameToken = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value).FirstOrDefault();
+                                    var _jobdisplayname = jobNameToken is StringToken jobNameStringToken ? jobNameStringToken.ToString() : jobitem.name;
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
@@ -1491,7 +1492,7 @@ namespace Runner.Server.Controllers
                                     jobitem.DisplayName = _jobdisplayname;
                                     // For Runner.Client to show the workflowname
                                     initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
-                                    new TimelineController(_context, Configuration).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
+                                    new TimelineController(    , Configuration).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                     jobTraceWriter.Info("{0}", $"Evaluate if");
                                     var ifexpr = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "if" select r).FirstOrDefault().Value;
                                     var translateConditionCtx = CreateTemplateContext(jobTraceWriter, workflowContext.FileTable);
