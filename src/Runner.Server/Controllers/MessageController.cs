@@ -1492,7 +1492,7 @@ namespace Runner.Server.Controllers
                                     jobitem.DisplayName = _jobdisplayname;
                                     // For Runner.Client to show the workflowname
                                     initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
-                                    new TimelineController(    , Configuration).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
+                                    new TimelineController(_context, Configuration).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                     jobTraceWriter.Info("{0}", $"Evaluate if");
                                     var ifexpr = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "if" select r).FirstOrDefault().Value;
                                     var translateConditionCtx = CreateTemplateContext(jobTraceWriter, workflowContext.FileTable);
