@@ -1818,10 +1818,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
                                                 Func<string, string> defJobName = jobname => string.IsNullOrEmpty(displaySuffix) ? jobname : $"{jobname} {displaySuffix}";
-                                                var _prejobdisplayname = defJobName(jobname);
-                                                if(callingJob?.Name != null) {
-                                                    _prejobdisplayname = callingJob.Name + " / " + _prejobdisplayname;
-                                                }
+                                                var _prejobdisplayname = defJobName(_jobdisplayname);
                                                 if(jobTotal > 1) {
                                                     next.TimelineId = Guid.NewGuid();
                                                     // For Runner.Client to show the workflowname
