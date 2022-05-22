@@ -1484,7 +1484,7 @@ namespace Runner.Server.Controllers
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
                                     var jobNameToken = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value).FirstOrDefault();
-                                    var _jobdisplayname = jobNameToken is StringToken jobNameStringToken ? jobNameStringToken.ToString() : jobitem.name;
+                                    var _jobdisplayname = jobNameToken?.ToString() ?? jobitem.name;
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
