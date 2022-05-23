@@ -1740,8 +1740,10 @@ namespace Runner.Server.Controllers
                                                 var displaySuffix = new StringBuilder();
                                                 int z = 0;
                                                 foreach (var mk in item) {
-                                                    displaySuffix.Append(z++ == 0 ? "(" : ", ");
-                                                    displaySuffix.Append(mk);
+                                                    if(!string.IsNullOrEmpty(mk)) {
+                                                        displaySuffix.Append(z++ == 0 ? "(" : ", ");
+                                                        displaySuffix.Append(mk);
+                                                    }
                                                 }
                                                 if(z > 0) {
                                                     displaySuffix.Append( ")");
