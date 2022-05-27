@@ -873,8 +873,8 @@ namespace Runner.Client
                                 GitGraphQlServerUrl = parameters.GitGraphQlServerUrl,
                                 ActionDownloadUrls = new [] {
                                     new {
-                                        TarballUrl = parameters.GitTarballUrl ?? parameters.GitApiServerUrl + "/{0}/archive/{1}.tar.gz",
-                                        ZipballUrl = parameters.GitZipballUrl ?? parameters.GitApiServerUrl + "/{0}/archive/{1}.zip",
+                                        TarballUrl = parameters.GitTarballUrl ?? parameters.GitServerUrl + "/{0}/archive/{1}.tar.gz",
+                                        ZipballUrl = parameters.GitZipballUrl ?? parameters.GitServerUrl + "/{0}/archive/{1}.zip",
                                         GitApiServerUrl = "",
                                         GITHUB_TOKEN = "",
                                     }
@@ -882,8 +882,8 @@ namespace Runner.Client
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
-                                    TarballUrl = "https://api.github.com/{0}/archive/{1}.tar.gz",
-                                    ZipballUrl = "https://api.github.com/{0}/archive/{1}.zip",
+                                    TarballUrl = "https://github.com/{0}/archive/{1}.tar.gz",
+                                    ZipballUrl = "https://github.com/{0}/archive/{1}.zip",
                                     GitApiServerUrl = "https://api.github.com",
                                     GITHUB_TOKEN = parameters.GitHubConnectToken,
                                 });
