@@ -655,10 +655,10 @@ namespace Runner.Client
                 description: "Url to github graphql api. ( e.g https://api.github.com/graphql )");
             var gitTarballUrlOpt = new Option<string>(
                 "--git-tarball-url",
-                description: "Url to github or gitea tarball api url, defaults to `<git-api-server-url>/{0}/archive/{1}.tar.gz`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+                description: "Url to github or gitea tarball api url, defaults to `<git-server-url>/{0}/archive/{1}.tar.gz`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
             var gitZipballUrlOpt = new Option<string>(
                 "--git-zipball-url",
-                description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/{0}/archive/{1}.zip`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+                description: "Url to github or gitea zipball api url, defaults to `<git-server-url>/{0}/archive/{1}.zip`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
              var githubConnectOpt = new Option<bool>(
                 "--github-connect",
                 description: "Allow all actions from https://github.com with an GHES instance.");
