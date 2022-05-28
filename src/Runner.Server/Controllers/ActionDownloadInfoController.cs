@@ -160,6 +160,8 @@ namespace Runner.Server.Controllers
                                 string ghtoken = null;
                                 if(!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) && downloadUrl.GitApiServerUrl != GitApiServerUrl) {
                                     ghtoken = downloadUrl.GITHUB_TOKEN;
+                                    // Without an dummy Token we would expose our GITHUB_TOKEN to https://github.com if no token is provided
+                                    downloadinfo.Authentication = new ActionDownloadAuthentication() { Token = !string.IsNullOrEmpty(ghtoken) ? ghtoken : "dummy-token" };
                                 } else {
                                     if(AllowPrivateActionAccess && repository != null && item.NameWithOwner != repository) {
                                         ghtoken = await CreateGithubAppToken(item.NameWithOwner);
