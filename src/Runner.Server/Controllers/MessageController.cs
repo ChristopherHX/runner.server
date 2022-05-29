@@ -3964,7 +3964,7 @@ namespace Runner.Server.Controllers
 
         private void RerunWorkflow(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false, bool resetArtifacts = true) {
             var clone = Clone();
-            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs, onLatestCommit));
+            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs, onLatestCommit, resetArtifacts));
         }
         private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false, bool resetArtifacts = true) {
             string latestWorkflow = null;
