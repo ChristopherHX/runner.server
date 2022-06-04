@@ -108,12 +108,12 @@ jobs:
         gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
         gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets.yaml
         gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets.yaml
-        gharun -W testworkflows/matrix-eq-test.yml --parallel 2
         cd testworkflows/environment-test
         gharun -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
         cd ../..
         gharun -W testworkflows/dumpcontexts.yml --list
         gharun -C testworkflows/case-insensitive-keys-matrix
+        gharun -C testworkflows/matrix-eq-test --parallel 2
         ${{matrix.image && 'echo "Skipping additional testcases" && exit 0' || ''}}
         gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
