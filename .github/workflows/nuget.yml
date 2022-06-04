@@ -108,6 +108,7 @@ jobs:
         gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
         gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets.yaml
         gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets.yaml
+        gharun -W testworkflows/matrix-eq-test.yml --parallel 2
         cd testworkflows/environment-test
         gharun -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
         cd ../..
