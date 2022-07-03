@@ -123,7 +123,7 @@ namespace Runner.Server.Controllers
             MaxDifferentReferencedWorkflows = configuration.GetSection("Runner.Server").GetValue<int>("MaxDifferentReferencedWorkflows", 20);
             MaxWorkflowFileSize = configuration.GetSection("Runner.Server").GetValue<int>("MaxWorkflowFileSize", 512 * 1024);
             MaxConcurrencyGroupNameLength = configuration.GetSection("Runner.Server").GetValue<int>("MaxConcurrencyGroupNameLength", 400);
-            MergedInputs = configuration.GetSection("Runner.Server").GetValue<bool>("MergedInputs");
+            MergedInputs = configuration.GetSection("Runner.Server").GetValue<bool>("MergedInputs", true);
             _cache = memoryCache;
             _context = context;
         }
