@@ -1,4 +1,4 @@
-steps:
+stages:
 - template: tmpl.yml
   parameters:
     stages:
