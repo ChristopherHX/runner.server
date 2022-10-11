@@ -10,4 +10,4 @@ steps:
       echo $(compileVar) # outputs my value
       echo $(isMain) # outputs True
   - script: exit 1
-    condition: ${{ ne(variables.staticVar, 'my value') }}
+    condition: eq(${{ variables.staticVar }}, 'my value')
