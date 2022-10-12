@@ -108,7 +108,7 @@ public class AzureDevops {
                     var groupVars = context.VariablesProvider?.GetVariablesForEnvironment(group);
                     if(groupVars != null) {
                         foreach(var v in groupVars) {
-                            vars[name] = new VariableValue(value);
+                            vars[v.Key] = new VariableValue(v.Value);
                         }
                     }
                 } else if(template != null) {
