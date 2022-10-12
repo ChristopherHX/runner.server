@@ -6263,7 +6263,7 @@ namespace Runner.Server.Controllers
             private ISecretsProvider parent;
             private IDictionary<string, string> rootVars;
 
-            public ReusableWorkflowSecretsProvider(ISecretsProvider parent, IDictionary<string, string> rootVars){
+            public AzurePipelinesVariablesProvider(ISecretsProvider parent, IDictionary<string, string> rootVars){
                 this.parent = parent;
                 this.rootVars = rootVars;
             }
