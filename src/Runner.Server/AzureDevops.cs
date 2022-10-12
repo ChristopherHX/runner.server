@@ -71,7 +71,7 @@ public class AzureDevops {
                 string name = null;
                 string value = null;
                 bool isReadonly = false;
-                string group = null
+                string group = null;
                 bool skip = false;
                 foreach(var kv in rawdef.AssertMapping("")) {
                     if(onlyStaticVars && (kv.Key is ExpressionToken || kv.Value is ExpressionToken)) {
