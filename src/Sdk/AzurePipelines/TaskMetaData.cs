@@ -2,17 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
 public class TaskMetaData {
     public Guid Id { get; set; }
     public string Name { get; set; }
-
     public TaskVersion Version { get; set; }
-
     public string ArchivePath { get; set; }
-    public Func<ControllerContext, IActionResult> ArchiveCallback { get; set; }
 
     public static bool ValidZipFile(string filePath) {
         try {

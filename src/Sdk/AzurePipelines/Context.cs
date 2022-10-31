@@ -14,8 +14,10 @@ namespace Runner.Server.Azure.Devops {
         public string CWD { get; set; }
         public Dictionary<string, string> Repositories { get; set; }
 
+        public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
+
         public Context Clone() {
-            return new Context { FileProvider = FileProvider, TraceWriter = TraceWriter, VariablesProvider = VariablesProvider, RepositoryAndRef = RepositoryAndRef, CWD = CWD, Repositories = Repositories, Flags = Flags };
+            return MemberwiseClone() as Context;
         }
 
         public Context ChildContext(MappingToken template, string path = null) {
