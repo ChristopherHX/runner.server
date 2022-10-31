@@ -1771,6 +1771,9 @@ namespace Runner.Server.Controllers
                                     return new DictionaryContextData();
                                 };
                                 needsctx = parseDeps("system.runner.server.needs");
+                                foreach(var childneed in parseDeps($"system.runner.server.{jobname.PrefixJobIdIfNotNull(callingJob?.Id)}.needs")) {
+                                    needsctx[childneed.Key] = childneed.Value;
+                                }
                             }
                             contextData.Add("needs", needsctx);
 
