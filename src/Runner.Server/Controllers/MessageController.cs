@@ -43,6 +43,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Actions.Pipelines.WebApi;
 using YamlDotNet.Serialization;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Runner.Server.Controllers
 {
@@ -886,6 +887,10 @@ namespace Runner.Server.Controllers
             public HashSet<string> ReferencedWorkflows { get; } = new HashSet<string>();
             public IDictionary<string, string> FeatureToggles { get; set; }
             public ExpressionFlags Flags { get; internal set; }
+
+            public WorkflowState WorkflowState { get; set; }
+
+            public Runner.Server.Azure.Devops.Context AzContext { get; set; }
 
             public bool HasFeature(string name, bool def = false) {
                 return FeatureToggles.TryGetValue(name, out var anchors) ? string.Equals(anchors, "true", StringComparison.OrdinalIgnoreCase) : def;
@@ -2966,7 +2971,7 @@ namespace Runner.Server.Controllers
                     Cancel = ctoken,
                     ForceCancel = cforceCancelWorkflow
                 };
-                var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
+                var workflowContext = new WorkflowContext() { FileName = fileRelativePath, WorkflowState = state };
                 if(WorkflowStates.TryAdd(runid, state)) {
                     workflowContext.CancellationToken = ctoken.Token;
                     cancellationToken = ctoken;
@@ -3012,6 +3017,7 @@ namespace Runner.Server.Controllers
                     rootVariables[v.Key] = v.Value;
                 }
                 var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, VariablesProvider = new AzurePipelinesVariablesProvider(secretsProvider, rootVariables), Flags = flags };
+                workflowContext.AzContext = context;
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
                 bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
                 bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
@@ -3092,6 +3098,11 @@ namespace Runner.Server.Controllers
                 };
                 var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(getOrCreateTaskCache(null), StringComparer.OrdinalIgnoreCase);
                 state.TasksByNameAndVersion = tasksByNameAndVersion;
+                try {
+                    TaskMetaData.Load(tasksByNameAndVersion, Path.Join(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "wwwroot", "localcheckoutazure.zip"));
+                } catch(Exception ex) {
+                    workflowTraceWriter.Error($"Failed to read the localcheckoutazure inbox task: {ex}");
+                }
                 if(taskNames?.Length > 0) {
                     var config = Configuration;
                     var cache = this._cache;
@@ -5503,12 +5514,13 @@ namespace Runner.Server.Controllers
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
+                        variables.Add("System.HostType", new VariableValue("build", false));
 
-                        variables["System.CollectionId"] = new VariableValue(Guid.NewGuid().ToString(), false);
-                        variables["System.DefinitionId"] = new VariableValue(Guid.NewGuid().ToString(), false);
+                        variables["System.CollectionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                        variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
                         variables["Build.Clean"] = new VariableValue("true", false);
                         variables["Build.SyncSources"] = new VariableValue("true", false);
-                        variables["Build.DefinitionName"] = new VariableValue(Guid.NewGuid().ToString(), false);
+                        variables["Build.DefinitionName"] = new VariableValue(Guid.Empty.ToString(), false);
                         // for azurelocalcheckout
                         variables["System.RunId"] = new VariableValue(runid.ToString(), false);
                         // ff for agent to enforce readonly vars
@@ -5615,6 +5627,44 @@ namespace Runner.Server.Controllers
                         // checkoutTask.Inputs["lfs"] = "false";
 
                         var steps = rjob.Steps/*.Prepend(checkoutTask)*/.Where(s => s.Enabled).ToList();
+                        var checkoutGuid = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4");
+                        var tasksByNameAndVersion = workflowContext?.WorkflowState?.TasksByNameAndVersion;
+                        var localcheckoutRef = localcheckout && tasksByNameAndVersion != null && tasksByNameAndVersion.TryGetValue("localcheckoutazure@0", out var localcheckoutazure) ? new TaskStepDefinitionReference {
+                            Id = localcheckoutazure.Id,
+                            Name = localcheckoutazure.Name,
+                            Version = $"{localcheckoutazure.Version.Major}.{localcheckoutazure.Version.Minor}.{localcheckoutazure.Version.Patch}"
+                        } : null;
+                        
+                        if(localcheckoutRef != null && !steps.Any(step => step.Reference?.Id == checkoutGuid)) {
+                            steps.Insert(0, new TaskStep {
+                                DisplayName = "Default Checkout Task",
+                                Reference = localcheckoutRef
+                            });
+                        } else {
+                            // checkout: none triggers an error in the builtin checkout task
+                            steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
+                            if(localcheckout) {
+                                var count = steps.Count(step => step.Reference?.Id == checkoutGuid);
+                                foreach(var step in steps) {
+                                    if(step.Reference?.Id == checkoutGuid) {
+                                        step.Reference = localcheckoutRef;
+                                        if(step.Inputs.TryGetValue("repository", out var repo)) {
+                                            if(count > 1 && (!step.Inputs.TryGetValue("path", out var path) || path == "")) {
+                                                step.Inputs["path"] = repo == "self" ? "CurrentRepo" : repo;
+                                            }
+                                            if(repo == "self") {
+                                                step.Inputs["repository"] = "";
+                                                step.Inputs["ref"] = "";
+                                            } else if(workflowContext.AzContext.Repositories.TryGetValue(repo, out var nameAndRef)) {
+                                                var nref = nameAndRef.Split("@", 2);
+                                                step.Inputs["repository"] = nref[0];
+                                                step.Inputs["ref"] = nref[1];
+                                            }
+                                        }                                        
+                                    }
+                                }
+                            }
+                        }
                         List<string> errors = new List<string>();
                         for(int i = 0; i < steps.Count; i++) {
                             var clone = new TaskStep();

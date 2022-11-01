@@ -25,19 +25,7 @@ public class TaskMetaData {
             foreach(var dir in System.IO.Directory.EnumerateDirectories(rootDir)) {
                 try {
                     var filePath = Path.Join(dir, "task.zip");
-                    var task = System.IO.Compression.ZipFile.OpenRead(filePath);
-                    using(var stream = task.GetEntry("task.json")?.Open())
-                    using(var textreader = new StreamReader(stream)) {
-                        var metaData = JsonConvert.DeserializeObject<TaskMetaData>(textreader.ReadToEnd());
-                        metaData.ArchivePath = filePath;
-                        tasks.Add(metaData);
-                        if(!tasksByNameAndVersion.TryGetValue($"{metaData.Id}@{metaData.Version.Major}", out var ometaData) || ometaData.Version.Minor <= metaData.Version.Minor) {
-                            tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}"] = metaData;
-                            tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}"] = metaData;
-                        }
-                        tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
-                        tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
-                    }
+                    tasks.Add(Load(tasksByNameAndVersion, filePath));
                 } catch {
 
                 }
@@ -46,5 +34,21 @@ public class TaskMetaData {
 
         }
         return (tasks, tasksByNameAndVersion);
+    }
+
+    public static TaskMetaData Load(Dictionary<string, TaskMetaData> tasksByNameAndVersion, string filePath) {
+        var task = System.IO.Compression.ZipFile.OpenRead(filePath);
+        using(var stream = task.GetEntry("task.json")?.Open())
+        using(var textreader = new StreamReader(stream)) {
+            var metaData = JsonConvert.DeserializeObject<TaskMetaData>(textreader.ReadToEnd());
+            metaData.ArchivePath = filePath;
+            if(!tasksByNameAndVersion.TryGetValue($"{metaData.Id}@{metaData.Version.Major}", out var ometaData) || ometaData.Version.Minor <= metaData.Version.Minor) {
+                tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}"] = metaData;
+                tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}"] = metaData;
+            }
+            tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
+            tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
+            return metaData;
+        }
     }
 }
