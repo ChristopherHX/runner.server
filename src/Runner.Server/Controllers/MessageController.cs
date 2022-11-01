@@ -5475,6 +5475,9 @@ namespace Runner.Server.Controllers
                         var myIssuer = "http://githubactionsserver";
                         var myAudience = "http://githubactionsserver";
 
+                        var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
+                        fileContainerId = resp.Id;
+
                         var tokenHandler = new JwtSecurityTokenHandler();
                         var tokenDescriptor = new SecurityTokenDescriptor
                         {
@@ -5487,6 +5490,7 @@ namespace Runner.Server.Controllers
                                 new Claim("attempt", attempt.Attempt.ToString()),
                                 new Claim("artifactsMinAttempt", attempt.ArtifactsMinAttempt.ToString()),
                                 new Claim("localcheckout", localcheckout ? "actions/checkout" : ""),
+                                new Claim("containerid", fileContainerId.ToString()),
                                 new Claim("runid", runid.ToString()),
                             }),
                             Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes + 10),
@@ -5525,9 +5529,7 @@ namespace Runner.Server.Controllers
                         variables["System.RunId"] = new VariableValue(runid.ToString(), false);
                         // ff for agent to enforce readonly vars
                         variables["agent.readOnlyVariables"] = "true";
-                        var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
-                        fileContainerId = resp.Id;
-                        variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
+                        variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(fileContainerId.ToString(), false));
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
                         }
