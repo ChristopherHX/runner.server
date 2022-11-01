@@ -999,7 +999,7 @@ namespace Runner.Server.Controllers
                     return false;
                 }
                 jobname = selectedJob.Substring(0, matrixBeg);
-                matrix = selectedJob.Substring(matrixEndDel + 1, matrixEnd - (matrixEndDel + 1));
+                matrix = selectedJob.Substring(matrixEndDel, matrixEnd - matrixEndDel + 1);
                 child = selectedJob.Length > (matrixEnd + matrixDel.Length + 1) && selectedJob[matrixEnd + matrixDel.Length] == '/' ? selectedJob.Substring(matrixEnd + matrixDel.Length + 1) : null;
                 return true;
             }
