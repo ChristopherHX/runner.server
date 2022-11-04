@@ -271,7 +271,7 @@ public class AzureDevops {
                     for(int i = 0; i < unparsedTokens.Count; i++) {
                         tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
                     }
-                    tstep.Inputs["source"] = primaryValue;
+                    tstep.Inputs["buildType"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "downloadBuild":
@@ -280,8 +280,7 @@ public class AzureDevops {
                     for(int i = 0; i < unparsedTokens.Count; i++) {
                         tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
                     }
-                    // Unknown if this is correct...
-                    tstep.Inputs["definition"] = primaryValue;
+                    tstep.Inputs["buildType"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "getPackage":

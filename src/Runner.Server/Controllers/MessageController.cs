@@ -5631,38 +5631,42 @@ namespace Runner.Server.Controllers
                         var steps = rjob.Steps/*.Prepend(checkoutTask)*/.Where(s => s.Enabled).ToList();
                         var checkoutGuid = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4");
                         var tasksByNameAndVersion = workflowContext?.WorkflowState?.TasksByNameAndVersion;
-                        var localcheckoutRef = localcheckout && tasksByNameAndVersion != null && tasksByNameAndVersion.TryGetValue("localcheckoutazure@0", out var localcheckoutazure) ? new TaskStepDefinitionReference {
-                            Id = localcheckoutazure.Id,
-                            Name = localcheckoutazure.Name,
-                            Version = $"{localcheckoutazure.Version.Major}.{localcheckoutazure.Version.Minor}.{localcheckoutazure.Version.Patch}"
-                        } : null;
-                        
-                        if(localcheckoutRef != null && !steps.Any(step => step.Reference?.Id == checkoutGuid)) {
-                            steps.Insert(0, new TaskStep {
-                                DisplayName = "Default Checkout Task",
-                                Reference = localcheckoutRef
-                            });
+                        if(rjob.DeploymentJob) {
+                            steps.RemoveAll(step => step.Reference?.Name != null && (string.Equals(step.Reference.Name, "DownloadPipelineArtifact", StringComparison.OrdinalIgnoreCase) || string.Equals(step.Reference.Name, "DownloadBuildArtifacts", StringComparison.OrdinalIgnoreCase)) && (step.Inputs.TryGetValue("buildType", out var buildType) || step.Inputs.TryGetValue("source", out buildType)) && buildType == "none");
                         } else {
-                            // checkout: none triggers an error in the builtin checkout task
-                            steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
-                            if(localcheckout) {
-                                var count = steps.Count(step => step.Reference?.Id == checkoutGuid);
-                                foreach(var step in steps) {
-                                    if(step.Reference?.Id == checkoutGuid) {
-                                        step.Reference = localcheckoutRef;
-                                        if(step.Inputs.TryGetValue("repository", out var repo)) {
-                                            if(count > 1 && (!step.Inputs.TryGetValue("path", out var path) || path == "")) {
-                                                step.Inputs["path"] = repo == "self" ? "CurrentRepo" : repo;
-                                            }
-                                            if(repo == "self") {
-                                                step.Inputs["repository"] = "";
-                                                step.Inputs["ref"] = "";
-                                            } else if(workflowContext.AzContext.Repositories.TryGetValue(repo, out var nameAndRef)) {
-                                                var nref = nameAndRef.Split("@", 2);
-                                                step.Inputs["repository"] = nref[0];
-                                                step.Inputs["ref"] = nref[1];
-                                            }
-                                        }                                        
+                            var localcheckoutRef = localcheckout && tasksByNameAndVersion != null && tasksByNameAndVersion.TryGetValue("localcheckoutazure@0", out var localcheckoutazure) ? new TaskStepDefinitionReference {
+                                Id = localcheckoutazure.Id,
+                                Name = localcheckoutazure.Name,
+                                Version = $"{localcheckoutazure.Version.Major}.{localcheckoutazure.Version.Minor}.{localcheckoutazure.Version.Patch}"
+                            } : null;
+                            
+                            if(localcheckoutRef != null && !steps.Any(step => step.Reference?.Id == checkoutGuid)) {
+                                steps.Insert(0, new TaskStep {
+                                    DisplayName = "Default Checkout Task",
+                                    Reference = localcheckoutRef
+                                });
+                            } else {
+                                // checkout: none triggers an error in the builtin checkout task
+                                steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
+                                if(localcheckout) {
+                                    var count = steps.Count(step => step.Reference?.Id == checkoutGuid);
+                                    foreach(var step in steps) {
+                                        if(step.Reference?.Id == checkoutGuid) {
+                                            step.Reference = localcheckoutRef;
+                                            if(step.Inputs.TryGetValue("repository", out var repo)) {
+                                                if(count > 1 && (!step.Inputs.TryGetValue("path", out var path) || path == "")) {
+                                                    step.Inputs["path"] = repo == "self" ? "CurrentRepo" : repo;
+                                                }
+                                                if(repo == "self") {
+                                                    step.Inputs["repository"] = "";
+                                                    step.Inputs["ref"] = "";
+                                                } else if(workflowContext.AzContext.Repositories.TryGetValue(repo, out var nameAndRef)) {
+                                                    var nref = nameAndRef.Split("@", 2);
+                                                    step.Inputs["repository"] = nref[0];
+                                                    step.Inputs["ref"] = nref[1];
+                                                }
+                                            }                                        
+                                        }
                                     }
                                 }
                             }
