@@ -5518,10 +5518,18 @@ namespace Runner.Server.Controllers
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
-                        variables.Add("System.HostType", new VariableValue("build", false));
-
+                        variables["system"] = new VariableValue("build", false);
+                        variables["System.HostType"] = new VariableValue("build", false);
+                        variables["System.servertype"] = new VariableValue("Hosted", false);
+                        variables["system.culture"] = new VariableValue("en-US", false);
                         variables["System.CollectionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                        variables["system.collectionUri"] = new VariableValue(apiUrl, false);
+                        variables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false);
+                        variables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false);
+                        variables["system.teamProject"] = new VariableValue("runner.server", false);
+                        variables["system.teamProjectId"] = new VariableValue(Guid.Empty.ToString(), false);
                         variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                        variables["system.definitionName"] = new VariableValue(Guid.Empty.ToString(), false);
                         variables["Build.Clean"] = new VariableValue("true", false);
                         variables["Build.SyncSources"] = new VariableValue("true", false);
                         variables["Build.DefinitionName"] = new VariableValue(Guid.Empty.ToString(), false);
@@ -5529,6 +5537,10 @@ namespace Runner.Server.Controllers
                         variables["System.RunId"] = new VariableValue(runid.ToString(), false);
                         // ff for agent to enforce readonly vars
                         variables["agent.readOnlyVariables"] = "true";
+                        variables["agent.retainDefaultEncoding"] = "true";
+                        variables["agent.taskRestrictionsEnforcementMode"] = "Enabled";
+                        variables["agent.disablelogplugin.TestResultLogPlugin"] = "true";
+                        variables["agent.disablelogplugin.TestFilePublisherPlugin"] = "true";
                         variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(fileContainerId.ToString(), false));
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
