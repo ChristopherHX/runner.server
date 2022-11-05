@@ -5075,7 +5075,8 @@ namespace Runner.Server.Controllers
                     templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                     var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                     templateContext.Errors.Check();
-                    runsOnMap.UnionWith(from t in eval.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value.ToLowerInvariant());
+                    var runsOnLabels = eval is MappingToken mt ? (from r in mt where r.Key.AssertString($"jobs.{name}.runs-on mapping key").Value == "labels" select r).FirstOrDefault().Value : eval;
+                    runsOnMap.UnionWith(from t in runsOnLabels.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value.ToLowerInvariant());
                 }
                 if(runsOnMap.Count <= 0) {
                     throw new Exception($"jobs.{name}.runs-on empty set of runner labels");
