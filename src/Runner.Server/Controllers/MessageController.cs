@@ -5527,7 +5527,8 @@ namespace Runner.Server.Controllers
                         variables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false);
                         variables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false);
                         variables["system.teamProject"] = new VariableValue("runner.server", false);
-                        variables["system.teamProjectId"] = new VariableValue(Guid.Empty.ToString(), false);
+                        // If this is not a non zero guid upload artifact tasks refuse to work
+                        variables["system.teamProjectId"] = new VariableValue("667b63ea-5b23-4619-9431-f2cff4e16a11", false);
                         variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
                         variables["system.definitionName"] = new VariableValue(Guid.Empty.ToString(), false);
                         variables["Build.Clean"] = new VariableValue("true", false);

@@ -29,4 +29,4 @@ jobs:
       echo $(myVarFromDeployDeploymentJob)
     name: echovar
   - script: exit 1
-    condition: or(ne(variables.myVarFromPreDeployDeploymentJob, 'this is the pre deployment variable value'), ne(variables.myVarFromDeployDeploymentJob, 'this is the deployment variable value'))
+    condition: and(ne(variables.myVarFromPreDeployDeploymentJob, 'this is the pre deployment variable value'), ne(variables.myVarFromDeployDeploymentJob, 'this is the deployment variable value'))

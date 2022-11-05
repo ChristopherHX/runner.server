@@ -15,4 +15,4 @@ jobs:
   steps:
   - script: echo $(myvar) # echos A or B depending on which leg is running
   - script: exit 1
-    condition: or(ne(variables.myvar, 'A'), ne(variables.myvar, 'B'))
+    condition: and(ne(variables.myvar, 'A'), ne(variables.myvar, 'B'))
