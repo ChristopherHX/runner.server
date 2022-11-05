@@ -94,7 +94,7 @@ public class Job {
                                 case "rolling":
                                     Strategy.Rolling = new Strategy.RollingStrategy();
                                     parseRunOnce(sv.Value as MappingToken, Strategy.Rolling);
-                                    var maxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "increments" select k.Value).FirstOrDefault();
+                                    var maxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "maxParallel" select k.Value).FirstOrDefault();
                                     if(maxParallel is NumberToken num) {
                                         Strategy.Rolling.MaxParallel = (int)num.Value;
                                     } else if(maxParallel is StringToken percent) {
