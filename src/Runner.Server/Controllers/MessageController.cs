@@ -5809,7 +5809,7 @@ namespace Runner.Server.Controllers
                         new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = result ?? TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                            Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
 
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
                             queue.Writer.WriteAsync(job);
@@ -5894,6 +5894,7 @@ namespace Runner.Server.Controllers
         }
 
         private static ConcurrentDictionary<HashSet<string>, Channel<Job>> jobqueue = new ConcurrentDictionary<HashSet<string>, Channel<Job>>(new EqualityComparer());
+        private static ConcurrentDictionary<HashSet<string>, Channel<Job>> jobqueueAzure = new ConcurrentDictionary<HashSet<string>, Channel<Job>>(new EqualityComparer());
         private static int id = 0;
 
         // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
@@ -5941,14 +5942,16 @@ namespace Runner.Server.Controllers
                         this.HttpContext.Response.StatusCode = 403;
                         return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This agent has been removed by Ephemeral"), true, new Version(2, 0)));
                     }
-                    var labels = session.Agent.TaskAgent.SystemCapabilities?.Count > 0 ? session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key, $"{kv.Key}={kv.Value}" } ).ToArray() : session.Agent.TaskAgent.Labels.Select(l => l.Name).ToArray();
+                    var isAzureAgent = session.Agent.TaskAgent.SystemCapabilities?.Count > 0;
+                    var labels = isAzureAgent ? session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key, $"{kv.Key}={kv.Value}" } ).ToArray() : session.Agent.TaskAgent.Labels.Select(l => l.Name).ToArray();
+                    var agentJobQueue = isAzureAgent ? jobqueueAzure : jobqueue;
                     var defLabels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
-                    var defChannel = jobqueue.GetOrAdd(defLabels, (a) => Channel.CreateUnbounded<Job>());
-                    if(session.Agent.TaskAgent.SystemCapabilities?.Count > 0) {
+                    var defChannel = agentJobQueue.GetOrAdd(defLabels, (a) => Channel.CreateUnbounded<Job>());
+                    if(isAzureAgent) {
                     //     var caps = session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).ToArray();
                     //     foreach(var cap in caps) {
                     //         foreach(var cap2 in caps) {
-                    //             jobqueue.TryAdd(label, (a) => Channel.CreateUnbounded<Job>());
+                    //             agentJobQueue.TryAdd(label, (a) => Channel.CreateUnbounded<Job>());
                     //         }
                     //     }
                     } else {
@@ -5961,10 +5964,10 @@ namespace Runner.Server.Controllers
                             }
                         }
                         foreach(var label in labelcom) {
-                            Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
+                            Channel<Job> queue = agentJobQueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
                         }
                     }
-                    var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(labels)).Append(new KeyValuePair<HashSet<string>, Channel<Job>>(defLabels, defChannel)).ToArray();
+                    var queues = agentJobQueue.ToArray().Where(e => e.Key.IsSubsetOf(labels)).Append(new KeyValuePair<HashSet<string>, Channel<Job>>(defLabels, defChannel)).ToArray();
                     while(!ts.IsCancellationRequested) {
                         var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
                         await Task.WhenAny(poll);
