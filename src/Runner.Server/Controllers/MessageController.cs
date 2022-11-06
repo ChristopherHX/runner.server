@@ -5076,10 +5076,12 @@ namespace Runner.Server.Controllers
                     var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                     templateContext.Errors.Check();
                     var runsOnLabels = eval is MappingToken mt ? (from r in mt where r.Key.AssertString($"jobs.{name}.runs-on mapping key").Value == "labels" select r).FirstOrDefault().Value : eval;
-                    runsOnMap.UnionWith(from t in runsOnLabels.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value.ToLowerInvariant());
+                    if(runsOnLabels == null) {
+                        runsOnMap.UnionWith(from t in runsOnLabels.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value.ToLowerInvariant());
+                    }
                 }
                 if(runsOnMap.Count <= 0) {
-                    throw new Exception($"jobs.{name}.runs-on empty set of runner labels");
+                    runsOnMap.Add("");
                 }
 
                 // Jobcontainer
@@ -5940,7 +5942,8 @@ namespace Runner.Server.Controllers
                         this.HttpContext.Response.StatusCode = 403;
                         return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This agent has been removed by Ephemeral"), true, new Version(2, 0)));
                     }
-                    var labels = session.Agent.TaskAgent.SystemCapabilities?.Count > 0 ? session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key.ToLowerInvariant(), $"{kv.Key}={kv.Value}".ToLowerInvariant() } ).Prepend("azure_devops").ToArray() : session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
+                    var labels = session.Agent.TaskAgent.SystemCapabilities?.Count > 0 ? session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key.ToLowerInvariant(), $"{kv.Key}={kv.Value}".ToLowerInvariant() } ).ToArray() : session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
+                    Channel<Job> defChannel = null;
                     if(session.Agent.TaskAgent.SystemCapabilities?.Count > 0) {
                     //     var caps = session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).ToArray();
                     //     foreach(var cap in caps) {
@@ -5948,7 +5951,7 @@ namespace Runner.Server.Controllers
                     //             jobqueue.TryAdd(label, (a) => Channel.CreateUnbounded<Job>());
                     //         }
                     //     }
-                        jobqueue.GetOrAdd(new HashSet<string>{ "azure_devops" } , (a) => Channel.CreateUnbounded<Job>());
+                        defChannel = jobqueue.GetOrAdd(new HashSet<string>{ "azure_devops" } , (a) => Channel.CreateUnbounded<Job>());
                     } else {
                         HashSet<HashSet<string>> labelcom = labels.Select(l => new HashSet<string>{l}).ToHashSet(new EqualityComparer());
                         for(long j = 0; j < labels.LongLength; j++) {
@@ -5961,8 +5964,9 @@ namespace Runner.Server.Controllers
                         foreach(var label in labelcom) {
                             Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
                         }
+                        defChannel = jobqueue.GetOrAdd(new HashSet<string>{ "" } , (a) => Channel.CreateUnbounded<Job>());
                     }
-                    var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(labels)).ToArray();
+                    var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(labels)).Append(defChannel).ToArray();
                     while(!ts.IsCancellationRequested) {
                         var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
                         await Task.WhenAny(poll);
