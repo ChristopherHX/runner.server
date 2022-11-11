@@ -144,6 +144,7 @@ namespace Runner.Server
                         command.ExecuteNonQuery();
                         connection.Close();
                     }
+                } catch(SqliteException) {
                 } catch(Exception ex) when (!(ex is SqliteException sqlex)) {
                     Console.WriteLine($"Failed to initialize sqlite for cron schedules: {ex.Message}\n{ex.StackTrace}");
                 }
