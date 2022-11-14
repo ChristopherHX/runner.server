@@ -7002,7 +7002,7 @@ namespace Runner.Server.Controllers
                         var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
                         var fileRes = client.GetAsync(item.download_url).GetAwaiter().GetResult();
                         if(fileRes.IsSuccessStatusCode) {
-                            latestWorkflow =  fileRes.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                            latestWorkflow = fileRes.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                         }
                     }
                 } finally {
