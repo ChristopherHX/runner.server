@@ -1175,41 +1175,6 @@ namespace Runner.Server.Controllers
                 workflowContext.FeatureToggles[t.Key] = t.Value;
             }
             PipelineContextData contextsTemplate = null;
-            if(!workflowContext.HasFeature("system.runner.server.disablecontextTemplate") && (workflowContext.FeatureToggles.TryGetValue("system.runner.server.contextTemplate", out var contextTemplate) || (contextTemplate = PipelineTemplateSchemaFactory.LoadResource("contextTemplate.yml")) != null)) {
-                using(var reader = new StringReader(contextTemplate)) {
-                    var objectReader = new YamlObjectReader(null, reader, true, true, true);
-                    var contextData = new DictionaryContextData();
-                    var serverctx = new DictionaryContextData();
-                    contextData["server"] = serverctx;
-                    serverctx["event"] = payloadObject.ToPipelineContextData();
-                    serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
-                    serverctx.Add("server_url", new StringContextData(GitServerUrl));
-                    serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                    serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                    serverctx.Add("workflow", new StringContextData(workflowname));
-                    serverctx.Add("repository", new StringContextData(repository_name));
-                    serverctx.Add("sha", new StringContextData(Sha));
-                    serverctx.Add("ref", new StringContextData(Ref));
-                    serverctx.Add("run_id", new StringContextData(runid.ToString()));
-                    serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                    serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
-                    var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
-                    var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
-                    var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
-                    serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
-                    serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
-                    serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
-                    serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
-                    serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
-                    serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
-                    var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
-                    templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
-                    templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
-                    var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
-                    templateContext.Errors.Check();
-                    contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true).AssertMapping("context-root").ToContextData();
-                }
-            }
             Func<string, DictionaryContextData> createContext = jobname => {
                 var contextData = contextsTemplate?.Clone() as DictionaryContextData ?? new DictionaryContextData();
                 contextData["inputs"] = inputs;
@@ -1324,23 +1289,64 @@ namespace Runner.Server.Controllers
                 if(globalEnvToken != null) {
                     workflowEnvironment.Add(globalEnvToken);
                 }
-                if(workflowEnvironment.Count > 0) {
-                    globalEnv = new DictionaryContextData();
-                    foreach(var cEnv in workflowEnvironment) {
-                        var contextData = createContext("");
-                        var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
-                        var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", cEnv, 0, null, true);
-                        // Best effort, don't check for errors
-                        // templateContext.Errors.Check();
-                        // Best effort, make global env available this is not available on github actions
-                        if(workflowEnv is MappingToken genvToken) {
-                            foreach(var kv in genvToken) {
-                                if(kv.Key is StringToken key && kv.Value is StringToken val) {
-                                    globalEnv[key.Value] = new StringContextData(val.Value);
+                Action initGlobalEnvAndContexts = () => {
+                    if(!workflowContext.HasFeature("system.runner.server.disablecontextTemplate") && (workflowContext.FeatureToggles.TryGetValue("system.runner.server.contextTemplate", out var contextTemplate) || (contextTemplate = PipelineTemplateSchemaFactory.LoadResource("contextTemplate.yml")) != null)) {
+                        using(var reader = new StringReader(contextTemplate)) {
+                            var objectReader = new YamlObjectReader(null, reader, true, true, true);
+                            var contextData = new DictionaryContextData();
+                            var serverctx = new DictionaryContextData();
+                            contextData["server"] = serverctx;
+                            serverctx["event"] = payloadObject.ToPipelineContextData();
+                            serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
+                            serverctx.Add("server_url", new StringContextData(GitServerUrl));
+                            serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                            serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
+                            serverctx.Add("workflow", new StringContextData(workflowname));
+                            serverctx.Add("repository", new StringContextData(repository_name));
+                            serverctx.Add("sha", new StringContextData(Sha));
+                            serverctx.Add("ref", new StringContextData(Ref));
+                            serverctx.Add("run_id", new StringContextData(runid.ToString()));
+                            serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                            serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
+                            var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
+                            var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
+                            serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
+                            serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
+                            serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
+                            serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
+                            serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
+                            serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
+                            var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
+                            templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
+                            templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
+                            var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
+                            templateContext.Errors.Check();
+                            contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true).AssertMapping("context-root").ToContextData();
+                        }
+                    }
+                    if(workflowEnvironment.Count > 0) {
+                        globalEnv = new DictionaryContextData();
+                        foreach(var cEnv in workflowEnvironment) {
+                            var contextData = createContext("");
+                            var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+                            var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", cEnv, 0, null, true);
+                            // Best effort, don't check for errors
+                            // templateContext.Errors.Check();
+                            // Best effort, make global env available this is not available on github actions
+                            if(workflowEnv is MappingToken genvToken) {
+                                foreach(var kv in genvToken) {
+                                    if(kv.Key is StringToken key && kv.Value is StringToken val) {
+                                        globalEnv[key.Value] = new StringContextData(val.Value);
+                                    }
                                 }
                             }
                         }
                     }
+                };
+                // Delay initialize the template for workflow_dispatch, since the inputs in the event payload are modified
+                if(e != "workflow_dispatch") {
+                    initGlobalEnvAndContexts();
                 }
 
                 TemplateToken tk = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "on" select r).FirstOrDefault().Value;
@@ -1549,6 +1555,8 @@ namespace Runner.Server.Controllers
                                 throw new Exception($"This workflow doesn't define input {providedInput.Key}");
                             }
                         }
+                        // Initialize the custom GitHub context and global env
+                        initGlobalEnvAndContexts();
                     }
                     if(e == "workflow_call") {
                         allowed.Add("inputs");
