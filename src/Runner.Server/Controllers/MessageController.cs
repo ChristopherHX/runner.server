@@ -1316,11 +1316,13 @@ namespace Runner.Server.Controllers
                         }
                         foreach(var sched in cm) {
                             try {
-                                var schedArray = sched.Split(" ").Select(s => s.Replace("*/", "0/")).ToArray();
+                                var schedArray = sched.Split(" ");
                                 var regex = new Regex("[0-9]+");
-                                regex.Replace(schedArray[2], m => (int.Parse(m.Value)-1).ToString());
-                                regex.Replace(schedArray[3], m => (int.Parse(m.Value)-1).ToString());
-                                regex.Replace(schedArray[4], m => (int.Parse(m.Value)+1).ToString());
+                                schedArray[2] = regex.Replace(schedArray[2], m => (int.Parse(m.Value)-1).ToString());
+                                schedArray[3] = regex.Replace(schedArray[3], m => (int.Parse(m.Value)-1).ToString());
+                                // Needs to be delayed, otherwise it ends up with -1/2, if it uses */2
+                                schedArray = schedArray.Select(s => s.Replace("*/", "0/")).ToArray();
+                                schedArray[4] = regex.Replace(schedArray[4], m => (int.Parse(m.Value)+1).ToString());
                                 List<string> scheds = new List<string>();
                                 if(schedArray[4] != "*") {
                                     scheds.Add($"0 {schedArray[0]} {schedArray[1]} * ? {schedArray[4]}");
