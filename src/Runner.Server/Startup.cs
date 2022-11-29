@@ -81,6 +81,7 @@ namespace Runner.Server
         public void ConfigureServices(IServiceCollection services)
         {
             services.TryAddSingleton<IPolicyEvaluator, AgentAuthenticationPolicyEvaluator>();
+            services.TryAddScoped<GitHubApp, GitHubApp>();
 
             services.AddControllers(options => {
                 // options.InputFormatters.Add(new LogFormatter());
