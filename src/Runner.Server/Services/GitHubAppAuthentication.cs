@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 
 namespace Runner.Server.Services {
     public class GitHubAppAuthentication : IAsyncDisposable {
