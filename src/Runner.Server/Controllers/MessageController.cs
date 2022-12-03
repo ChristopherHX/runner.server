@@ -3156,7 +3156,7 @@ namespace Runner.Server.Controllers
                     var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, null);
                     using (var stringReader = new StringReader(rawparameters)) {
                         var yamlObjectReader = new YamlObjectReader(null, stringReader);
-                        pparameters = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _).AssertMapping("parameters");
+                        pparameters = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _)?.AssertMapping("parameters");
                     }
                     templateContext.Errors.Check();
                     foreach(var kv in pparameters) {
