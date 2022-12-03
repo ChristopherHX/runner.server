@@ -85,9 +85,22 @@
       "mapping": {
         "properties": {
           "containers": "pipeline-containers",
-          "repositories": "pipeline-repositories"
+          "repositories": "pipeline-repositories",
+          "pipelines": "any",
+          "builds": "any",
+          "packages": "any"
         }
       }
+    },
+
+    "pipeline-root": {
+      "description": "Pipeline file",
+      "one-of": [
+        "extends-pipeline-root",
+        "stage-pipeline-root",
+        "job-pipeline-root",
+        "steps-pipeline-root"
+      ]
     },
 
     "extends-pipeline-root": {
@@ -215,6 +228,19 @@
         "properties": {
           "parameters": "any",
           "steps": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "variable-template-root": {
+      "description": "Variable Template file",
+      "mapping": {
+        "properties": {
+          "parameters": "any",
+          "variables": {
             "type": "workflow-value",
             "required": true
           }
