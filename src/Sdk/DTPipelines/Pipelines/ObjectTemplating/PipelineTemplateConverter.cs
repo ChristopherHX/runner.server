@@ -509,6 +509,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         // todo: loc
                         context.Error(uses, $"Expected format {{org}}/{{repo}}[/path]@ref. Actual '{uses.Value}'");
                     }
+                    else if(usesSegments[0].StartsWith("http://", StringComparison.OrdinalIgnoreCase) || usesSegments[0].StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var repositoryName = $"{pathSegments[0]}//{pathSegments[1]}/{pathSegments[2]}/{pathSegments[3]}";
+                        var directoryPath = pathSegments.Length > 4 ? String.Join("/", pathSegments.Skip(4)) : String.Empty;
+                        result.Reference = new RepositoryPathReference
+                        {
+                            RepositoryType = RepositoryTypes.GitHub,
+                            Name = repositoryName,
+                            Ref = gitRef,
+                            Path = directoryPath,
+                        };
+                    }
                     else
                     {
                         var repositoryName = $"{pathSegments[0]}/{pathSegments[1]}";

@@ -162,6 +162,10 @@ namespace Runner.Server.Controllers
                                 continue;
                             }
                         }
+                        if(item.NameWithOwner.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || item.NameWithOwner.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) {
+                            actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"{item.NameWithOwner}/archive/{item.Ref}.tar.gz", ZipballUrl = $"{item.NameWithOwner}/archive/{item.Ref}.zip", ResolvedSha = "Remote-Repository", Authentication = new ActionDownloadAuthentication() { Token = "dummy-token" } };
+                            continue;
+                        }
                         ActionDownloadInfo defDownloadInfo = null;
                         foreach(var downloadUrl in downloadUrls) {
                             try {
