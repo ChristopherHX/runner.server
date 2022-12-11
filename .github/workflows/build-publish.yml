@@ -16,7 +16,7 @@ on:
     # - '**.md'
   pull_request:
 
-run-name: ${{ github.event_name == 'workflow_dispatch' && format('Publish version:{0} sha:{1}', inputs.version, github.sha) || '' }}
+run-name: ${{ github.event_name == 'workflow_dispatch' && (inputs.version && format('Publish version:{0} sha:{1}', inputs.version, github.sha) || format('Emulator CI/CD sha:{0}', github.sha)) || '' }}
 
 jobs:
   build:
