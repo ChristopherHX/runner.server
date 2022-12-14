@@ -2,7 +2,7 @@ github:
   ${{ each prop in server }}:
     ${{ if ((server.variables['system.runner.server.workflowinfo'] == 'true' || !startsWith(prop.key, 'job_workflow_')) && !in(prop.key, 'workflow_file_name', 'variables')) }}:
       ${{ prop.key }}: ${{ prop.value }}
-  workflow_ref: ${{ server.repository }}/${{ server.workflow_file_name }}@${{ server.server_ref }}
+  workflow_ref: ${{ server.repository }}/${{ server.workflow_file_name }}@${{ server.ref }}
   workflow_sha: ${{ server.sha }}
   ${{ if (server.variables['system.runner.server.workflowinforefsha'] == 'true') }}:
     job_workflow_ref: ${{ server.job_workflow_ref }}
