@@ -926,6 +926,7 @@ namespace Runner.Server.Controllers
             public Guid RecordId {get;set;}
             public string WorkflowName {get;set;}
             public string WorkflowRunName {get;set;}
+            public string WorkflowFileName {get;set;}
             public string Name {get;set;}
             public string Event {get;set;}
             public PipelineContextData DispatchInputs {get;set;}
@@ -1174,7 +1175,7 @@ namespace Runner.Server.Controllers
             foreach(var kv in globalVars) {
                 vars[kv.Key] = new StringContextData(kv.Value);
             }
-            var workflowContext = new WorkflowContext() { FileName = fileRelativePath, EventPayload = payloadObject };
+            var workflowContext = new WorkflowContext() { FileName = callingJob?.WorkflowFileName ?? fileRelativePath, EventPayload = payloadObject };
             workflowContext.FeatureToggles = globalVars;
             foreach(var t in secretsProvider.GetReservedSecrets()) {
                 workflowContext.FeatureToggles[t.Key] = t.Value;
@@ -1314,6 +1315,8 @@ namespace Runner.Server.Controllers
                             serverctx.Add("run_id", new StringContextData(runid.ToString()));
                             serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
                             serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                            serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
+                            serverctx["variables"] = vars;
                             var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
                             var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
                             var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
@@ -5238,7 +5241,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
+                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, WorkflowFileName = workflowContext.FileName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => TemplateTokenEqual(val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null), contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
                                 var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
                                 if(reusableWorkflowInheritEnv) {
