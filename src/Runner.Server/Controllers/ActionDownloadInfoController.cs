@@ -41,6 +41,7 @@ namespace Runner.Server.Controllers
             public string ZipballUrl { get; set; }
             public string GitApiServerUrl { get; set; }
             public string GITHUB_TOKEN { get; set; }
+            public bool ReturnWithoutResolvingSha { get; set; }
         }
 
         public ActionDownloadInfoController(IConfiguration configuration, IMemoryCache memoryCache) : base(configuration)
@@ -174,6 +175,11 @@ namespace Runner.Server.Controllers
                                 downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref);
                                 if(defDownloadInfo == null) {
                                     defDownloadInfo = downloadinfo;
+                                }
+                                if(downloadUrl.ReturnWithoutResolvingSha) {
+                                    downloadinfo.Authentication = new ActionDownloadAuthentication() { Token = "dummy-token" };
+                                    actions[name] = downloadinfo;
+                                    break;
                                 }
                                 string ghtoken = null;
                                 if(!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) && downloadUrl.GitApiServerUrl != GitApiServerUrl) {
