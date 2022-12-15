@@ -5505,12 +5505,17 @@ namespace Runner.Server.Controllers
                             claims["actor"] = contextData.GetPath("github", "actor")?.ToString();
                             claims["actor_id"] = contextData.GetPath("github", "actor_id")?.ToString();
                             claims["repository_id"] = contextData.GetPath("github", "repository_id")?.ToString();
+                            claims["repository_owner"] = contextData.GetPath("github", "repository_owner")?.ToString();
                             claims["repository_owner_id"] = contextData.GetPath("github", "repository_owner_id")?.ToString();
                             claims["workflow"] = contextData.GetPath("github", "workflow")?.ToString();
                             claims["event_name"] = contextData.GetPath("github", "event_name")?.ToString();
                             claims["ref_type"] = contextData.GetPath("github", "ref_type")?.ToString();
                             claims["job_workflow_ref"] = job_workflow_ref;
+                            claims["job_workflow_sha"] = callingJob?.WorkflowSha ?? Sha;
                             claims["sha"] = Sha;
+                            claims["repository_visibility"] = contextData.GetPath("github", "repository_visibility")?.ToString();
+                            claims["workflow_ref"] = contextData.GetPath("github", "workflow_ref")?.ToString();
+                            claims["workflow_sha"] = contextData.GetPath("github", "workflow_sha")?.ToString();
                             var content = JsonConvert.SerializeObject(claims);
                             using(var rsa = RSA.Create(Startup.AccessTokenParameter))
                             using(var memstr = new MemoryStream()) {
