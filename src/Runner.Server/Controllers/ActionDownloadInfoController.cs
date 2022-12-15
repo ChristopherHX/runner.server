@@ -191,11 +191,14 @@ namespace Runner.Server.Controllers
                                         ghtoken = defGhToken ?? GITHUB_TOKEN;
                                     }
                                 }
-                                if(!string.IsNullOrEmpty(ghtoken)) {
+                                // If we have no token and only one source of actions just return the archive url without resolving the sha to reduce api requests
+                                if(!string.IsNullOrEmpty(ghtoken) || downloadUrls?.Count > 2) {
                                     var client = new HttpClient();
                                     client.DefaultRequestHeaders.Add("accept", "application/json");
                                     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                                    client.DefaultRequestHeaders.Add("Authorization", $"token {ghtoken}");
+                                    if(!string.IsNullOrEmpty(ghtoken)) {
+                                        client.DefaultRequestHeaders.Add("Authorization", $"token {ghtoken}");
+                                    }
                                     var urlBuilder = new UriBuilder(new Uri(new Uri((!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) ? downloadUrl.GitApiServerUrl : GitApiServerUrl) + "/"), $"repos/{item.NameWithOwner}/commits"));
                                     urlBuilder.Query = $"?sha={Uri.EscapeDataString(item.Ref)}&page=1&limit=1&per_page=1";
                                     var res = await client.GetAsync(urlBuilder.ToString());
