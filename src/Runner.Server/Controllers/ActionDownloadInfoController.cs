@@ -191,25 +191,25 @@ namespace Runner.Server.Controllers
                                         ghtoken = defGhToken ?? GITHUB_TOKEN;
                                     }
                                 }
-                                var client = new HttpClient();
-                                client.DefaultRequestHeaders.Add("accept", "application/json");
-                                client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                 if(!string.IsNullOrEmpty(ghtoken)) {
+                                    var client = new HttpClient();
+                                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                     client.DefaultRequestHeaders.Add("Authorization", $"token {ghtoken}");
-                                }
-                                var urlBuilder = new UriBuilder(new Uri(new Uri((!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) ? downloadUrl.GitApiServerUrl : GitApiServerUrl) + "/"), $"repos/{item.NameWithOwner}/commits"));
-                                urlBuilder.Query = $"?sha={Uri.EscapeDataString(item.Ref)}&page=1&limit=1&per_page=1";
-                                var res = await client.GetAsync(urlBuilder.ToString());
-                                if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                                    var content = await res.Content.ReadAsStringAsync();
-                                    var o = JsonConvert.DeserializeObject<MessageController.GitCommit[]>(content)[0];
-                                    if(!string.IsNullOrEmpty(o.Sha)) {
-                                        downloadinfo.ResolvedSha = o.Sha;
-                                        downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, o.Sha);
-                                        downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, o.Sha);
+                                    var urlBuilder = new UriBuilder(new Uri(new Uri((!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) ? downloadUrl.GitApiServerUrl : GitApiServerUrl) + "/"), $"repos/{item.NameWithOwner}/commits"));
+                                    urlBuilder.Query = $"?sha={Uri.EscapeDataString(item.Ref)}&page=1&limit=1&per_page=1";
+                                    var res = await client.GetAsync(urlBuilder.ToString());
+                                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                                        var content = await res.Content.ReadAsStringAsync();
+                                        var o = JsonConvert.DeserializeObject<MessageController.GitCommit[]>(content)[0];
+                                        if(!string.IsNullOrEmpty(o.Sha)) {
+                                            downloadinfo.ResolvedSha = o.Sha;
+                                            downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, o.Sha);
+                                            downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, o.Sha);
+                                        }
+                                        actions[name] = downloadinfo;
+                                        break;
                                     }
-                                    actions[name] = downloadinfo;
-                                    break;
                                 }
                             } catch {
                                 // TODO log exceptions to workflow, job or audit log

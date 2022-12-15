@@ -5274,11 +5274,14 @@ namespace Runner.Server.Controllers
                                 client.DefaultRequestHeaders.Add("accept", "application/json");
                                 client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                 string githubAppToken = null;
+                                // Ref is better than nothing
+                                string workflow_sha = calledWorkflowRef;
                                 try {
+                                    string token = null;
                                     if(secretsProvider?.GetReservedSecrets()?.TryGetValue("GITHUB_TOKEN", out var providedToken) == true && !string.IsNullOrEmpty(providedToken)) {
-                                        client.DefaultRequestHeaders.Add("Authorization", $"token {providedToken}");
+                                        token = providedToken;
                                     } else if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                        token = GITHUB_TOKEN;
                                     } else {
                                         if(AllowPrivateActionAccess) {
                                             githubAppToken = await CreateGithubAppToken(calledWorkflowRepo);
@@ -5287,11 +5290,24 @@ namespace Runner.Server.Controllers
                                             githubAppToken = await CreateGithubAppToken(repo);
                                         }
                                         if(githubAppToken != null) {
-                                            client.DefaultRequestHeaders.Add("Authorization", $"token {githubAppToken}");
+                                            token = githubAppToken;
+                                        }
+                                    }
+                                    if(!string.IsNullOrEmpty(token)) {
+                                        client.DefaultRequestHeaders.Add("Authorization", $"token {token}");
+                                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{calledWorkflowRepo}/commits"));
+                                        urlBuilder.Query = $"?sha={Uri.EscapeDataString(calledWorkflowRef)}&page=1&limit=1&per_page=1";
+                                        var resolvedSha = await client.GetAsync(urlBuilder.ToString());
+                                        if(resolvedSha.StatusCode == System.Net.HttpStatusCode.OK) {
+                                            var content = await resolvedSha.Content.ReadAsStringAsync();
+                                            var o = JsonConvert.DeserializeObject<MessageController.GitCommit[]>(content)[0];
+                                            if(!string.IsNullOrEmpty(o.Sha)) {
+                                                workflow_sha = o.Sha;
+                                            }
                                         }
                                     }
                                     var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{calledWorkflowRepo}/contents/{Uri.EscapeDataString(reference.Path)}"));
-                                    url.Query = $"ref={Uri.EscapeDataString(calledWorkflowRef)}";
+                                    url.Query = $"ref={Uri.EscapeDataString(workflow_sha)}";
                                     var res = await client.GetAsync(url.ToString());
                                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                                         var content = await res.Content.ReadAsStringAsync();
@@ -5300,7 +5316,7 @@ namespace Runner.Server.Controllers
                                             try {
                                                 var fileRes = await client.GetAsync(item.download_url);
                                                 var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                                workflow_call(item.path, filecontent, item.Sha);
+                                                workflow_call(item.path, filecontent, workflow_sha);
                                             } catch (Exception ex) {
                                                 failedtoInstantiateWorkflow(ex.Message);
                                             }
