@@ -198,7 +198,7 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                                 // If we have no token and only one source of actions just return the archive url without resolving the sha to reduce api requests
-                                if(!string.IsNullOrEmpty(ghtoken) || downloadUrls?.Count > 2) {
+                                if(!string.IsNullOrEmpty(ghtoken) || downloadUrls?.Count > 1) {
                                     var client = new HttpClient();
                                     client.DefaultRequestHeaders.Add("accept", "application/json");
                                     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
