@@ -1208,7 +1208,7 @@ namespace Runner.Server.Controllers
                     githubctx.Add("job", new StringContextData(jobname));
                 }
                 if(workflowContext.HasFeature("system.runner.server.workflowinfo")) {
-                    var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
+                    var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
                     var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
                     var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
                     githubctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
@@ -1317,7 +1317,7 @@ namespace Runner.Server.Controllers
                             serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
                             serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
                             serverctx["variables"] = vars;
-                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
+                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
                             var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
                             var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
                             serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
@@ -4974,7 +4974,7 @@ namespace Runner.Server.Controllers
         }
         private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
-            var workflowRef = callingJob?.WorkflowRef ?? Ref;
+            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
             var workflowRepo = callingJob?.WorkflowRepo ?? repo;
             int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
