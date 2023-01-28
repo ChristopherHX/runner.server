@@ -1,0 +1,13 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditionally-set-a-task-input
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Pipeline.Workspace)'
+    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+      artifact: 'prod'
+    ${{ else }}:
+      artifact: 'dev'
+    publishLocation: 'pipeline'
