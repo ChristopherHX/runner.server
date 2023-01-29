@@ -3,9 +3,6 @@ variables:
   - name: foo
     value: contoso # triggers elseif condition
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 steps:
 - script: echo "start"
 - ${{ if eq(variables.foo, 'adaptum') }}:

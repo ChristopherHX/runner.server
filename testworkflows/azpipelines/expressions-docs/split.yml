@@ -4,4 +4,4 @@ variables:
   value: prod1,prod2 
 steps:  
   - ${{ each env in split(variables.environments, ',')}}:
-    - script: ./deploy.sh --environment ${{ env }}
+    - script: echo "./deploy.sh --environment ${{ env }}"

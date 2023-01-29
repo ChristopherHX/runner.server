@@ -3,8 +3,5 @@ variables:
   ${{ if eq(variables['Build.SourceBranchName'], 'main') }}: # only works if you have a main branch
     stageName: prod
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 steps:
 - script: echo ${{variables.stageName}}

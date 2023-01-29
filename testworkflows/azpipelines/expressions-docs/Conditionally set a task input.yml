@@ -1,13 +1,10 @@
 # src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditionally-set-a-task-input
-pool:
-  vmImage: 'ubuntu-latest'
-
 steps:
-- task: PublishPipelineArtifact@1
+- task: CmdLine@2
   inputs:
-    targetPath: '$(Pipeline.Workspace)'
+    installationPath: '$(Pipeline.Workspace)/dotnet'
     ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
-      artifact: 'prod'
+      packageType: 'runtime'
     ${{ else }}:
-      artifact: 'dev'
-    publishLocation: 'pipeline'
+      packageType: 'sdk'
+    version: '7.0'
