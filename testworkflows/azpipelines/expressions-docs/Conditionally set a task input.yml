@@ -1,6 +1,6 @@
 # src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditionally-set-a-task-input
 steps:
-- task: CmdLine@2
+- task: DotNetCoreInstaller@1
   inputs:
     installationPath: '$(Pipeline.Workspace)/dotnet'
     ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
