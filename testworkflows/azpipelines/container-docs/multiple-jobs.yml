@@ -8,9 +8,6 @@ resources:
   - container: pg14
     image: postgres:14
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 strategy:
   matrix:
     postgres15:

@@ -12,9 +12,6 @@ resources:
     ports:
     - 6379
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 services:
   nginx: nginx
   redis: redis

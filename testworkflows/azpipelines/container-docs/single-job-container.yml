@@ -6,10 +6,6 @@ resources:
   - container: nginx
     image: nginx
 
-
-pool:
-  vmImage: 'ubuntu-latest'
-
 container: my_container
 services:
   nginx: nginx
