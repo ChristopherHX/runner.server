@@ -5872,7 +5872,7 @@ namespace Runner.Server.Controllers
 
                         string jobcontainer = null;
                         var containerResources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        Func<string, string, Azure.Devops.Container, ContainerResource> addContainer = (alias, image, container) => {
+                        Func<string, string, Azure.Devops.Container, string> addContainer = (alias, image, container) => {
                             var cr = new ContainerResource {
                                 Alias = alias,
                                 Image = image,
