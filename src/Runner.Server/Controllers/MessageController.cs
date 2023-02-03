@@ -5871,7 +5871,8 @@ namespace Runner.Server.Controllers
                         resources.Endpoints.Add(systemVssConnection);
 
                         string jobcontainer = null;
-                        Func<string, string, Azure.Devops.Container, ContainerResource> convert = (alias, image, container) => {
+                        var containerResources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        Func<string, string, Azure.Devops.Container, ContainerResource> addContainer = (alias, image, container) => {
                             var cr = new ContainerResource {
                                 Alias = alias,
                                 Image = image,
@@ -5893,28 +5894,31 @@ namespace Runner.Server.Controllers
                                     cr.Ports.Add(v);
                                 }
                             }
-                            return cr;
+                            if(containerResources.Add(cr.Alias)) {
+                                resources.Containers.Add(cr);
+                            }
+                            return cr.Alias;
                         };
-                        Action<string, Azure.Devops.Container> addContainer = (id, c) => {
+                        Action<Azure.Devops.Container, String> getContainerAlias = c => {
                             var image = evalVariable(c.Image);
                             if(c.StringSource) {
                                 if(pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
-                                    resources.Containers.Add(convert(id, cresource.Image, cresource));
+                                    return addContainer(image, cresource.Image, cresource);
                                 } else {
                                     cresource = JsonConvert.DeserializeObject<Azure.Devops.Container>(image);
-                                    resources.Containers.Add(convert(id, cresource.Image, cresource));
+                                    return addContainer(Guid.NewGuid().ToString(), cresource.Image, cresource);
                                 }
                             } else {
-                                resources.Containers.Add(convert(id, image, c));
+                                return addContainer(Guid.NewGuid().ToString(), image, c);
                             }
                         };
                         if(rjob.Container != null) {
-                            jobcontainer = Guid.NewGuid().ToString();
-                            addContainer(jobcontainer, rjob.Container);
+                            jobcontainer = getContainerAlias(rjob.Container);
                         }
+                        var jobSidecarContainers = new Dictionary<string, string>(variables, StringComparer.OrdinalIgnoreCase);
                         if(rjob.Services != null) {
                             foreach(var service in rjob.Services) {
-                                addContainer(service.Key, service.Value);
+                                jobSidecarContainers[service.Key] = getContainerAlias(service.Value);
                             }
                         }
 
@@ -6086,6 +6090,9 @@ namespace Runner.Server.Controllers
                             clone.Condition = org.Condition;
                             clone.Reference = org.Reference;
                             clone.Target = org.Target;
+                            if(pipeline.ContainerResources != null && !string.IsNullOrEmpty(clone.Target?.Target) && !string.Equals(clone.Target.Target, "host", StringComparison.OrdinalIgnoreCase) && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
+                                addContainer(clone.Target.Target, cresource.Image, cresource);
+                            }
                             clone.ContinueOnError = org.ContinueOnError;
                             clone.RetryCountOnTaskFailure = org.RetryCountOnTaskFailure;
                             clone.TimeoutInMinutes = org.TimeoutInMinutes;
@@ -6119,6 +6126,7 @@ namespace Runner.Server.Controllers
                             null,
                             null);
                         req.RequestId = requestId;
+                        req.SetJobSidecarContainers(jobSidecarContainers);
                         var json = JsonConvert.SerializeObject(req, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}});
                         return req;
                     } catch(Exception ex) {
