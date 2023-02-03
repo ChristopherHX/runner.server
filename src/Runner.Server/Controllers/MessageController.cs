@@ -5899,7 +5899,7 @@ namespace Runner.Server.Controllers
                             }
                             return cr.Alias;
                         };
-                        Action<Azure.Devops.Container, String> getContainerAlias = c => {
+                        Func<Azure.Devops.Container, String> getContainerAlias = c => {
                             var image = evalVariable(c.Image);
                             if(c.StringSource) {
                                 if(pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
@@ -5915,7 +5915,7 @@ namespace Runner.Server.Controllers
                         if(rjob.Container != null) {
                             jobcontainer = getContainerAlias(rjob.Container);
                         }
-                        var jobSidecarContainers = new Dictionary<string, string>(variables, StringComparer.OrdinalIgnoreCase);
+                        var jobSidecarContainers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                         if(rjob.Services != null) {
                             foreach(var service in rjob.Services) {
                                 jobSidecarContainers[service.Key] = getContainerAlias(service.Value);
@@ -6090,7 +6090,7 @@ namespace Runner.Server.Controllers
                             clone.Condition = org.Condition;
                             clone.Reference = org.Reference;
                             clone.Target = org.Target;
-                            if(pipeline.ContainerResources != null && !string.IsNullOrEmpty(clone.Target?.Target) && !string.Equals(clone.Target.Target, "host", StringComparison.OrdinalIgnoreCase) && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
+                            if(pipeline.ContainerResources != null && !string.IsNullOrEmpty(clone.Target?.Target) && !string.Equals(clone.Target.Target, "host", StringComparison.OrdinalIgnoreCase) && pipeline.ContainerResources.TryGetValue(clone.Target.Target, out var cresource)) {
                                 addContainer(clone.Target.Target, cresource.Image, cresource);
                             }
                             clone.ContinueOnError = org.ContinueOnError;
