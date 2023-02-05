@@ -5880,22 +5880,25 @@ namespace Runner.Server.Controllers
                                 Endpoint = container.Endpoint != null ? new ServiceEndpointReference() { Name = container.Endpoint } : null
                             };
                             if(container.Env != null) {
-                                cr.Environment = new Dictionary<String, String>();
+                                var env = new Dictionary<String, String>();
                                 foreach(var kv in container.Env) {
-                                    cr.Environment[kv.Key] = kv.Value;
+                                    env[kv.Key] = kv.Value;
                                 }
+                                cr.Environment = env;
                             }
-                            if(container.Volumes != null) {     
-                                cr.Volumes = new List<String>();
+                            if(container.Volumes != null) {
+                                var volumes = new List<String>();
                                 foreach(var v in container.Volumes) {
-                                    cr.Volumes.Add(v);
+                                    volumes.Add(v);
                                 }
+                                cr.Volumes = volumes;
                             }
-                            if(container.Ports != null) {   
-                                cr.Ports = new List<String>();
+                            if(container.Ports != null) {
+                                var ports = new List<String>();
                                 foreach(var v in container.Ports) {
-                                    cr.Ports.Add(v);
+                                    ports.Add(v);
                                 }
+                                cr.Ports = ports;
                             }
                             if(containerResources.Add(cr.Alias)) {
                                 resources.Containers.Add(cr);
