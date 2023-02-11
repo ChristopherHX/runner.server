@@ -6296,7 +6296,7 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> IsAgentOnline([FromQuery] string name)
         {
             var sessionsfreeze = sessions.ToArray();
-            var online = (from s in sessionsfreeze where name == s.Value.Agent.TaskAgent.Name).Any();
+            var online = sessionsfreeze.Any(s => name == s.Value.Agent.TaskAgent.Name);
             if(!online) {
                 this.HttpContext.Response.StatusCode = 404;
             }
