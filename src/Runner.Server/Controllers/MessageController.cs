@@ -5427,9 +5427,13 @@ namespace Runner.Server.Controllers
                     var set = p.Substring(0, eq).Split(",").ToHashSet(StringComparer.OrdinalIgnoreCase);
                     if(runsOnMap.IsSubsetOf(set) && p.Length > (eq + 1)) {
                         if(p[eq + 1] == '-') {
-                            runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            if(p.Length == (eq + 2)) {
+                                runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
+                            } else {
+                                runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            }
                         } else {
-                            runsOnMap = new HashSet<string> { "self-hosted", "container-host" };
+                            runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "self-hosted", "container-host" };
                             if(jobContainer == null) {
                                 // Set just the container property of the workflow, the runner will use it
                                 jobContainer = new StringToken(null, null, null, p.Substring(eq + 1, p.Length - (eq + 1)));
@@ -5812,6 +5816,13 @@ namespace Runner.Server.Controllers
                     });
                 };
                 var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
+                Func<string, string> demandToLabel = demand => {
+                    var sd = demand.Split("-equals", 2);
+                    if(sd.Length == 1) {
+                        return sd[0].Trim();
+                    }
+                    return $"{sd[0].Trim()}={sd[1].Trim()}";
+                };
                 // Add capabilities to the map
                 if(rjob.Pool != null) {
                     string[] demands = null;
@@ -5831,12 +5842,7 @@ namespace Runner.Server.Controllers
                     } if(demands != null) {
                         foreach(var demand in demands) {
                             if(!string.IsNullOrEmpty(demand)) {
-                                var sd = demand.Split("-equals", 2);
-                                if(sd.Length == 1) {
-                                    runsOnMap.Add(sd[0].Trim());
-                                } else {
-                                    runsOnMap.Add($"{sd[0].Trim()}={sd[1].Trim()}");
-                                }
+                                runsOnMap.Add(demandToLabel(demand));
                             }
                         }
                     }
@@ -5844,12 +5850,16 @@ namespace Runner.Server.Controllers
                 var jobcontainerRef = rjob.Container;
                 foreach(var p in platform.Reverse()) {
                     var eq = p.IndexOf('=');
-                    var set = p.Substring(0, eq).Split(",").ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    var set = p.Substring(0, eq).Split(",").Select(demandToLabel).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     if(runsOnMap.IsSubsetOf(set) && p.Length > (eq + 1)) {
                         if(p[eq + 1] == '-') {
-                            runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            if(p.Length == (eq + 2)) {
+                                runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
+                            } else {
+                                runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').Select(demandToLabel).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            }
                         } else {
-                            runsOnMap = new HashSet<string> { };
+                            runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
                             if(jobcontainerRef == null) {
                                 // Set just the container property of the workflow, the runner will use it
                                 jobcontainerRef = new Azure.Devops.Container().Parse(new StringToken(null, null, null, p.Substring(eq + 1, p.Length - (eq + 1))));
