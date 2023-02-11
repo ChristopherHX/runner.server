@@ -5488,7 +5488,7 @@ namespace Runner.Server.Controllers
                     });
                 } else if(!QueueJobsWithoutRunner) {
                     var sessionsfreeze = sessions.ToArray();
-                    var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name) select s.Key).FirstOrDefault();
+                    var x = (from s in sessionsfreeze where s.Value.Agent?.TaskAgent?.Labels != null && runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name) select s.Key).FirstOrDefault();
                     if(x == null) {
                         StringBuilder b = new StringBuilder();
                         int i = 0;
@@ -5501,6 +5501,9 @@ namespace Runner.Server.Controllers
                         StringBuilder b2 = new StringBuilder();
                         i = 0;
                         foreach(var s in sessionsfreeze) {
+                            if(s.Value.Agent?.TaskAgent?.Labels == null) {
+                                continue;
+                            }
                             if(i++ != 0) {
                                 b2.Append(", ");
                             }
@@ -5808,6 +5811,70 @@ namespace Runner.Server.Controllers
                         return vars.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(vars, val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
                     });
                 };
+                var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
+                // Add capabilities to the map
+                if(rjob.Pool != null) {
+                    string[] demands = null;
+                    string vmImage = null;
+                    string poolName = null;
+                    if(rjob.Pool.Demands != null) {
+                        demands = (from d in rjob.Pool.Demands select evalMacro(variables, d, 0)).ToArray();
+                    }
+                    if(rjob.Pool.VmImage != null) {
+                        vmImage = evalMacro(variables, rjob.Pool.VmImage, 0);
+                    }
+                    if(rjob.Pool.Name != null) {
+                        poolName = evalMacro(variables, rjob.Pool.Name, 0);
+                    }
+                    if(!string.IsNullOrEmpty(vmImage)) {
+                        runsOnMap.Add(vmImage);
+                    } if(demands != null) {
+                        foreach(var demand in demands) {
+                            if(!string.IsNullOrEmpty(demand)) {
+                                var sd = demand.Split("-equals", 2);
+                                if(sd.Length == 1) {
+                                    runsOnMap.Add(sd[0].Trim());
+                                } else {
+                                    runsOnMap.Add($"{sd[0].Trim()}={sd[1].Trim()}");
+                                }
+                            }
+                        }
+                    }
+                }
+                var jobcontainerRef = rjob.Container;
+                foreach(var p in platform.Reverse()) {
+                    var eq = p.IndexOf('=');
+                    var set = p.Substring(0, eq).Split(",").ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    if(runsOnMap.IsSubsetOf(set) && p.Length > (eq + 1)) {
+                        if(p[eq + 1] == '-') {
+                            runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        } else {
+                            runsOnMap = new HashSet<string> { };
+                            if(jobcontainerRef == null) {
+                                // Set just the container property of the workflow, the runner will use it
+                                jobcontainerRef = p.Substring(eq + 1, p.Length - (eq + 1));
+                            }
+                            // If jobContainer != null, ignore the container
+                        }
+                        break;
+                    }
+                }
+                if(!QueueJobsWithoutRunner) {
+                    var sessionsfreeze = sessions.ToArray();
+                    var x = (from s in sessionsfreeze where s.Value.Agent.TaskAgent.SystemCapabilities?.Count > 0 && runsOnMap.IsSubsetOf(s.Value.Agent.TaskAgent.SystemCapabilities.Concat(s.Value.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key, $"{kv.Key}={kv.Value}" } )) select s.Key).FirstOrDefault();
+                    if(x == null) {
+                        StringBuilder b = new StringBuilder();
+                        int i = 0;
+                        foreach(var e in runsOnMap) {
+                            if(i++ != 0) {
+                                b.Append(", ");
+                            }
+                            b.Append(e);
+                        }
+                        matrixJobTraceWriter.Info("{0}", $"No agent is registered for the requested capabilities: [{b.ToString()}], please register and run a self-hosted runner with at least these capabilities");
+                        return failJob();
+                    }
+                }
                 string runnerToken = null;
                 Job job = null;
                 job = new Job() { message = (caller, apiUrl) => {
@@ -5925,8 +5992,8 @@ namespace Runner.Server.Controllers
                                 return addContainer(Guid.NewGuid().ToString(), image, c);
                             }
                         };
-                        if(rjob.Container != null) {
-                            jobcontainer = getContainerAlias(rjob.Container);
+                        if(jobcontainerRef != null) {
+                            jobcontainer = getContainerAlias(jobcontainerRef);
                         }
                         var jobSidecarContainers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                         if(rjob.Services != null) {
@@ -6149,36 +6216,6 @@ namespace Runner.Server.Controllers
                     }
                 }, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])?.ToJToken()?.ToString() };
                 AddJob(job);
-                var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
-                // Add capabilities to the map
-                if(rjob.Pool != null) {
-                    string[] demands = null;
-                    string vmImage = null;
-                    string poolName = null;
-                    if(rjob.Pool.Demands != null) {
-                        demands = (from d in rjob.Pool.Demands select evalMacro(variables, d, 0)).ToArray();
-                    }
-                    if(rjob.Pool.VmImage != null) {
-                        vmImage = evalMacro(variables, rjob.Pool.VmImage, 0);
-                    }
-                    if(rjob.Pool.Name != null) {
-                        poolName = evalMacro(variables, rjob.Pool.Name, 0);
-                    }
-                    if(!string.IsNullOrEmpty(vmImage)) {
-                        runsOnMap.Add(vmImage);
-                    } if(demands != null) {
-                        foreach(var demand in demands) {
-                            if(!string.IsNullOrEmpty(demand)) {
-                                var sd = demand.Split("-equals", 2);
-                                if(sd.Length == 1) {
-                                    runsOnMap.Add(sd[0].Trim());
-                                } else {
-                                    runsOnMap.Add($"{sd[0].Trim()}={sd[1].Trim()}");
-                                }
-                            }
-                        }
-                    }
-                }
                 //ConcurrencyGroup
                 string group = null;
                 bool cancelInprogress = false;
