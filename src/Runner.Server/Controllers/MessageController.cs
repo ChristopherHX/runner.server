@@ -5994,13 +5994,12 @@ namespace Runner.Server.Controllers
                             if(c.StringSource) {
                                 if(pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
                                     return addContainer(image, cresource.Image, cresource);
-                                } else {
+                                } else if(image.Contains("{") || image.Contains("}")) {
                                     cresource = JsonConvert.DeserializeObject<Azure.Devops.Container>(image);
                                     return addContainer(Guid.NewGuid().ToString(), cresource.Image, cresource);
                                 }
-                            } else {
-                                return addContainer(Guid.NewGuid().ToString(), image, c);
                             }
+                            return addContainer(Guid.NewGuid().ToString(), image, c);
                         };
                         if(jobcontainerRef != null) {
                             jobcontainer = getContainerAlias(jobcontainerRef);
