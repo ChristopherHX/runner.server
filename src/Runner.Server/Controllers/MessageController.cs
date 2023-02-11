@@ -5852,7 +5852,7 @@ namespace Runner.Server.Controllers
                             runsOnMap = new HashSet<string> { };
                             if(jobcontainerRef == null) {
                                 // Set just the container property of the workflow, the runner will use it
-                                jobcontainerRef = p.Substring(eq + 1, p.Length - (eq + 1));
+                                jobcontainerRef = new Azure.Devops.Container().Parse(new StringToken(null, null, null, p.Substring(eq + 1, p.Length - (eq + 1))));
                             }
                             // If jobContainer != null, ignore the container
                         }
