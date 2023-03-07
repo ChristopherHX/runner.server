@@ -32,6 +32,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         }
 
         [IgnoreDataMember]
-        private Boolean m_raw_value;
+        private string m_raw_value;
     }
 }
