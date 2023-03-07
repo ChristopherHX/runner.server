@@ -27,7 +27,7 @@ public class Pipeline {
         foreach(var kv in pipelineRootToken) {
             switch(kv.Key.AssertString("key").Value) {
                 case "name":
-                    Name = kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "variables":
                     Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -89,10 +89,10 @@ public class Pipeline {
                     Pool = new Pool().Parse(context, kv.Value);
                 break;
                 case "appendCommitMessageToRunName":
-                    AppendCommitMessageToRunName = kv.Value.AssertBoolean("appendCommitMessageToRunName have to be of type bool").Value;
+                    AppendCommitMessageToRunName = kv.Value.AssertAzurePipelinesBoolean("appendCommitMessageToRunName have to be of type bool");
                 break;
                 case "lockBehavior":
-                    LockBehavior = kv.Value.AssertString("lockBehavior have to be of type string").Value;
+                    LockBehavior = kv.Value.AssertLiteralString("lockBehavior have to be of type string");
                 break;
                 case "trigger":
                     Trigger = kv.Value;

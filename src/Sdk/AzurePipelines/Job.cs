@@ -35,14 +35,14 @@ public class Job {
         foreach(var kv in jobToken) {
             switch(kv.Key.AssertString("key").Value) {
                 case "job":
-                    Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "deployment":
-                    Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                     DeploymentJob = true;
                 break;
                 case "displayName":
-                    DisplayName = kv.Value.AssertString("name").Value;
+                    DisplayName = kv.Value.AssertLiteralString("name");
                 break;
                 case "dependsOn":
                     DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertString("dep").Value).ToArray();
@@ -114,7 +114,7 @@ public class Job {
                                     if(sv.Value is StringToken stringToken) {
                                         Strategy.MatrixExpression = stringToken.Value;
                                     } else {
-                                        Strategy.Matrix = sv.Value.AssertMapping("matrix").ToDictionary(mv => mv.Key.AssertString("mk").Value, mv => mv.Value.AssertMapping("matrix").ToDictionary(uv => uv.Key.AssertString("mk").Value, uv => uv.Value.AssertString("mk").Value));
+                                        Strategy.Matrix = sv.Value.AssertMapping("matrix").ToDictionary(mv => mv.Key.AssertString("mk").Value, mv => mv.Value.AssertMapping("matrix").ToDictionary(uv => uv.Key.AssertString("mk").Value, uv => uv.Value.AssertLiteralString("mk")));
                                     }
                                 break;
                                 case "maxParallel":
@@ -125,7 +125,7 @@ public class Job {
                     }
                 break;
                 case "continueOnError":
-                    ContinueOnError = kv.Value.AssertBoolean("continueOnError").Value;
+                    ContinueOnError = kv.Value.AssertAzurePipelinesBoolean("continueOnError");
                 break;
                 case "container":
                     Container = new Container().Parse(kv.Value);
@@ -141,7 +141,7 @@ public class Job {
                     AzureDevops.ParseVariables(context, Variables, kv.Value);
                 break;
                 case "services":
-                    Services = kv.Value.AssertMapping("services").ToDictionary(mv => mv.Key.AssertString("services").Value, mv => new Container().Parse(mv.Value));
+                    Services = kv.Value.AssertMapping("services").ToDictionary(mv => mv.Key.AssertLiteralString("services"), mv => new Container().Parse(mv.Value));
                 break;
                 case "steps":
                     Steps = new List<TaskStep>();
@@ -150,7 +150,7 @@ public class Job {
                     }
                 break;
                 case "templateContext":
-                    TemplateContext = kv.Value;
+                    TemplateContext = AzureDevops.AssertLiteralString(kv.Value);
                 break;
                 case "pool":
                     Pool = new Pool().Parse(context, kv.Value);
@@ -187,7 +187,7 @@ public class Job {
                     foreach(var envm in kv.Value.AssertMapping("workspace")) {
                         switch(envm.Key.ToString()) {
                             case "clean":
-                                WorkspaceClean = envm.Value.AssertString("workspace.clean").Value;
+                                WorkspaceClean = envm.Value.AssertLiteralString("workspace.clean");
                             break;
                         }
                     }

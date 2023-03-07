@@ -44,7 +44,7 @@ public class Container {
                         }
                     break;
                     case "mapDockerSocket":
-                        MapDockerSocket = kv.Value.AssertBoolean("mapDockerSocket").Value;
+                        MapDockerSocket = kv.Value.AssertAzurePipelinesBoolean("mapDockerSocket");
                     break;
                     case "options":
                         Options = kv.Value.AssertLiteralString("options");
@@ -60,16 +60,16 @@ public class Container {
                         foreach(var ekv in kv.Value.AssertMapping("env mapping")) {
                             switch(ekv.Key.AssertString("env key").Value) {
                                 case "work":
-                                    MountReadonly.Work = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Work = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                                 case "externals":
-                                    MountReadonly.Externals = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Externals = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                                 case "tools":
-                                    MountReadonly.Tools = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Tools = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                                 case "tasks":
-                                    MountReadonly.Tasks = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Tasks = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                             }
                         }
