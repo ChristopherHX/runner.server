@@ -26,6 +26,9 @@ public class Job {
     public string EnvironmentName { get; set; }
     public string EnvironmentResourceType { get; set; }
     public Pool Pool { get; set; }
+    public string[] UsesRepositories { get; set; }
+    public string[] UsesPools { get; set; }
+    public string WorkspaceClean { get; set; }
 
     public Job Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
@@ -168,6 +171,27 @@ public class Job {
                         }
                     }
                 break;
+                case "uses":
+                    foreach(var envm in kv.Value.AssertMapping("uses")) {
+                        switch(envm.Key.ToString()) {
+                            case "repositories":
+                                UsesRepositories = envm.Value.AssertSequence("uses.repositories").Select(r => r.ToString()).ToArray();
+                            break;
+                            case "pools":
+                                UsesPools = envm.Value.AssertSequence("uses.repositories").Select(r => r.ToString()).ToArray();
+                            break;
+                        }
+                    }
+                break;
+                case "workspace":
+                    foreach(var envm in kv.Value.AssertMapping("workspace")) {
+                        switch(envm.Key.ToString()) {
+                            case "clean":
+                                WorkspaceClean = envm.Value.AssertString("workspace.clean").Value;
+                            break;
+                        }
+                    }
+                break;
             }
         }
         return this;
@@ -255,6 +279,29 @@ public class Job {
         }
         if(Pool != null) {
             job["pool"] = Pool.ToContextData();
+        }
+        if(UsesRepositories != null || UsesPools != null) {
+            var usesRefs = new DictionaryContextData();
+            if(UsesRepositories != null) {
+                var usesRepositories = new ArrayContextData();
+                foreach(var repo in UsesRepositories) {
+                    usesRepositories.Add(new StringContextData(repo));
+                }
+                usesRefs["repositories"] = usesRepositories;
+            }
+            if(UsesPools != null) {
+                var usesPools = new ArrayContextData();
+                foreach(var pool in UsesPools) {
+                    usesPools.Add(new StringContextData(pool));
+                }
+                usesRefs["pools"] = usesPools;
+            }
+            job["uses"] = usesRefs;
+        }
+        if(WorkspaceClean?.Length > 0) {
+            var workspace = new DictionaryContextData();
+            job["workspace"] = workspace;
+            workspace["clean"] = new StringContextData(WorkspaceClean);
         }
         return job;
     }

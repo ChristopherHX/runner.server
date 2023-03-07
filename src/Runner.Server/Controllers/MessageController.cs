@@ -3392,7 +3392,15 @@ namespace Runner.Server.Controllers
                     };
                     pipeline.Name = evalMacro(pipeline.Name, 0);
                 }
-                
+
+                if((pipeline.AppendCommitMessageToRunName ?? true) && hook?.head_commit?.Message != null) {
+                    if(!string.IsNullOrEmpty(pipeline.Name)) {
+                        pipeline.Name += " " + hook.head_commit.Message;
+                    } else {
+                        pipeline.Name = workflowname + " " + hook.head_commit.Message;
+                    }
+                }
+  
                 workflowname = pipeline.Name ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
@@ -6207,7 +6215,7 @@ namespace Runner.Server.Controllers
                             new List<MaskHint>(),
                             resources, null,
                             new WorkspaceOptions() {
-                                Clean = "true"
+                                Clean = rjob.WorkspaceClean
                             },
                             steps,
                             null,

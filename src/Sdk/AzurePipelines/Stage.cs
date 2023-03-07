@@ -18,6 +18,7 @@ public class Stage {
     public TemplateToken TemplateContext { get; set; }
     public Dictionary<string, Azure.Devops.Stage> Dependencies { get; set; }
     public Pool Pool { get; set; }
+    public String LockBehavior { get; set; }
 
     public Stage Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
@@ -48,6 +49,9 @@ public class Stage {
                 break;
                 case "pool":
                     Pool = new Pool().Parse(context, kv.Value);
+                break;
+                case "lockBehavior":
+                    LockBehavior = kv.Value.AssertString("lockBehavior have to be of type string");
                 break;
             }
         }
@@ -101,6 +105,9 @@ public class Stage {
         stage["jobs"] = jobs;
         if(Pool != null) {
             stage["pool"] = Pool.ToContextData();
+        }
+        if(LockBehavior != null) {
+            stage["lockBehavior"] = new StringContextData(LockBehavior);
         }
         return stage;
     }
