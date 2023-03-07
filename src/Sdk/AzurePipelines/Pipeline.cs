@@ -89,10 +89,10 @@ public class Pipeline {
                     Pool = new Pool().Parse(context, kv.Value);
                 break;
                 case "appendCommitMessageToRunName":
-                    AppendCommitMessageToRunName = kv.Value.AssertBoolean("appendCommitMessageToRunName have to be of type bool");
+                    AppendCommitMessageToRunName = kv.Value.AssertBoolean("appendCommitMessageToRunName have to be of type bool").Value;
                 break;
                 case "lockBehavior":
-                    LockBehavior = kv.Value.AssertString("lockBehavior have to be of type string");
+                    LockBehavior = kv.Value.AssertString("lockBehavior have to be of type string").Value;
                 break;
                 case "trigger":
                     Trigger = kv.Value;

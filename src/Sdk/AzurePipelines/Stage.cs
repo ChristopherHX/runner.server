@@ -51,7 +51,7 @@ public class Stage {
                     Pool = new Pool().Parse(context, kv.Value);
                 break;
                 case "lockBehavior":
-                    LockBehavior = kv.Value.AssertString("lockBehavior have to be of type string");
+                    LockBehavior = kv.Value.AssertString("lockBehavior have to be of type string").Value;
                 break;
             }
         }
