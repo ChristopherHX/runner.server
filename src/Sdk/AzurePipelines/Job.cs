@@ -150,7 +150,7 @@ public class Job {
                     }
                 break;
                 case "templateContext":
-                    TemplateContext = AzureDevops.AssertLiteralString(kv.Value);
+                    TemplateContext = AzureDevops.ConvertAllScalarsToString(kv.Value);
                 break;
                 case "pool":
                     Pool = new Pool().Parse(context, kv.Value);
