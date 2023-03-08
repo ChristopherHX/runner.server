@@ -4150,7 +4150,7 @@ namespace Runner.Server.Controllers
                                                 var matrixjobEval = createEvalVariable(matrixJobTraceWriter, jcontextData);
                                                 if(job.ContinueOnError != null) {
                                                     var rawContinueOnError = matrixjobEval(job.ContinueOnError);
-                                                    if(TemplateTokenExtensions.TryParseAzurePipelinesBoolean(rawContinueOnError, out var continueOnError)) {
+                                                    if(GitHub.DistributedTask.ObjectTemplating.TokensTemplateTokenExtensions.TryParseAzurePipelinesBoolean(rawContinueOnError, out var continueOnError)) {
                                                         next.ContinueOnError = continueOnError;
                                                     } else {
                                                         throw new Exception($"{job.Name}.continueOnError: value true | y | yes | on | false | n | no | off was expected, got {rawContinueOnError}");
