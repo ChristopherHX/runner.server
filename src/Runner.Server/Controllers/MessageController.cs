@@ -4169,7 +4169,7 @@ namespace Runner.Server.Controllers
                                                     if(Int32.TryParse(rawCancelTimeoutInMinutes, out int numValue)) {
                                                         cancelTimeoutMinutes = numValue;
                                                     } else {
-                                                        throw new Exception($"{stage.Name}.{job.Name}.cancelTimeoutInMinutes expected integer, got {rawTimeoutInMinutes}");
+                                                        throw new Exception($"{stage.Name}.{job.Name}.cancelTimeoutInMinutes expected integer, got {rawCancelTimeoutInMinutes}");
                                                     }
                                                 }
                                                 return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, matrixjobEval, env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
