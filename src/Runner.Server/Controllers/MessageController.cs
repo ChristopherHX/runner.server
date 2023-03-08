@@ -6016,6 +6016,25 @@ namespace Runner.Server.Controllers
                                 }
                                 cr.Ports = ports;
                             }
+                            if(container.MountReadonly != null) {
+                                var readOnlyMounts = new List<string>();
+                                if(container.MountReadonly.Externals == true) {
+                                    readOnlyMounts.Add("externals");
+                                }
+                                if(container.MountReadonly.Work == true) {
+                                    readOnlyMounts.Add("work");
+                                }
+                                if(container.MountReadonly.Tasks == true) {
+                                    readOnlyMounts.Add("tasks");
+                                }
+                                if(container.MountReadonly.Tools == true) {
+                                    readOnlyMounts.Add("tools");
+                                }
+                                Properties.Set("readOnlyMounts", readOnlyMounts);
+                            }
+                            if(container.MapDockerSocket != null) {
+                                Properties.Set("mapDockerSocket", container.MapDockerSocket.Value);
+                            }
                             if(containerResources.Add(cr.Alias)) {
                                 resources.Containers.Add(cr);
                             }
