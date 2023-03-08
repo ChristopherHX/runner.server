@@ -3738,7 +3738,6 @@ namespace Runner.Server.Controllers
                                     var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase) };
                                     var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                     bool failFast = true;
-                                    double? max_parallel = job?.Strategy?.MaxParallel;
                                     
                                     // Enforce job matrix limit of github
                                     if(flatmatrix.Count > 256) {
@@ -3848,6 +3847,7 @@ namespace Runner.Server.Controllers
                                         }
                                         contextData["variables"] = vars;
                                     }
+                                    double? max_parallel == null;
                                     if(job?.Strategy?.MatrixExpression != null) {
                                         var result = evalVariable(job.Strategy.MatrixExpression);
                                         job.Strategy.Matrix = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(result);
@@ -3855,11 +3855,17 @@ namespace Runner.Server.Controllers
                                             job.Strategy = null;
                                         }
                                     }
-                                    if(job?.Strategy?.Parallel > 0) {
-                                        for(int i = 0; i < job.Strategy.Parallel; i++) {
+                                    if(job?.Strategy?.MaxParallel != null) {
+                                        var result = evalVariable(job?.Strategy?.MaxParallel);
+                                        max_parallel = Int32.Parse(result);
+                                    }
+                                    if(job?.Strategy?.Parallel != null) {
+                                        var result = evalVariable(job.Strategy.Parallel);
+                                        var parallelJobs = Int32.Parse(result);
+                                        for(int i = 0; i < parallelJobs; i++) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["System.JobPositionInPhase"] = new StringToken(null, null, null, i.ToString());
-                                            mvars["System.TotalJobsInPhase"] = new StringToken(null, null, null, job.Strategy.Parallel.ToString());
+                                            mvars["System.TotalJobsInPhase"] = new StringToken(null, null, null, parallelJobs.ToString());
                                             includematrix.Add(mvars);
                                         }
                                     } else if(job?.Strategy?.Matrix != null) {

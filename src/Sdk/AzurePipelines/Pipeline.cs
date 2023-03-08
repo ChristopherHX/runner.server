@@ -160,7 +160,7 @@ public class Pipeline {
             pipeline["pool"] = Pool.ToContextData();
         }
         if(AppendCommitMessageToRunName != null) {
-            pipeline["appendCommitMessageToRunName"] = new BooleanContextData(AppendCommitMessageToRunName.Value);
+            pipeline["appendCommitMessageToRunName"] = new StringContextData(AppendCommitMessageToRunName.Value.ToString());
         }
         if(LockBehavior != null) {
             pipeline["lockBehavior"] = new StringContextData(LockBehavior);

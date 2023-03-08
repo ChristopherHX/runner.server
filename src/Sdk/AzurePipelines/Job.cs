@@ -92,23 +92,21 @@ public class Job {
                                 case "canary":
                                     Strategy.Canary = new Strategy.CanaryStrategy();
                                     parseRunOnce(sv.Value as MappingToken, Strategy.Canary);
-                                    Strategy.Canary.Increments = (from inc in (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "increments" select k.Value).First().AssertSequence("") select inc.AssertNumber("").Value).ToArray();
+                                    var rawIncrements = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "increments" select k.Value).FirstOrDefault()?.AssertSequence("canary increments");
+                                    if(rawIncrements != null) {
+                                        Strategy.Canary.Increments = (from inc in rawIncrements select inc.AssertLiteralString("canary increment")).ToArray();
+                                    }
                                 break;
                                 case "rolling":
                                     Strategy.Rolling = new Strategy.RollingStrategy();
                                     parseRunOnce(sv.Value as MappingToken, Strategy.Rolling);
-                                    var maxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "maxParallel" select k.Value).FirstOrDefault();
-                                    if(maxParallel is NumberToken num) {
-                                        Strategy.Rolling.MaxParallel = (int)num.Value;
-                                    } else if(maxParallel is StringToken percent) {
-                                        Strategy.Rolling.MaxParallelPercent = Int32.Parse(percent.Value.Substring(0, percent.Value.IndexOf("%")));
-                                    }
+                                    Strategy.Rolling.MaxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "maxParallel" select k.Value).FirstOrDefault()?.AssertLiteralString("maxParallel");
                                 break;
                             }
                         } else {
                             switch(sv.Key.AssertString("key").Value) {
                                 case "parallel":
-                                    Strategy.Parallel = (int)sv.Value.AssertNumber("parallel").Value;
+                                    Strategy.Parallel = sv.Value.AssertLiteralString("parallel");
                                 break;
                                 case "matrix":
                                     if(sv.Value is StringToken stringToken) {
@@ -118,7 +116,7 @@ public class Job {
                                     }
                                 break;
                                 case "maxParallel":
-                                    Strategy.MaxParallel = (int)sv.Value.AssertNumber("maxParallel").Value;
+                                    Strategy.MaxParallel = sv.Value.AssertLiteralString("maxParallel");
                                 break;
                             }
                         }
