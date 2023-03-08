@@ -4147,7 +4147,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var jcontextData = contextData.Clone() as DictionaryContextData;
                                                 jcontextData["variables"] = vars;
-                                                var matrixjobEval = createEvalVariable(matrixJobTraceWriter, jcontextData)
+                                                var matrixjobEval = createEvalVariable(matrixJobTraceWriter, jcontextData);
                                                 if(job.ContinueOnError != null) {
                                                     var rawContinueOnError = matrixjobEval(job.ContinueOnError);
                                                     if(TemplateTokenExtensions.TryParseAzurePipelinesBoolean(rawContinueOnError, out var continueOnError)) {
