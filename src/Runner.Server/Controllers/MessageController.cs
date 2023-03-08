@@ -4121,8 +4121,6 @@ namespace Runner.Server.Controllers
                                                 jobitem.Childs?.Add(next);
                                                 var _jobdisplayname = _prejobdisplayname;
                                                 next.DisplayName = _jobdisplayname;
-                                                var timeoutMinutes = job.TimeoutInMinutes != 0 ? job.TimeoutInMinutes :  3600;
-                                                var cancelTimeoutMinutes = job.CancelTimeoutInMinutes != 0 ? job.CancelTimeoutInMinutes : 5;
                                                 next.NoStatusCheck = false;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
                                                 addMatrixVar("System.StageName", stage.Name);
@@ -4153,7 +4151,25 @@ namespace Runner.Server.Controllers
                                                     if(GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.TryParseAzurePipelinesBoolean(rawContinueOnError, out var continueOnError)) {
                                                         next.ContinueOnError = continueOnError;
                                                     } else {
-                                                        throw new Exception($"{job.Name}.continueOnError: value true | y | yes | on | false | n | no | off was expected, got {rawContinueOnError}");
+                                                        throw new Exception($"{stage.Name}.{job.Name}.continueOnError: value true | y | yes | on | false | n | no | off was expected, got {rawContinueOnError}");
+                                                    }
+                                                }
+                                                var timeoutMinutes = 3600;
+                                                if(job.TimeoutInMinutes != null) {
+                                                    var rawTimeoutInMinutes = matrixjobEval(job.TimeoutInMinutes);
+                                                    if(Int32.TryParse(rawTimeoutInMinutes, out int numValue)) {
+                                                        timeoutMinutes = numValue;
+                                                    } else {
+                                                        throw new Exception($"{stage.Name}.{job.Name}.timeoutInMinutes expected integer, got {rawTimeoutInMinutes}");
+                                                    }
+                                                }
+                                                var cancelTimeoutMinutes = 5;
+                                                if(job.CancelTimeoutInMinutes != null) {
+                                                    var rawCancelTimeoutInMinutes = matrixjobEval(job.CancelTimeoutInMinutes);
+                                                    if(Int32.TryParse(rawCancelTimeoutInMinutes, out int numValue)) {
+                                                        cancelTimeoutMinutes = numValue;
+                                                    } else {
+                                                        throw new Exception($"{stage.Name}.{job.Name}.cancelTimeoutInMinutes expected integer, got {rawTimeoutInMinutes}");
                                                     }
                                                 }
                                                 return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, matrixjobEval, env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);

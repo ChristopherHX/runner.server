@@ -15,8 +15,8 @@ public class Job {
     public Strategy Strategy { get; set; }
     public string ContinueOnError { get; set; }
     public Container Container { get; set; }
-    public int TimeoutInMinutes { get; set; }
-    public int CancelTimeoutInMinutes { get; set; }
+    public string TimeoutInMinutes { get; set; }
+    public string CancelTimeoutInMinutes { get; set; }
     public Dictionary<string, VariableValue> Variables { get; set; }
     public Dictionary<string, Container> Services { get; set; }
     public List<TaskStep> Steps { get; set; }
@@ -131,10 +131,10 @@ public class Job {
                     Container = new Container().Parse(kv.Value);
                 break;
                 case "timeoutInMinutes":
-                    TimeoutInMinutes = (int)kv.Value.AssertNumber("timeoutInMinutes").Value;
+                    TimeoutInMinutes = kv.Value.AssertLiteralString("timeoutInMinutes");
                 break;
                 case "cancelTimeoutInMinutes":
-                    CancelTimeoutInMinutes = (int)kv.Value.AssertNumber("cancelTimeoutInMinutes").Value;
+                    CancelTimeoutInMinutes = kv.Value.AssertLiteralString("cancelTimeoutInMinutes");
                 break;
                 case "variables":
                     Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -223,11 +223,11 @@ public class Job {
         if(ContinueOnError != null) {
             job["continueOnError"] = new StringContextData(ContinueOnError);
         }
-        if(TimeoutInMinutes > 0) {
-            job["timeoutInMinutes"] = new NumberContextData(TimeoutInMinutes);
+        if(TimeoutInMinutes != null) {
+            job["timeoutInMinutes"] = new StringContextData(TimeoutInMinutes);
         }
-        if(CancelTimeoutInMinutes > 0) {
-            job["cancelTimeoutInMinutes"] = new NumberContextData(CancelTimeoutInMinutes);
+        if(CancelTimeoutInMinutes != null) {
+            job["cancelTimeoutInMinutes"] = new StringContextData(CancelTimeoutInMinutes);
         }
         if(Container != null) {
             job["container"] = Container.ToContextData();
