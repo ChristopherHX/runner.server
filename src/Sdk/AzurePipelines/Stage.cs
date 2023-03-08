@@ -99,7 +99,7 @@ public class Stage {
             foreach(var v in variablesMetaData) {
                 var varmap = new DictionaryContextData();
                 vars.Add(varmap);
-                if(v.IsGroup) {
+                if(v.Value.IsGroup) {
                     varmap["group"] = new StringContextData(v.Value.Value);
                 } else {
                     varmap["name"] = new StringContextData(v.Key);
