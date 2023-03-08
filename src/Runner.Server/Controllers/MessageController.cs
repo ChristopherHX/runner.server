@@ -6036,10 +6036,10 @@ namespace Runner.Server.Controllers
                                 if(container.MountReadonly.Tools == true) {
                                     readOnlyMounts.Add("tools");
                                 }
-                                Properties.Set("readOnlyMounts", readOnlyMounts);
+                                container.Properties.Set("readOnlyMounts", readOnlyMounts);
                             }
                             if(container.MapDockerSocket != null) {
-                                Properties.Set("mapDockerSocket", container.MapDockerSocket.Value);
+                                container.Properties.Set("mapDockerSocket", container.MapDockerSocket.Value);
                             }
                             if(containerResources.Add(cr.Alias)) {
                                 resources.Containers.Add(cr);
