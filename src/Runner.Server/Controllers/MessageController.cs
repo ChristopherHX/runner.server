@@ -3847,7 +3847,7 @@ namespace Runner.Server.Controllers
                                         }
                                         contextData["variables"] = vars;
                                     }
-                                    double? max_parallel == null;
+                                    double? max_parallel = null;
                                     if(job?.Strategy?.MatrixExpression != null) {
                                         var result = evalVariable(job.Strategy.MatrixExpression);
                                         job.Strategy.Matrix = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(result);
