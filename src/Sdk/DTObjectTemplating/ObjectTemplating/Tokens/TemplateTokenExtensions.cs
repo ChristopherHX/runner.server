@@ -122,7 +122,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
         }
 
-        public static bool TryParseAzurePipelinesBoolean(string b, out bool val) {
+        public static bool TryParseAzurePipelinesBoolean(string literalString, out bool val) {
             if(string.Equals(literalString, "true", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "y", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "yes", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "on", StringComparison.OrdinalIgnoreCase)) {
                 val = true;
                 return true;
