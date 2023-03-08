@@ -142,10 +142,10 @@ public class AzureDevops {
                         tstep.Enabled = mstep[i].Value.AssertAzurePipelinesBoolean("step value");
                     break;
                     case "retryCountOnTaskFailure":
-                        tstep.RetryCountOnTaskFailure = (int)mstep[i].Value.AssertNumber("step value").Value;
+                        tstep.RetryCountOnTaskFailure = Int32.Parse(mstep[i].Value.AssertLiteralString("step value"));
                     break;
                     case "timeoutInMinutes":
-                        tstep.TimeoutInMinutes = mstep[i].Value.AssertNumber("step value").Clone(true);
+                        tstep.TimeoutInMinutes = new NumberToken(null, null, null, Int32.Parse(mstep[i].Value.AssertLiteralString("step value")));
                     break;
                     case "target":
                         if(mstep[i].Value is StringToken targetStr) {
