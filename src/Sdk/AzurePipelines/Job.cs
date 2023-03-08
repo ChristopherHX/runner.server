@@ -13,7 +13,7 @@ public class Job {
     public string[] DependsOn { get; set; }
     public string Condition { get; set; }
     public Strategy Strategy { get; set; }
-    public bool ContinueOnError { get; set; }
+    public string ContinueOnError { get; set; }
     public Container Container { get; set; }
     public int TimeoutInMinutes { get; set; }
     public int CancelTimeoutInMinutes { get; set; }
@@ -125,7 +125,7 @@ public class Job {
                     }
                 break;
                 case "continueOnError":
-                    ContinueOnError = kv.Value.AssertAzurePipelinesBoolean("continueOnError");
+                    ContinueOnError = kv.Value.AssertLiteralString("continueOnError");
                 break;
                 case "container":
                     Container = new Container().Parse(kv.Value);
@@ -220,8 +220,8 @@ public class Job {
         if(Condition?.Length > 0) {
             job["condition"] = new StringContextData(Condition);
         }
-        if(ContinueOnError) {
-            job["continueOnError"] = new BooleanContextData(ContinueOnError);
+        if(ContinueOnError != null) {
+            job["continueOnError"] = new StringContextData(ContinueOnError);
         }
         if(TimeoutInMinutes > 0) {
             job["timeoutInMinutes"] = new NumberContextData(TimeoutInMinutes);

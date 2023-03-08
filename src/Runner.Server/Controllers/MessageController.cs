@@ -4121,7 +4121,6 @@ namespace Runner.Server.Controllers
                                                 jobitem.Childs?.Add(next);
                                                 var _jobdisplayname = _prejobdisplayname;
                                                 next.DisplayName = _jobdisplayname;
-                                                next.ContinueOnError = job.ContinueOnError;
                                                 var timeoutMinutes = job.TimeoutInMinutes != 0 ? job.TimeoutInMinutes :  3600;
                                                 var cancelTimeoutMinutes = job.CancelTimeoutInMinutes != 0 ? job.CancelTimeoutInMinutes : 5;
                                                 next.NoStatusCheck = false;
@@ -4148,7 +4147,16 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var jcontextData = contextData.Clone() as DictionaryContextData;
                                                 jcontextData["variables"] = vars;
-                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, createEvalVariable(matrixJobTraceWriter, jcontextData), env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
+                                                var matrixjobEval = createEvalVariable(matrixJobTraceWriter, jcontextData)
+                                                if(job.ContinueOnError != null) {
+                                                    var rawContinueOnError = matrixjobEval(job.ContinueOnError);
+                                                    if(TemplateTokenExtensions.TryParseAzurePipelinesBoolean(rawContinueOnError, out var continueOnError)) {
+                                                        next.ContinueOnError = continueOnError;
+                                                    } else {
+                                                        throw new Exception($"{job.Name}.continueOnError: value true | y | yes | on | false | n | no | off was expected, got {rawContinueOnError}");
+                                                    }
+                                                }
+                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, matrixjobEval, env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                             } catch(Exception ex) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                 return failJob();
