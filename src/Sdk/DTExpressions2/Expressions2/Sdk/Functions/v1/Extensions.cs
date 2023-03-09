@@ -1,6 +1,9 @@
 namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1 {
     public static class Extensions {
-        private static Legacy.EvaluationResult ToLegacy(EvaluationContext context, EvaluationResult node) {
+        public static Legacy.EvaluationResult ToLegacy(EvaluationContext context, EvaluationResult node) {
+            if(node.Kind == ValueKind.String && node.Raw is Runner.Server.Azure.Devops.DateTimeWrapper wrapper) {
+                return new Legacy.EvaluationResult(context, 0, wrapper.DateTime, ValueKind.DateTime, wrapper.DateTime, true);
+            }
             return new Legacy.EvaluationResult(context, 0, node.Value, node.Kind, node.Raw, true);
         }
         public static bool EvaluateBoolean(this ExpressionNode node, EvaluationContext context) {
