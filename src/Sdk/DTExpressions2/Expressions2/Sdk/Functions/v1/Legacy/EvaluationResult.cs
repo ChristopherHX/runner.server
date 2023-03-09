@@ -576,7 +576,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
             if (i >= s.Length)
             {
                 // Determine the offset
-                var timeZone = options?.TimeZone ?? TimeZoneInfo.Local;
+                var timeZone = TimeZoneInfo.Local;
                 try
                 {
                     var dateTime = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Unspecified);
