@@ -87,8 +87,8 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
             }
             else if (leftKind == ValueKind.Number)
             {
-                Decimal d = right.ConvertToNumber(context);
-                return ((Decimal)leftValue).CompareTo(d);
+                Double d = right.ConvertToNumber(context);
+                return ((Double)leftValue).CompareTo(d);
             }
             else if (leftKind == ValueKind.String)
             {
@@ -111,7 +111,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
                     return (Boolean)Value; // Not converted. Don't trace.
 
                 case ValueKind.Number:
-                    result = (Decimal)Value != 0m; // 0 converts to false, otherwise true.
+                    result = (Double)Value != 0; // 0 converts to false, otherwise true.
                     TraceValue(context, result, ValueKind.Boolean);
                     return result;
 
@@ -160,9 +160,9 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
             throw new TypeCastException(context?.SecretMasker, Value, fromKind: Kind, toKind: ValueKind.Null);
         }
 
-        public Decimal ConvertToNumber(EvaluationContext context)
+        public Double ConvertToNumber(EvaluationContext context)
         {
-            Decimal result;
+            Double result;
             if (TryConvertToNumber(context, out result))
             {
                 return result;
@@ -212,10 +212,10 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
             }
             else if (Kind == ValueKind.Number)
             {
-                Decimal d;
+                Double d;
                 if (right.TryConvertToNumber(context, out d))
                 {
-                    return (Decimal)Value == d;
+                    return (Double)Value == d;
                 }
             }
             else if (Kind == ValueKind.Version)
@@ -316,29 +316,29 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
 
         public Boolean TryConvertToNumber(
             EvaluationContext context,
-            out Decimal result)
+            out Double result)
         {
             switch (Kind)
             {
                 case ValueKind.Boolean:
-                    result = (Boolean)Value ? 1m : 0m;
+                    result = (Boolean)Value ? 1 : 0;
                     TraceValue(context, result, ValueKind.Number);
                     return true;
 
                 case ValueKind.Number:
-                    result = (Decimal)Value; // Not converted. Don't trace again.
+                    result = (Double)Value; // Not converted. Don't trace again.
                     return true;
 
                 case ValueKind.String:
                     String s = Value as String ?? String.Empty;
                     if (String.IsNullOrEmpty(s))
                     {
-                        result = 0m;
+                        result = 0;
                         TraceValue(context, result, ValueKind.Number);
                         return true;
                     }
 
-                    if (Decimal.TryParse(s, s_numberStyles, CultureInfo.InvariantCulture, out result))
+                    if (Double.TryParse(s, s_numberStyles, CultureInfo.InvariantCulture, out result))
                     {
                         TraceValue(context, result, ValueKind.Number);
                         return true;
@@ -351,12 +351,12 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
                 case ValueKind.DateTime:
                 case ValueKind.Object:
                 case ValueKind.Version:
-                    result = default(Decimal);
+                    result = default(Double);
                     TraceCoercionFailed(context, toKind: ValueKind.Number);
                     return false;
 
                 case ValueKind.Null:
-                    result = 0m;
+                    result = 0;
                     TraceValue(context, result, ValueKind.Number);
                     return true;
 
@@ -382,7 +382,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
                     return true;
 
                 case ValueKind.Number:
-                    result = ((Decimal)Value).ToString(ExpressionConstants.NumberFormat, CultureInfo.InvariantCulture);
+                    result = ((Double)Value).ToString(ExpressionConstants.NumberFormat, CultureInfo.InvariantCulture);
                     TraceValue(context, result, ValueKind.String);
                     return true;
 
@@ -465,7 +465,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
         /// This allows ExpressionNode authors to leverage the coercion and comparision functions
         /// for any values.
         ///
-        /// Also note, the value will be canonicalized (for example numeric types converted to decimal) and any
+        /// Also note, the value will be canonicalized (for example numeric types converted to Double) and any
         /// matching converters applied.
         /// </summary>
         public static EvaluationResult CreateIntermediateResult(

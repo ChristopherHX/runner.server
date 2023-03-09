@@ -55,7 +55,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
                     case JTokenType.Integer:
                         kind = ValueKind.Number;
                         // todo: test the extents of the conversion
-                        return jtoken.ToObject<Decimal>();
+                        return jtoken.ToObject<Double>();
                     case JTokenType.Null:
                         kind = ValueKind.Null;
                         return null;
@@ -111,15 +111,15 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
                             throw new NotSupportedException($"Unexpected DateTimeKind '{dateTime.Kind}'"); // Should never happen
                     }
                 }
-                else if (val is Decimal || val is Byte || val is SByte || val is Int16 || val is UInt16 || val is Int32 || val is UInt32 || val is Int64 || val is UInt64 || val is Single || val is Double)
+                else if (val is Double || val is Byte || val is SByte || val is Int16 || val is UInt16 || val is Int32 || val is UInt32 || val is Int64 || val is UInt64 || val is Single || val is Double)
                 {
                     kind = ValueKind.Number;
-                    return Convert.ToDecimal(val);
+                    return Convert.ToDouble(val);
                 }
                 else if (val is Enum)
                 {
                     var strVal = String.Format(CultureInfo.InvariantCulture, "{0:G}", val);
-                    if (Decimal.TryParse(strVal, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out Decimal decVal))
+                    if (Double.TryParse(strVal, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out Double decVal))
                     {
                         kind = ValueKind.Number;
                         return decVal;
@@ -156,7 +156,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
                     return secretMasker != null ? secretMasker.MaskSecrets(strDateTime) : strDateTime;
 
                 case ValueKind.Number:
-                    var strNumber = ((Decimal)value).ToString(ExpressionConstants.NumberFormat, CultureInfo.InvariantCulture);
+                    var strNumber = ((Double)value).ToString(ExpressionConstants.NumberFormat, CultureInfo.InvariantCulture);
                     return secretMasker != null ? secretMasker.MaskSecrets(strNumber) : strNumber;
 
                 case ValueKind.String:
