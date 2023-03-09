@@ -32,7 +32,7 @@ public class Pipeline {
                 break;
                 case "variables":
                     variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, Variables, kv.Value);
+                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
                     Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                     variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
