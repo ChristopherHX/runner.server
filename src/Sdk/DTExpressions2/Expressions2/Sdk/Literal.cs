@@ -8,7 +8,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
     {
         public Literal(Object val)
         {
-            Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out raw);
+            Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out var raw);
             Kind = kind;
             Name = kind.ToString();
             Raw = raw;
