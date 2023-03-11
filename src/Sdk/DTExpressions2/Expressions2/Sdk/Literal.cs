@@ -39,7 +39,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             out ResultMemory resultMemory)
         {
             resultMemory = null;
-            return Raw;
+            return Raw ?? Value;
         }
     }
 
