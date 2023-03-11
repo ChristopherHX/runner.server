@@ -8,18 +8,17 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
     {
         public Literal(Object val)
         {
-            Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out _);
+            Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out raw);
             Kind = kind;
             Name = kind.ToString();
-            // preserve version object for Azure Pipelines
-            if(val is Runner.Server.Azure.Devops.VersionWrapper) {
-                Value = val;
-            }
+            Raw = raw;
         }
 
         public ValueKind Kind { get; }
 
         public Object Value { get; }
+
+        private Object Raw { get; }
 
         // Prevent the value from being stored on the evaluation context.
         // This avoids unneccessarily duplicating the value in memory.
@@ -40,7 +39,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             out ResultMemory resultMemory)
         {
             resultMemory = null;
-            return Value;
+            return Raw;
         }
     }
 
