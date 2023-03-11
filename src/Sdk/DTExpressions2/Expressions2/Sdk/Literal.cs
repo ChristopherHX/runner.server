@@ -11,6 +11,10 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out _);
             Kind = kind;
             Name = kind.ToString();
+            // preserve version object for Azure Pipelines
+            if(val is Runner.Server.Azure.Devops.VersionWrapper) {
+                Value = val;
+            }
         }
 
         public ValueKind Kind { get; }
