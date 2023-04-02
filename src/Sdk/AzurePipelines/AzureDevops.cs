@@ -312,7 +312,7 @@ public class AzureDevops {
         var steps = new List<TaskStep>();
         var jobs = new List<Job>();
         var stages = new List<Stage>();
-        Func<string, string> assertValues s => {
+        Func<string, string> assertValues = s => {
             if(values != null) {
                 foreach(var aval in values.AssertSequence("parameters.*.values")) {
                     if(s == aval.AssertLiteralString("parameters.*.values.*")) {
