@@ -129,7 +129,7 @@ public class Pipeline {
                             apres.Add(oresi);
                         }
                     } else {
-                        resources[ores.Key] = ores.Value;
+                        OtherResources[ores.Key] = ores.Value;
                     }
                 }
             }
