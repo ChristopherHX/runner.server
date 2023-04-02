@@ -176,6 +176,18 @@ public class Pipeline {
                     resources[ores.Key] = ores.Value.ToContextData();
                 }
             }
+            if(Parent?.OtherResources != null) {
+                foreach(var ores in Parent.OtherResources) {
+                    if(resources.TryGetValue(ores.Key, out var pres)) {
+                        var apres = pres.AssertArray($"resources.{ores.Key} array");
+                        foreach(var oresi in ores.Value.ToContextData().AssertArray($"resources.{ores.Key} array")) {
+                            apres.Add(oresi);
+                        }
+                    } else {
+                        resources[ores.Key] = ores.Value.ToContextData();
+                    }
+                }
+            }
         }
         if(Stages != null) {
             var stageList = new ArrayContextData();
