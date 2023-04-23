@@ -1530,6 +1530,7 @@ namespace Runner.Server.Controllers
                         allowed.Add("paths-ignore");
                     }
                     if(e == "workflow_dispatch") {
+                        var rawTypes = workflowContext.HasFeature("system.runner.server.workflow_dispatch-rawtypes");
                         allowed.Add("inputs");
                         // Validate inputs and apply defaults
                         var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
@@ -1552,16 +1553,20 @@ namespace Runner.Server.Controllers
                                     bool required = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_dispatch.{inputName}.required").Value).FirstOrDefault();
                                     string type = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_dispatch.{inputName}.type").Value).FirstOrDefault();
                                     SequenceToken options = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "options" select r.Value.AssertSequence($"on.workflow_dispatch.{inputName}.options")).FirstOrDefault();
-                                    var def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.AssertString($"on.workflow_dispatch.{inputName}.default")?.ToContextData()?.ToJToken();
+                                    JToken def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.ToContextData()?.ToJToken();
                                     if(def == null) {
                                         switch(type) {
                                         case "boolean":
-                                            def = "false";
+                                            def = false;
+                                        break;
+                                        case "number":
+                                            def = 0;
                                         break;
                                         case "choice":
                                             def = options?.FirstOrDefault()?.AssertString($"on.workflow_dispatch.{inputName}.options[0]")?.Value ?? "";
                                         break;
-                                        default:
+                                        case "string":
+                                        case "environment":
                                             def = "";
                                         break;
                                         }
@@ -1572,29 +1577,38 @@ namespace Runner.Server.Controllers
                                         if(required) {
                                             throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
                                         }
-                                        dispatchInputs[inputName] = def;
+                                        dispatchInputs[inputName] = (def?.Type == JTokenType.String || def?.Type == JTokenType.Boolean || def?.Type == JTokenType.Float || def?.Type == JTokenType.Integer) && !rawTypes ? def?.ToString() : def;
                                         actualInputName = inputName;
                                     }
-                                    switch(type) {
-                                    case "boolean":
-                                        // https://github.com/actions/runner/issues/1483#issuecomment-1091025877
-                                        bool result;
-                                        var val = dispatchInputs[actualInputName].ToString();
-                                        switch(val) {
-                                        case "true":
-                                            result = true;
+                                    if(dispatchInputs[actualInputName]?.Type == JTokenType.String) {
+                                        switch(type) {
+                                        case "boolean":
+                                            // https://github.com/actions/runner/issues/1483#issuecomment-1091025877
+                                            bool result;
+                                            var val = dispatchInputs[actualInputName].ToString();
+                                            switch(val) {
+                                            case "true":
+                                                result = true;
+                                            break;
+                                            case "false":
+                                                result = false;
+                                            break;
+                                            default:
+                                                throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected true or false, unexpected value: {val}");
+                                            }
+                                            inputsCtx[actualInputName] = new BooleanContextData(result);
                                         break;
-                                        case "false":
-                                            result = false;
+                                        case "number":
+                                            if(Double.TryParse(dispatchInputs[actualInputName].ToString(), out var numbervalue)) {
+                                                inputsCtx[actualInputName] = new NumberContextData(numbervalue);
+                                            }
                                         break;
                                         default:
-                                            throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected true or false, unexpected value: {val}");
+                                            inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
+                                        break;
                                         }
-                                        inputsCtx[actualInputName] = new BooleanContextData(result);
-                                    break;
-                                    default:
-                                        inputsCtx[actualInputName] = dispatchInputs[actualInputName].ToPipelineContextData();
-                                    break;
+                                    } else {
+                                        inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
                                     }
                                 }
                             }
