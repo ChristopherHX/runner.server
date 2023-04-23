@@ -115,7 +115,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                                 if (definitionsValue[i].Value == seq) {
                                                     var oneOfSeq = new SequenceToken(null, null, null);
                                                     // Create a new string definition for each StringToken in the sequence
-                                                    for (var activity in seq) {
+                                                    foreach(var activity in seq) {
                                                         var stringToken = activity.AssertString(definitionsKey.Value + "-" + stringToken.Value);
                                                         var allowedValuesKey = definitionsKey.Value + "-" + stringToken.Value;
                                                         var allowedValuesDef = new StringDefinition();

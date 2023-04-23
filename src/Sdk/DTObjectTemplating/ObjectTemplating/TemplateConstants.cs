@@ -62,4 +62,4 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String TrueConstant = "true-constant";
         internal const String Version = "version";
     }
-}isExpression
+}
