@@ -7025,7 +7025,7 @@ namespace Runner.Server.Controllers
                 var templateContext = CreateTemplateContext(secureTraceWriter, workflowContext, contextData);
                 templateContext.ExpressionValues["env"] = jobEnvCtx;
                 templateContext.ExpressionValues["secrets"] = result;
-                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-job-secrets", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
+                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-job-secrets-mapping", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
                 templateContext.Errors.Check();
                 IDictionary<string, string> ret = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if(evalSec != null) {
