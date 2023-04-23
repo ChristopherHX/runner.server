@@ -1578,7 +1578,7 @@ namespace Runner.Server.Controllers
                                         if(required) {
                                             throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
                                         }
-                                        dispatchInputs[inputName] = (def?.Type == JTokenType.String || def?.Type == JTokenType.Boolean || def?.Type == JTokenType.Float || def?.Type == JTokenType.Integer) && !rawTypes ? def?.ToString() : def;
+                                        dispatchInputs[inputName] = !rawTypes && def?.Type == JTokenType.Boolean ? ((bool)def ? "true" : "false") : (!rawTypes && (def?.Type == JTokenType.String || def?.Type == JTokenType.Float || def?.Type == JTokenType.Integer) ? def?.ToString() : def);
                                         actualInputName = inputName;
                                     }
                                     inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
