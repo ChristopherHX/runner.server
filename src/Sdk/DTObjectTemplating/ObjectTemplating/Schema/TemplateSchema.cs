@@ -108,7 +108,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                                         case TemplateConstants.AllowedValues:
                                             var seq = definitionPair.Value.AssertSequence($"{TemplateConstants.AllowedValues}");
-                                            var oneOfDefinitionsValue = definitionsValue.Clone();
+                                            var oneOfDefinitionsValue = definitionsValue.Clone() as MappingToken;
                                             // Based on https://github.com/actions/languageservices/blob/5cb400762941f9eb5e4198a27bba66ba1f0aefb0/workflow-parser/src/templates/schema/template-schema.ts#L145
                                             // Change the allowed-values definition into a one-of definition and its corresponding string definitions
                                             for(int i = 0; i < definitionsValue.Count; i++) {
@@ -116,7 +116,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                                     var oneOfSeq = new SequenceToken(null, null, null);
                                                     // Create a new string definition for each StringToken in the sequence
                                                     foreach(var activity in seq) {
-                                                        var stringToken = activity.AssertString(definitionsKey.Value + "-" + stringToken.Value);
+                                                        var stringToken = activity.AssertString(definitionsKey.Value);
                                                         var allowedValuesKey = definitionsKey.Value + "-" + stringToken.Value;
                                                         var allowedValuesDef = new StringDefinition();
                                                         allowedValuesDef.Constant = stringToken.ToDisplayString();
