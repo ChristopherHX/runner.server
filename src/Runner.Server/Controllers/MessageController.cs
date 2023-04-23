@@ -1632,7 +1632,7 @@ namespace Runner.Server.Controllers
                                         var contextData = createContext(null);
                                         contextData["inputs"] = callingJob?.DispatchInputs;
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
-                                        rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, null, true);
+                                        rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-call-input-default", rawdef, 0, null, true);
                                         templateContext.Errors.Check();
                                     }
                                     var def = rawdef?.ToContextData();
@@ -1836,7 +1836,7 @@ namespace Runner.Server.Controllers
                     }
                     var contextData = createContext(null);
                     var templateContext = CreateTemplateContext(traceWriter, workflowContext, contextData);
-                    var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-run-name", runName, 0, null, true);
+                    var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "run-name", runName, 0, null, true);
                     templateContext.Errors.Check();
                     var ret = workflowEnv?.AssertString("run-name")?.Value;
                     return string.IsNullOrWhiteSpace(ret) ? null : ret;
@@ -2751,7 +2751,7 @@ namespace Runner.Server.Controllers
                                         foreach(var entry in workflowOutputs) {
                                             var key = entry.Key.AssertString("on.workflow_call.outputs mapping key").Value;
                                             templateContext.TraceWriter.Info("{0}", $"Evaluate on.workflow_call.outputs.{key}.value");
-                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true)?.AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
+                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true)?.AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
                                             templateContext.Errors.Check();
                                             outputs[key] = new VariableValue(value, false);
                                         }
@@ -5203,7 +5203,7 @@ namespace Runner.Server.Controllers
                 if(deploymentEnvironment != null) {
                     matrixJobTraceWriter.Info("{0}", $"Evaluate environment");
                     templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                    deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "environment", deploymentEnvironment, 0, null, true);
+                    deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-environment", deploymentEnvironment, 0, null, true);
                     templateContext.Errors.Check();
                     if(deploymentEnvironment != null) {
                         if(deploymentEnvironment is StringToken ename) {
@@ -5313,7 +5313,7 @@ namespace Runner.Server.Controllers
                                 var ghook = hook.ToObject<GiteaHook>();
 
                                 var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                                var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
+                                var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-job-with", rawWith, 0, null, true) : null;
                                 templateContext.Errors.Check();
                                 // Inherit secrets: https://github.com/github/docs/blob/5ffcd4d90f2529fbe383b51edb3a39db4a1528de/content/actions/using-workflows/reusing-workflows.md#using-inputs-and-secrets-in-a-reusable-workflow
                                 bool inheritSecrets = rawSecrets?.Type == TokenType.String && rawSecrets.AssertString($"jobs.{name}.secrets").Value == "inherit";
@@ -7025,7 +7025,7 @@ namespace Runner.Server.Controllers
                 var templateContext = CreateTemplateContext(secureTraceWriter, workflowContext, contextData);
                 templateContext.ExpressionValues["env"] = jobEnvCtx;
                 templateContext.ExpressionValues["secrets"] = result;
-                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
+                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-job-secrets", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
                 templateContext.Errors.Check();
                 IDictionary<string, string> ret = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if(evalSec != null) {
