@@ -449,6 +449,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition = new MappingDefinition();
                     mappingDefinition.Properties.Add(TemplateConstants.Type, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Required, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
                     schema.Definitions.Add(TemplateConstants.MappingPropertyValue, mappingDefinition);
 
 
