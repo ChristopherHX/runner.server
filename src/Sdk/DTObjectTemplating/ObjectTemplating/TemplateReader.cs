@@ -492,11 +492,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         private ScalarToken ParseScalar(
             LiteralToken token,
-            DefinitionInfo definition)
+            DefinitionInfo definitionInfo)
         {
-            var allowedContext = definition.AllowedContext;
-            var isExpression = definitionInfo.definition is StringDefinition sdef && sdef.isExpression;
-            var actionsIfExpression = definition.Definition.ActionsIfExpression || isExpression;
+            var allowedContext = definitionInfo.AllowedContext;
+            var isExpression = definitionInfo.Definition is StringDefinition sdef && sdef.IsExpression;
+            var actionsIfExpression = definitionInfo.Definition.ActionsIfExpression || isExpression;
             // Not a string
             if (token.Type != TokenType.String)
             {
