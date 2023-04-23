@@ -1531,6 +1531,7 @@ namespace Runner.Server.Controllers
                     }
                     if(e == "workflow_dispatch") {
                         var rawTypes = workflowContext.HasFeature("system.runner.server.workflow_dispatch-rawtypes");
+                        var correctNumberType = workflowContext.HasFeature("system.runner.server.workflow_dispatch-correct-number-type");
                         allowed.Add("inputs");
                         // Validate inputs and apply defaults
                         var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
@@ -1580,6 +1581,8 @@ namespace Runner.Server.Controllers
                                         dispatchInputs[inputName] = (def?.Type == JTokenType.String || def?.Type == JTokenType.Boolean || def?.Type == JTokenType.Float || def?.Type == JTokenType.Integer) && !rawTypes ? def?.ToString() : def;
                                         actualInputName = inputName;
                                     }
+                                    inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
+                                    // Allow boolean and number types with a string webhook payload for GitHub Actions compat
                                     if(dispatchInputs[actualInputName]?.Type == JTokenType.String) {
                                         switch(type) {
                                         case "boolean":
@@ -1599,16 +1602,16 @@ namespace Runner.Server.Controllers
                                             inputsCtx[actualInputName] = new BooleanContextData(result);
                                         break;
                                         case "number":
-                                            if(Double.TryParse(dispatchInputs[actualInputName].ToString(), out var numbervalue)) {
-                                                inputsCtx[actualInputName] = new NumberContextData(numbervalue);
+                                            // Based on manual testing numbers are still strings in inputs ctx 2023/04/24, even if the number type is included in the strict schema file
+                                            if(correctNumberType) {
+                                                if(Double.TryParse(dispatchInputs[actualInputName].ToString(), out var numbervalue)) {
+                                                    inputsCtx[actualInputName] = new NumberContextData(numbervalue);
+                                                } else {
+                                                    throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected a number, unexpected value: {dispatchInputs[actualInputName].ToString()}");
+                                                }
                                             }
                                         break;
-                                        default:
-                                            inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
-                                        break;
                                         }
-                                    } else {
-                                        inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
                                     }
                                 }
                             }
