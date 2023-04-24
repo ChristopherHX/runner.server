@@ -1274,7 +1274,7 @@ namespace Runner.Server.Controllers
                     using (var stringReader = new StringReader(fileContent))
                     {
                         var yamlObjectReader = new YamlObjectReader(fileId, stringReader, workflowContext.HasFeature("system.runner.server.yaml.anchors"), workflowContext.HasFeature("system.runner.server.yaml.fold"), workflowContext.HasFeature("system.runner.server.yaml.merge"));
-                        token = TemplateReader.Read(templateContext, "workflow-root", yamlObjectReader, fileId, out _);
+                        token = TemplateReader.Read(templateContext, "workflow-root-strict", yamlObjectReader, fileId, out _);
                     }
 
                     templateContext.Errors.Check();
