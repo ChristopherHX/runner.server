@@ -204,7 +204,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 foreach (var reference in oneOf.OneOf)
                 {
                     var nestedDefinition = GetDefinition(reference);
-                    if (nestedDefinition is T match2)
+                    foreach (var match2 in Get<T>(nestedDefinition))
                     {
                         yield return match2;
                     }

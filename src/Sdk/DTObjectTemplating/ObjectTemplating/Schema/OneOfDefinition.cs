@@ -57,7 +57,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             var booleanDefinition = default(BooleanDefinition);
             var numberDefinition = default(NumberDefinition);
             var stringDefinitions = default(List<StringDefinition>);
-            var allowedValuesDefinition = default(OneOfDefinition);
+            var oneOfDefinition = default(OneOfDefinition);
 
             foreach (var nestedType in OneOf)
             {
@@ -140,13 +140,13 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 }
                 else if (nestedDefinition is OneOfDefinition oneOf)
                 {
-                    // Multiple number definitions not allowed
-                    if (allowedValuesDefinition != null)
+                    // Multiple one-of definitions not allowed
+                    if (oneOfDefinition != null)
                     {
-                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.AllowedValues}'");
+                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.OneOf}'");
                     }
 
-                    allowedValuesDefinition = oneOf;
+                    oneOfDefinition = oneOf;
                 }
                 else
                 {
