@@ -4647,8 +4647,8 @@ namespace Runner.Server.Controllers
                         }
                         _context.Dispose();
                         await Task.Delay(TimeSpan.FromMinutes(10));
-                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
-                        foreach(var job in jobs) {
+                        // Cleanup dummy mjobs, which allows Runner.Client to display the workflowname
+                        foreach(var job in mjobs) {
                             if(job.Childs != null) {
                                 foreach(var ji in job.Childs) {
                                     initializingJobs.Remove(ji.Id, out _);
