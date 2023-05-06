@@ -7083,6 +7083,19 @@ namespace Runner.Server.Controllers
             }
         }
 
+        private class WorkflowPendingRecordCache {
+            public Int64 PendingRecords;
+            public long RunId { get; set; }
+            public WorkflowEventArgs Completed { get; set; }
+        }
+
+        private class JobPendingRecordCache {
+            public Int64 PendingRecords;
+            public Job Job { get; set; }
+            public JobCompletedEvent Completed { get; set; }
+        }
+
+
         [HttpPost("schedule2")]
         public async Task<IActionResult> OnSchedule2([FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix, [FromQuery] string[] platform, [FromQuery] bool? localcheckout, [FromQuery] string Ref, [FromQuery] string Sha, [FromQuery] string Repository, [FromQuery] int? runid, [FromQuery] string jobId, [FromQuery] bool? failed, [FromQuery] bool? resetArtifacts, [FromQuery] bool? refresh, [FromQuery] string[] taskNames)
         {
@@ -7127,29 +7140,69 @@ namespace Runner.Server.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                ConcurrentDictionary<Guid, Job> jobCache = new ConcurrentDictionary<Guid, Job>();
+                ConcurrentDictionary<Guid, JobPendingRecordCache> jobCache = new ConcurrentDictionary<Guid, JobPendingRecordCache>();
+                ConcurrentDictionary<long, WorkflowPendingRecordCache> pendingByRunId = new ConcurrentDictionary<long, WorkflowPendingRecordCache>();
                 await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
                     List<long> runid = new List<long>();
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
-                    Func<Job, Task> updateJob = async job => {
-                        if(jobCache.TryAdd(job.JobId, job)) {
+                    Int64 pending = 1; // This value is decremented once all workflows are finished
+                    Func<long, WorkflowPendingRecordCache> updateRunId = runid => {
+                        var recordCache = pendingByRunId.GetOrAdd(runid, key => {
+                            Interlocked.Increment(ref pending);
+                            return new WorkflowPendingRecordCache { PendingRecords = 1, RunId = runid };
+                        });
+                        return recordCache;
+                    };
+                    Func<Job, Task<(WorkflowPendingRecordCache, JobPendingRecordCache)>> updateJob = async job => {
+                        var runCache = updateRunId(job.runid);
+                        bool added = false;
+                        var recordCache = jobCache.GetOrAdd(job.JobId, key => {
+                            added = true;
+                            Interlocked.Increment(ref runCache.PendingRecords);
+                            return new JobPendingRecordCache { PendingRecords = 1, Job = job };
+                        });
+                        Interlocked.Increment(ref recordCache.PendingRecords);
+                        if(added) {
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(job, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        }
+                        return (runCache, recordCache);
+                    };
+                    Action finalize = async () => {
+                        if(Interlocked.Decrement(ref pending) <= 0) {
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
+                        }
+                    };
+                    Action<WorkflowPendingRecordCache> finalizeWorkflow = async recordcache => {
+                        if(Interlocked.Decrement(ref recordcache.PendingRecords) <= 0) {
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(recordcache.Completed, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            finalize();
+                        }
+                    };
+                    Action<(WorkflowPendingRecordCache, JobPendingRecordCache)> finalizeJob = async (cache) => {
+                        var (wrecordcache, recordcache) = cache;
+                        if(Interlocked.Decrement(ref recordcache.PendingRecords) <= 0) {
+                            if(recordcache.Completed != null && recordcache.Completed?.RequestId != -1) {
+                                await chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(recordcache.Completed, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            }
+                            finalizeWorkflow(wrecordcache);
                         }
                     };
                     TimeLineWebConsoleLogController.LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
                         if (TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
-                            await updateJob(job);
+                            var jcache = await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            finalizeJob(jcache);
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
                         if(TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
-                            await updateJob(job);
+                            var jcache = await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            finalizeJob(jcache);
                         }
                     };
-                    MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
+                    MessageController.RepoDownload rd = async (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
                         if(runid.Contains(_runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules, repository, format, path }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
@@ -7157,25 +7210,29 @@ namespace Runner.Server.Controllers
 
                     FinishJobController.JobCompleted completed = async (ev) => {
                         if((_cache.TryGetValue(ev.JobId, out Job job) || initializingJobs.TryGetValue(ev.JobId, out job)) && runid.Contains(job.runid)) {
-                            await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            var cache = await updateJob(job);
+                            var (_, jcache) = cache;
+                            jcache.Completed = ev;
+                            // ack job completed
+                            finalizeJob(cache);
+                            finalizeJob(cache);
                         }
                     };
 
-                    Action<MessageController.WorkflowEventArgs> onworkflow = workflow_ => {
-                        lock(runid) {
-                            if(runid.Remove(workflow_.runid)) {
-                                var empty = runid.Count == 0;
-                                Action delay = async () => {
-                                    await chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(workflow_, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                                    if(empty) {
-                                        // await Task.Delay(100);
-                                        await chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
-                                    }
-                                };
-                                delay.Invoke();
+                    Action<WorkflowEventArgs> onworkflow = async workflow_ => {
+                        var wcache = updateRunId(workflow_.runid);
+                        wcache.Completed = workflow_;
+                        foreach(var initi in jobCache.ToArray()) {
+                            if(initi.Value.Job.runid == workflow_.runid && initi.Key == initi.Value.Job.TimeLineId) {
+                                var cache = await updateJob(initi.Value.Job);
+                                var (_, jcache) = cache;
+                                jcache.Completed = new JobCompletedEvent(-1, initi.Key, TaskResult.Succeeded);
+                                // ack job completed
+                                finalizeJob(cache);
+                                finalizeJob(cache);
                             }
                         }
+                        finalizeWorkflow(wcache);
                     };
                     
                     var chreader = queue2.Reader;
@@ -7202,23 +7259,20 @@ namespace Runner.Server.Controllers
                     MessageController.workflowevent += onworkflow;
                     List<HookResponse> responses = new List<HookResponse>();
                     bool azpipelines = string.Equals(e, "azpipelines", StringComparison.OrdinalIgnoreCase);
-                    lock(runid) {
-                        if(workflow.Any()) {
-                            foreach (var w in workflow) {
-                                HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
-                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
-                                if(response.skipped || response.failed) {
-                                    runid.Remove(response.run_id);
-                                    if(response.failed) {
-                                        chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                                    }
-                                }
+                    if(workflow.Any()) {
+                        Action<long> addrunId = run => {
+                            runid.Add(run);
+                            updateRunId(run);
+                        };
+                        foreach (var w in workflow) {
+                            HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
+                                                                    : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
+                            if(response.skipped || response.failed) {
+                                onworkflow(new WorkflowEventArgs() { runid = response.run_id, Success = !response.failed });
                             }
                         }
-                        if(runid.Count == 0) {
-                            chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
-                        }
                     }
+                    finalize();
 
                     try {
                         await ping;
