@@ -7146,7 +7146,7 @@ namespace Runner.Server.Controllers
                     List<long> runid = new List<long>();
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
-                    Int64 pending = 1; // This value is decremented once all workflows are finished
+                    Int64 pending = 1; // This value is decremented once all workflows are triggereds
                     Func<long, WorkflowPendingRecordCache> updateRunId = runid => {
                         var recordCache = pendingByRunId.GetOrAdd(runid, key => {
                             Interlocked.Increment(ref pending);
@@ -7260,13 +7260,16 @@ namespace Runner.Server.Controllers
                     List<HookResponse> responses = new List<HookResponse>();
                     bool azpipelines = string.Equals(e, "azpipelines", StringComparison.OrdinalIgnoreCase);
                     if(workflow.Any()) {
+                        WorkflowPendingRecordCache runCache;
                         Action<long> addrunId = run => {
                             runid.Add(run);
-                            updateRunId(run);
+                            runCache = updateRunId(run);
+                            Interlocked.Increment(ref runCache.PendingRecords);
                         };
                         foreach (var w in workflow) {
                             HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
+                            await finalizeWorkflow(runCache);
                             if(response.skipped || response.failed) {
                                 onworkflow(new WorkflowEventArgs() { runid = response.run_id, Success = !response.failed });
                             }
