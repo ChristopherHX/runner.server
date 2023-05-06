@@ -33,7 +33,7 @@ namespace Runner.Server.Controllers
             _context = context;
         }
 
-        public void SyncLiveLogsToDb(Guid timelineId) {
+        public async void SyncLiveLogsToDb(Guid timelineId) {
             if(dict.TryGetValue(timelineId, out var entry)) {
                 foreach(var rec in (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList()) {
                     if(rec.Log == null && entry.Item2.TryGetValue(rec.Id, out var value)) {
@@ -43,6 +43,7 @@ namespace Runner.Server.Controllers
                     }
                 }
                 _context.SaveChanges();
+                await Task.Delay(TimeSpan.FromMinutes(10));
                 dict.TryRemove(timelineId, out _);
             }
         }

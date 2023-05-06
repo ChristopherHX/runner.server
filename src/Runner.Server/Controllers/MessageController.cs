@@ -852,7 +852,7 @@ namespace Runner.Server.Controllers
             return AzureDevopsMain(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs, taskNames: taskNames);
         }
 
-        private void AddJob(Job job) {
+        private async void AddJob(Job job) {
             try {
                 _cache.Set(job.JobId, job);
                 job.WorkflowRunAttempt = _context.Set<WorkflowRunAttempt>().Find(job.WorkflowRunAttempt.Id);
@@ -861,6 +861,7 @@ namespace Runner.Server.Controllers
                     _context.Jobs.Add(job);
                     _context.SaveChanges();
                 }
+                await Task.Delay(TimeSpan.FromMinutes(10));
                 initializingJobs.Remove(job.JobId, out _);
             } catch (Exception m){
                 throw new Exception("Failed to add job  " + job.name + " / " + job.WorkflowIdentifier + " / " + job.Matrix + " / " + job.JobId  + ": " + m.Message);
@@ -1082,12 +1083,13 @@ namespace Runner.Server.Controllers
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
                 }
             }
-            Action finishWorkflow = () => {
+            Action finishWorkflow = async () => {
                 if(callingJob == null) {
                     new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
                 }
                 // Cleanup dummy job for this workflow
                 if(workflowTimelineId == attempt.TimeLineId) {
+                    await Task.Delay(TimeSpan.FromMinutes(10));
                     initializingJobs.Remove(workflowTimelineId, out _);
                 }
             };
@@ -2714,18 +2716,9 @@ namespace Runner.Server.Controllers
                 } else {
                     var jobs = dependentjobgroup.ToArray();
                     finished = new CancellationTokenSource();
-                    Action<WorkflowEventArgs> finishAsyncWorkflow = evargs => {
+                    Action<WorkflowEventArgs> finishAsyncWorkflow = async evargs => {
                         finished.Cancel();
                         finishWorkflow();
-                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
-                        foreach(var job in jobs) {
-                            if(job.Childs != null) {
-                                foreach(var ji in job.Childs) {
-                                    initializingJobs.Remove(ji.Id, out _);
-                                }
-                            }
-                            initializingJobs.Remove(job.Id, out _);
-                        }
                         if(callingJob != null) {
                             callingJob.Workflowfinish.Invoke(callingJob, evargs);
                         } else {
@@ -2735,6 +2728,16 @@ namespace Runner.Server.Controllers
                             _context.SaveChanges();
                         }
                         _context.Dispose();
+                        await Task.Delay(TimeSpan.FromMinutes(10));
+                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
+                        foreach(var job in jobs) {
+                            if(job.Childs != null) {
+                                foreach(var ji in job.Childs) {
+                                    initializingJobs.Remove(ji.Id, out _);
+                                }
+                            }
+                            initializingJobs.Remove(job.Id, out _);
+                        }
                     };
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = e != null ? jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault() : null;
@@ -3057,12 +3060,13 @@ namespace Runner.Server.Controllers
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
                 }
             }
-            Action finishWorkflow = () => {
+            Action finishWorkflow = async () => {
                 if(callingJob == null) {
                     new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
                 }
                 // Cleanup dummy job for this workflow
                 if(workflowTimelineId == attempt.TimeLineId) {
+                    await Task.Delay(TimeSpan.FromMinutes(10));
                     initializingJobs.Remove(workflowTimelineId, out _);
                 }
             };
@@ -4630,18 +4634,9 @@ namespace Runner.Server.Controllers
                 } else {
                     var mjobs = dependentjobgroup.ToArray();
                     finished = new CancellationTokenSource();
-                    Action<WorkflowEventArgs> finishAsyncWorkflow = evargs => {
+                    Action<WorkflowEventArgs> finishAsyncWorkflow = async evargs => {
                         finished.Cancel();
                         finishWorkflow();
-                        // Cleanup dummy mjobs, which allows Runner.Client to display the workflowname
-                        foreach(var job in mjobs) {
-                            if(job.Childs != null) {
-                                foreach(var ji in job.Childs) {
-                                    initializingJobs.Remove(ji.Id, out _);
-                                }
-                            }
-                            initializingJobs.Remove(job.Id, out _);
-                        }
                         if(callingJob != null) {
                             callingJob.Workflowfinish.Invoke(callingJob, evargs);
                         } else {
@@ -4651,6 +4646,16 @@ namespace Runner.Server.Controllers
                             _context.SaveChanges();
                         }
                         _context.Dispose();
+                        await Task.Delay(TimeSpan.FromMinutes(10));
+                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
+                        foreach(var job in jobs) {
+                            if(job.Childs != null) {
+                                foreach(var ji in job.Childs) {
+                                    initializingJobs.Remove(ji.Id, out _);
+                                }
+                            }
+                            initializingJobs.Remove(job.Id, out _);
+                        }
                     };
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = e != null ? mjobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault() : null;
@@ -7260,7 +7265,7 @@ namespace Runner.Server.Controllers
                     List<HookResponse> responses = new List<HookResponse>();
                     bool azpipelines = string.Equals(e, "azpipelines", StringComparison.OrdinalIgnoreCase);
                     if(workflow.Any()) {
-                        WorkflowPendingRecordCache runCache;
+                        WorkflowPendingRecordCache runCache = null;
                         Action<long> addrunId = run => {
                             runid.Add(run);
                             runCache = updateRunId(run);
@@ -7269,7 +7274,7 @@ namespace Runner.Server.Controllers
                         foreach (var w in workflow) {
                             HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
-                            await finalizeWorkflow(runCache);
+                            finalizeWorkflow(runCache);
                             if(response.skipped || response.failed) {
                                 onworkflow(new WorkflowEventArgs() { runid = response.run_id, Success = !response.failed });
                             }
