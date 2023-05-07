@@ -679,6 +679,9 @@ namespace Runner.Server.Controllers
                 } else if(refresh == true) {
                     finishedJobs = getPreviousJobs(rrunid.Value);
                 }
+            } else {
+                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = _attempt.TimeLineId, Name = fileRelativePath } };
+                TimelineController.dict[_attempt.TimeLineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
             }
             _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
             if(run.Workflow == null && rrunid == null) {
