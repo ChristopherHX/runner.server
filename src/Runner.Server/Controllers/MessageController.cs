@@ -7268,8 +7268,9 @@ namespace Runner.Server.Controllers
                         var runCache = new List<WorkflowPendingRecordCache>();
                         Action<long, Guid> addrunId = (run, timelineid) => {
                             runid.Add(run);
-                            runCache.Add(updateRunId(run));
-                            Interlocked.Increment(ref runCache.PendingRecords);
+                            var cache = updateRunId(run);
+                            Interlocked.Increment(ref cache.PendingRecords);
+                            runCache.Add(cache);
                         };
                         foreach (var w in workflow) {
                             HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
