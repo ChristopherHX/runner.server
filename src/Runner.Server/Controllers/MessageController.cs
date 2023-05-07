@@ -658,13 +658,13 @@ namespace Runner.Server.Controllers
         }
         private static ConcurrentDictionary<string, ConcurrencyGroup> concurrencyGroups = new ConcurrentDictionary<string, ConcurrencyGroup>(StringComparer.OrdinalIgnoreCase);
 
-        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null) {
+        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long, Guid> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null) {
             string owner_name = repository.Split('/', 2)[0];
             string repo_name = repository.Split('/', 2)[1];
             Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
             var run = new WorkflowRun { FileName = fileRelativePath, Workflow = getWorkflow() };
             long attempt = 1;
-            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha };
+            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha, TimeLineId = Guid.NewGuid() };
             Dictionary<string, List<Job>> finishedJobs = null;
             if(rrunid != null) {
                 run = (from r in _context.Set<WorkflowRun>() where r.Id == rrunid select r).First();
@@ -703,7 +703,7 @@ namespace Runner.Server.Controllers
                 _context.SaveChanges();
             }
             Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
-            workflowrun?.Invoke(run.Id);
+            workflowrun?.Invoke(run.Id, _attempt.TimeLineId);
             var runid = run.Id;
             long runnumber = run.Id;
             // Legacy compat of pre 3.6.0
@@ -755,13 +755,13 @@ namespace Runner.Server.Controllers
             return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs);
         }
 
-        private HookResponse ConvertYamlAzure(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null, string[] taskNames = null) {
+        private HookResponse ConvertYamlAzure(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long, Guid> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null, string[] taskNames = null) {
             string owner_name = repository.Split('/', 2)[0];
             string repo_name = repository.Split('/', 2)[1];
             Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
             var run = new WorkflowRun { FileName = fileRelativePath, Workflow = getWorkflow() };
             long attempt = 1;
-            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha };
+            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha, TimeLineId = Guid.NewGuid() };
             Dictionary<string, List<Job>> finishedJobs = null;
             if(rrunid != null) {
                 run = (from r in _context.Set<WorkflowRun>() where r.Id == rrunid select r).First();
@@ -800,7 +800,7 @@ namespace Runner.Server.Controllers
                 _context.SaveChanges();
             }
             Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
-            workflowrun?.Invoke(run.Id);
+            workflowrun?.Invoke(run.Id, _attempt.TimeLineId);
             var runid = run.Id;
             long runnumber = run.Id;
             // Legacy compat of pre 3.6.0
@@ -7265,19 +7265,22 @@ namespace Runner.Server.Controllers
                     List<HookResponse> responses = new List<HookResponse>();
                     bool azpipelines = string.Equals(e, "azpipelines", StringComparison.OrdinalIgnoreCase);
                     if(workflow.Any()) {
-                        WorkflowPendingRecordCache runCache = null;
-                        Action<long> addrunId = run => {
+                        var runCache = new List<WorkflowPendingRecordCache>();
+                        Action<long, Guid> addrunId = (run, timelineid) => {
                             runid.Add(run);
-                            runCache = updateRunId(run);
+                            runCache.Add(updateRunId(run));
                             Interlocked.Increment(ref runCache.PendingRecords);
                         };
                         foreach (var w in workflow) {
                             HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, addrunId, Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
-                            finalizeWorkflow(runCache);
                             if(response.skipped || response.failed) {
                                 onworkflow(new WorkflowEventArgs() { runid = response.run_id, Success = !response.failed });
                             }
+                        }
+                        // Signal finish of triggering all workflow files
+                        foreach(var cache in runCache) {
+                            finalizeWorkflow(cache);
                         }
                     }
                     finalize();
