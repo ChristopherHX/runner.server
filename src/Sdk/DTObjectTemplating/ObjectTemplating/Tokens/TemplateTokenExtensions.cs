@@ -158,7 +158,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         /// </summary>
         public static Boolean[] CheckReferencesContext(
             this TemplateToken token,
-            params String[] patterns,
+            String[] patterns,
             ExpressionFlags flags = ExpressionFlags.None)
         {
             var ret = new Boolean[patterns.Length];
