@@ -5696,7 +5696,7 @@ namespace Runner.Server.Controllers
                         if(!isFork) {
                             var allvars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name).ToArray();
                             var varKeys = (from kv in allvars select $"vars.{kv.Key}").ToArray();
-                            var referencedVars = new Boolean[][2] { run.CheckReferencesContext(varKeys, templateContext.Flags), workflowEnvironment?.CheckReferencesContext(varKeys, templateContext.Flags) };
+                            var referencedVars = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(varKeys, templateContext.Flags)).ToArray();
                             var varsContext = new DictionaryContextData();
                             for(int i = 0; i < allvars.Length; i++) {
                                 // Only send referenced secrets
@@ -5711,7 +5711,7 @@ namespace Runner.Server.Controllers
                             }
                             var allsecrets = secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name).ToArray();
                             var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
-                            var referencedSecrets = new Boolean[][2] { run.CheckReferencesContext(secretKeys, templateContext.Flags), workflowEnvironment?.CheckReferencesContext(secretKeys, templateContext.Flags) };
+                            var referencedSecrets = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(secretKeys, templateContext.Flags)).ToArray();
                             for(int i = 0; i < allsecrets.Length; i++) {
                                 // Only send referenced secrets
                                 if(referencedSecrets.Any(rs => rs != null && rs[i])) {
