@@ -5693,13 +5693,33 @@ namespace Runner.Server.Controllers
                         var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                         fileContainerId = resp.Id;
                         variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
-                        foreach(var secr in secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name)) {
-                            variables[secr.Key] = new VariableValue(secr.Value, false);
-                        }
                         if(!isFork) {
-                            foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name)) {
-                                variables[secr.Key] = new VariableValue(secr.Value, true);
+                            var allvars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name).ToArray();
+                            var varKeys = (from kv in allvars select $"vars.{kv.Key}").ToArray();
+                            var referencedVars = new Boolean[][2] { run.CheckReferencesContext(varKeys, templateContext.Flags), workflowEnvironment?.CheckReferencesContext(varKeys, templateContext.Flags) };
+                            var varsContext = new DictionaryContextData();
+                            for(int i = 0; i < allvars.Length; i++) {
+                                // Only send referenced secrets
+                                if(referencedVars.Any(rs => rs != null && rs[i])) {
+                                    variables[allvars[i].Key] = new VariableValue(allvars[i].Value, true);
+                                    varsContext[allvars[i].Key] = new StringContextData(allvars[i].Value);
+                                }
                             }
+                            contextData["vars"] = varsContext;
+                            foreach(var secr in secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name)) {
+                                variables[secr.Key] = new VariableValue(secr.Value, false);
+                            }
+                            var allsecrets = secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name).ToArray();
+                            var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
+                            var referencedSecrets = new Boolean[][2] { run.CheckReferencesContext(secretKeys, templateContext.Flags), workflowEnvironment?.CheckReferencesContext(secretKeys, templateContext.Flags) };
+                            for(int i = 0; i < allsecrets.Length; i++) {
+                                // Only send referenced secrets
+                                if(referencedSecrets.Any(rs => rs != null && rs[i])) {
+                                    variables[allsecrets[i].Key] = new VariableValue(allsecrets[i].Value, true);
+                                }
+                            }
+                        } else {
+                            contextData["vars"] = null;
                         }
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;

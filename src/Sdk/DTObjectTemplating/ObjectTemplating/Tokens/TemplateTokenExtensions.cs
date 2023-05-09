@@ -156,6 +156,32 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         /// Traverses the token and checks whether all required expression values
         /// and functions are provided.
         /// </summary>
+        public static Boolean[] CheckReferencesContext(
+            this TemplateToken token,
+            params String[] patterns,
+            ExpressionFlags flags = ExpressionFlags.None)
+        {
+            var ret = new Boolean[patterns.Length];
+            var expressionTokens = token.Traverse()
+                .OfType<BasicExpressionToken>()
+                .ToArray();
+            var parser = new ExpressionParser() { Flags = flags };
+            foreach (var expressionToken in expressionTokens)
+            {
+                var tree = parser.ValidateSyntax(expressionToken.Expression, null);
+                var tmp = tree.CheckReferencesContext(patterns);
+                for(int i = 0; i < tmp.Length; i++) {
+                    ret[i] |= tmp[i];
+                }
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Traverses the token and checks whether all required expression values
+        /// and functions are provided.
+        /// </summary>
         public static bool CheckHasRequiredContext(
             this TemplateToken token,
             IReadOnlyObject expressionValues,
