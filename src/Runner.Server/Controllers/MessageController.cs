@@ -6925,7 +6925,7 @@ namespace Runner.Server.Controllers
 
         private static bool IsReservedVariable(string v) {
             var pattern = new Regex("^[a-zA-Z_][a-zA-Z_0-9]*$");
-            return !pattern.IsMatch(v) || string.StartsWith(v, "GITHUB_", StringComparison.OrdinalIgnoreCase);
+            return !pattern.IsMatch(v) || v.StartsWith("GITHUB_", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsActionsDebugVariable(string v) {
