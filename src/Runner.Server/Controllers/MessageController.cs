@@ -6902,11 +6902,16 @@ namespace Runner.Server.Controllers
             IDictionary<string, string> GetReservedSecrets();
         }
 
+        private static bool IsReservedVariable(string v) {
+            var pattern = new Regex("^[a-zA-Z_][a-zA-Z_0-9]*$");
+            return pattern.IsMatch(v) && !string.StartsWith(v, "GITHUB_", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static IDictionary<string, string> WithReservedSecrets(IDictionary<string, string> dict, IDictionary<string, string> reservedsecrets) {
             var ret = dict == null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
             if(reservedsecrets != null) {
                 foreach(var kv in reservedsecrets) {
-                    if(kv.Key.Contains(".") || string.Equals(kv.Key, "GITHUB_TOKEN", StringComparison.OrdinalIgnoreCase)) {
+                    if(IsReservedVariable(kv.Key) {
                         ret[kv.Key] = kv.Value;
                     }
                 }
