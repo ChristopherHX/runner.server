@@ -1714,7 +1714,7 @@ namespace Runner.Server.Controllers
                             if(workflowSecrets != null) {
                                 foreach(var secret in workflowSecrets) {
                                     var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
-                                    if(secretName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", secretName) == 0) {
+                                    if(IsReservedVariable(secretName)) {
                                         throw new Exception($"This workflow defines the reserved secret {secretName}, using it can cause undefined behavior");
                                     }
                                     var secretMapping = secret.Value?.AssertMapping($"on.workflow_call.secrets.{secretName}");
@@ -5699,9 +5699,10 @@ namespace Runner.Server.Controllers
                             var referencedVars = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(varKeys, templateContext.Flags)).ToArray();
                             var varsContext = new DictionaryContextData();
                             for(int i = 0; i < allvars.Length; i++) {
-                                // Only send referenced secrets
-                                if(referencedVars.Any(rs => rs != null && rs[i])) {
-                                    variables[allvars[i].Key] = new VariableValue(allvars[i].Value, true);
+                                // Only send referenced or reserved variables
+                                if(IsReservedVariable(allvars[i].Key)) {
+                                    variables[allvars[i].Key] = new VariableValue(allvars[i].Value, false);
+                                } else if(referencedVars.Any(rs => rs != null && rs[i]) || IsActionsDebugVariable(allvars[i].Key)) {
                                     varsContext[allvars[i].Key] = new StringContextData(allvars[i].Value);
                                 }
                             }
@@ -5713,8 +5714,8 @@ namespace Runner.Server.Controllers
                             var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
                             var referencedSecrets = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(secretKeys, templateContext.Flags)).ToArray();
                             for(int i = 0; i < allsecrets.Length; i++) {
-                                // Only send referenced secrets
-                                if(referencedSecrets.Any(rs => rs != null && rs[i])) {
+                                // Only send referenced or reserved secrets
+                                if(referencedSecrets.Any(rs => rs != null && rs[i]) || IsReservedVariable(allsecrets[i].Key) || IsActionsDebugVariable(allsecrets[i].Key)) {
                                     variables[allsecrets[i].Key] = new VariableValue(allsecrets[i].Value, true);
                                 }
                             }
@@ -6922,11 +6923,20 @@ namespace Runner.Server.Controllers
             IDictionary<string, string> GetReservedSecrets();
         }
 
+        private static bool IsReservedVariable(string v) {
+            var pattern = new Regex("^[a-zA-Z_][a-zA-Z_0-9]*$");
+            return !pattern.IsMatch(v) || string.StartsWith(v, "GITHUB_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsActionsDebugVariable(string v) {
+            return string.Equals(v, "ACTIONS_STEP_DEBUG", StringComparison.OrdinalIgnoreCase) || string.Equals(v, "ACTIONS_RUNNER_DEBUG", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static IDictionary<string, string> WithReservedSecrets(IDictionary<string, string> dict, IDictionary<string, string> reservedsecrets) {
             var ret = dict == null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
             if(reservedsecrets != null) {
                 foreach(var kv in reservedsecrets) {
-                    if(kv.Key.Contains(".") || string.Equals(kv.Key, "GITHUB_TOKEN", StringComparison.OrdinalIgnoreCase)) {
+                    if(IsReservedVariable(kv.Key) || /* Allow overriding them while calling reusable workflows */ !ret.ContainsKey(kv.Key) && IsActionsDebugVariable(kv.Key)) {
                         ret[kv.Key] = kv.Value;
                     }
                 }
