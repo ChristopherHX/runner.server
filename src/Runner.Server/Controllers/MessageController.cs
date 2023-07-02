@@ -5693,37 +5693,31 @@ namespace Runner.Server.Controllers
                         var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                         fileContainerId = resp.Id;
                         variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
-                        if(!isFork || !workflowContext.HasFeature("system.runner.server.NoVarsForPRFromFork")) {
-                            // Only send referenced action variables
-                            var allvars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name).ToArray();
-                            var varKeys = (from kv in allvars select $"vars.{kv.Key}").ToArray();
-                            var referencedVars = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(varKeys, templateContext.Flags)).ToArray();
-                            var varsContext = new DictionaryContextData();
-                            for(int i = 0; i < allvars.Length; i++) {
-                                // Only send referenced or reserved variables
-                                if(IsReservedVariable(allvars[i].Key)) {
-                                    variables[allvars[i].Key] = new VariableValue(allvars[i].Value, false);
-                                } else if(referencedVars.Any(rs => rs != null && rs[i]) || IsActionsDebugVariable(allvars[i].Key)) {
-                                    varsContext[allvars[i].Key] = new StringContextData(allvars[i].Value);
-                                }
+                        bool sendUserVariables = !isFork || !workflowContext.HasFeature("system.runner.server.NoVarsForPRFromFork");
+                        // Only send referenced action variables
+                        var allvars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name).ToArray();
+                        var varKeys = (from kv in allvars select $"vars.{kv.Key}").ToArray();
+                        var referencedVars = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(varKeys, templateContext.Flags)).ToArray();
+                        var varsContext = new DictionaryContextData();
+                        for(int i = 0; i < allvars.Length; i++) {
+                            // Only send referenced or reserved variables
+                            if(IsReservedVariable(allvars[i].Key)) {
+                                variables[allvars[i].Key] = new VariableValue(allvars[i].Value, false);
+                            } else if(sendUserVariables && referencedVars.Any(rs => rs != null && rs[i]) || IsActionsDebugVariable(allvars[i].Key)) {
+                                varsContext[allvars[i].Key] = new StringContextData(allvars[i].Value);
                             }
-                            // Pass action user variables
-                            contextData["vars"] = varsContext;
                         }
-                        // Pass actions feature flags
-                        foreach(var secr in secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name)) {
-                            variables[secr.Key] = new VariableValue(secr.Value, false);
-                        }
-                        if(!isFork) {
-                            // Only send referenced action secrets
-                            var allsecrets = secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name).ToArray();
-                            var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
-                            var referencedSecrets = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(secretKeys, templateContext.Flags)).ToArray();
-                            for(int i = 0; i < allsecrets.Length; i++) {
-                                // Only send referenced or reserved secrets
-                                if(referencedSecrets.Any(rs => rs != null && rs[i]) || IsReservedVariable(allsecrets[i].Key) || IsActionsDebugVariable(allsecrets[i].Key)) {
-                                    variables[allsecrets[i].Key] = new VariableValue(allsecrets[i].Value, true);
-                                }
+                        // Pass action user variables
+                        contextData["vars"] = varsContext;
+                        bool sendUserSecrets = !isFork;
+                        // Only send referenced action secrets
+                        var allsecrets = secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name).ToArray();
+                        var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
+                        var referencedSecrets = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(secretKeys, templateContext.Flags)).ToArray();
+                        for(int i = 0; i < allsecrets.Length; i++) {
+                            // Only send referenced or reserved secrets
+                            if(sendUserSecrets && referencedSecrets.Any(rs => rs != null && rs[i]) || IsReservedVariable(allsecrets[i].Key) || IsActionsDebugVariable(allsecrets[i].Key)) {
+                                variables[allsecrets[i].Key] = new VariableValue(allsecrets[i].Value, true);
                             }
                         }
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
