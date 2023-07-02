@@ -153,8 +153,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         }
 
         /// <summary>
-        /// Traverses the token and checks whether all required expression values
-        /// and functions are provided.
+        /// Traverses the token and checks whether a context pattern has been referenced inside an expression
         /// </summary>
         public static Boolean[] CheckReferencesContext(
             this TemplateToken token,

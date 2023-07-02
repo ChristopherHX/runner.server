@@ -5112,7 +5112,7 @@ namespace Runner.Server.Controllers
                 {
                     var _hook = workflowContext.EventPayload;
                     var _ghook = _hook.ToObject<GiteaHook>();
-                    isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && (_ghook?.pull_request?.head?.Repo?.Fork ?? false);
+                    isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && _ghook?.pull_request?.Base?.Repo?.full_name != null && (_ghook?.pull_request?.Base?.Repo?.full_name != _ghook?.pull_request?.head?.Repo?.full_name);
                     calculatedPermissions["metadata"] = "read";
                     var stkn = jobPermissions as StringToken;
                     if(jobPermissions == null && callingJob?.Permissions != null) {
@@ -5693,7 +5693,8 @@ namespace Runner.Server.Controllers
                         var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                         fileContainerId = resp.Id;
                         variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
-                        if(!isFork) {
+                        if(!isFork || !workflowContext.HasFeature("system.runner.server.NoVarsForPRFromFork")) {
+                            // Only send referenced action variables
                             var allvars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name).ToArray();
                             var varKeys = (from kv in allvars select $"vars.{kv.Key}").ToArray();
                             var referencedVars = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(varKeys, templateContext.Flags)).ToArray();
@@ -5706,10 +5707,15 @@ namespace Runner.Server.Controllers
                                     varsContext[allvars[i].Key] = new StringContextData(allvars[i].Value);
                                 }
                             }
+                            // Pass action user variables
                             contextData["vars"] = varsContext;
-                            foreach(var secr in secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name)) {
-                                variables[secr.Key] = new VariableValue(secr.Value, false);
-                            }
+                        }
+                        // Pass actions feature flags
+                        foreach(var secr in secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name)) {
+                            variables[secr.Key] = new VariableValue(secr.Value, false);
+                        }
+                        if(!isFork) {
+                            // Only send referenced action secrets
                             var allsecrets = secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name).ToArray();
                             var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
                             var referencedSecrets = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(secretKeys, templateContext.Flags)).ToArray();
@@ -5719,8 +5725,6 @@ namespace Runner.Server.Controllers
                                     variables[allsecrets[i].Key] = new VariableValue(allsecrets[i].Value, true);
                                 }
                             }
-                        } else {
-                            contextData["vars"] = null;
                         }
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
