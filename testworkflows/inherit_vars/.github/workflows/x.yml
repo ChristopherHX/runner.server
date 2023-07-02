@@ -5,7 +5,7 @@ on:
 jobs:
   assert_ACTIONS_STEP_DEBUG:
     runs-on: self-hosted
-    if: vars.ACTIONS_STEP_DEBUG != true
+    if: vars.ACTIONS_STEP_DEBUG != 'true'
     steps:
     - run: exit 1
   test:
