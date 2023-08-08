@@ -211,6 +211,7 @@ namespace Runner.Server.Controllers
                 }
             }
             if(outOfSyncTimeLineUpdate) {
+                // Delay by async Task.Run caused missing log lines for (reusable) workflows and skipped job logs in Runner.Client
                 Task.Run(() => TimeLineUpdate?.Invoke(timelineId, records));
             } else {
                 TimeLineUpdate?.Invoke(timelineId, records);

@@ -865,7 +865,7 @@ namespace Runner.Client
                 "Run interactively");
             var traceOpt = new Option<bool>(
                 new[] {"--trace"},
-                "Client Trace");
+                "Client Trace of console log events, to debug missing live logs");
             var quietOpt = new Option<bool>(
                 new[] {"-q", "--quiet"},
                 "Display no progress in the cli");
