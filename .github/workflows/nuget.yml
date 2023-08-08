@@ -102,6 +102,7 @@ jobs:
     - name: Test
       run: |
         set -x
+        gharun -C testworkflows/workflowerrors || :
         gharun -C testworkflows/workflowerrors --trace || :
         gharun -W testworkflows/testlocalcheckout.yml
         gharun -W testworkflows/testhashfiles.yml

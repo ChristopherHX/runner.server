@@ -175,10 +175,10 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
-            return await UpdateTimeLine(timelineId, patch);
+            return await UpdateTimeLine(timelineId, patch, true);
         }
 
-        public async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch)
+        public async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch, bool outOfSyncTimeLineUpdate = false)
         {
             var old = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
             var records = old.ToList();
@@ -210,7 +210,11 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            Task.Run(() => TimeLineUpdate?.Invoke(timelineId, records));
+            if(outOfSyncTimeLineUpdate) {
+                Task.Run(() => TimeLineUpdate?.Invoke(timelineId, records));
+            } else {
+                TimeLineUpdate?.Invoke(timelineId, records);
+            }
             
             await _context.AddRangeAsync(from rec in records where !old.Contains(rec) select rec);
             await _context.SaveChangesAsync();
