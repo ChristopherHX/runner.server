@@ -7175,7 +7175,7 @@ namespace Runner.Server.Controllers
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         } else {
                             // Send lost logs, but mask them as lost
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record = new TimelineRecordFeedLinesWrapper(record.StepId, (from val in record.Value select $"##[lost]{val}").ToList(), record.StartLine) }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record = new TimelineRecordFeedLinesWrapper(record.StepId, (from lineval in record.Value select $"##[lost]{lineval}").ToList(), record.StartLine ?? 0) }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
