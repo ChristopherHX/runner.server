@@ -18,6 +18,7 @@
     <PackageProjectUrl>https://github.com/ChristopherHX/runner.server</PackageProjectUrl>
     <!-- See https://github.com/dotnet/sdk/issues/18116#issuecomment-855266314 -->
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,7 +34,7 @@
     <Content Include="..\Runner.Server\$(OutDir)\Runner.Server.deps.json" PackagePath="tools\net6.0\any" >
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    
+    <None Include="docs\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
   <ItemGroup>
