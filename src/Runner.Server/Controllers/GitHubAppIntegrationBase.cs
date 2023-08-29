@@ -22,7 +22,7 @@ namespace Runner.Server.Controllers
         protected int GitHubAppId { get; }
         private string GitServerUrl { get; }
         
-        protected GitHubAppIntegrationBase(IConfiguration configuration) : VssControllerBase(configuration) {
+        protected GitHubAppIntegrationBase(IConfiguration configuration) : base(configuration) {
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
             GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
