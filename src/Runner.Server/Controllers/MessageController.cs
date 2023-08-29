@@ -5653,7 +5653,7 @@ namespace Runner.Server.Controllers
                             var ghappPerm = new Dictionary<string, string>(calculatedPermissions, StringComparer.OrdinalIgnoreCase);
                             // id_token is provided by the systemvssconnection, not by github_token
                             ghappPerm.Remove("id_token");
-                            runnerToken = await CreateGithubAppToken(repo, new { Permissions = ghappPerm });
+                            runnerToken = CreateGithubAppToken(repo, new { Permissions = ghappPerm }).GetAwaiter().GetResult();
                             if(runnerToken != null) {
                                 variables["github_token"] = variables["system.github.token"] = new VariableValue(runnerToken, true);
                                 variables["system.github.token.permissions"] = new VariableValue(Newtonsoft.Json.JsonConvert.SerializeObject(calculatedPermissions), false);
