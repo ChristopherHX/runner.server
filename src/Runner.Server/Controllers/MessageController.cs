@@ -1096,7 +1096,7 @@ namespace Runner.Server.Controllers
 
                         }
                     } else {
-                        var ghAppToken = await CreateGithubAppToken(ownerAndRepo[0], ownerAndRepo[1], new { Permissions = new { metadata = "read", checks = "write" } });
+                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
                         if(ghAppToken != null) {
                             try {
                                 var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
@@ -3053,7 +3053,7 @@ namespace Runner.Server.Controllers
 
                         }
                     } else {
-                        var ghAppToken = await CreateGithubAppToken(ownerAndRepo[0], ownerAndRepo[1], new { Permissions = new { metadata = "read", checks = "write" } });
+                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
                         if(ghAppToken != null) {
                             try {
                                 var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
@@ -5653,7 +5653,7 @@ namespace Runner.Server.Controllers
                             var ghappPerm = new Dictionary<string, string>(calculatedPermissions, StringComparer.OrdinalIgnoreCase);
                             // id_token is provided by the systemvssconnection, not by github_token
                             ghappPerm.Remove("id_token");
-                            runnerToken = await CreateGithubAppToken(ownerAndRepo[0], ownerAndRepo[1], new { Permissions = ghappPerm });
+                            runnerToken = await CreateGithubAppToken(repo, new { Permissions = ghappPerm });
                             if(runnerToken != null) {
                                 variables["github_token"] = variables["system.github.token"] = new VariableValue(runnerToken, true);
                                 variables["system.github.token.permissions"] = new VariableValue(Newtonsoft.Json.JsonConvert.SerializeObject(calculatedPermissions), false);
