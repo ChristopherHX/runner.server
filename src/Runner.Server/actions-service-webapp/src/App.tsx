@@ -107,8 +107,8 @@ function List() {
       borderColor: 'gray',
       borderStyle: 'solid'
     }}>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", visibility: page <= 0 ? "collapse" : "visible", padding: '10px' }} to={"../"+ (page - 1)  + "/" + params['*']}>Previous</Link>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", padding: '10px'}} to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
+      <Link className='btn btn-secondary' style={{width: "50%", visibility: page <= 0 ? "collapse" : "visible" }} to={"../"+ (page - 1)  + "/" + params['*']}>Previous</Link>
+      <Link className='btn btn-primary' style={{width: "50%"}} to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
     </div>
     {/* <span style={{
       display: "block",
@@ -210,17 +210,12 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
       borderColor: 'gray',
       borderStyle: 'solid',
       padding: '10px' }} href={param.externalBackUrl(params) || ""} target="_blank" rel="noreferrer">{param.externalBackLabel(params)}</a>: <></>}
-    <div style={{
-      display: "flex",
-      width: 'calc(100% - 2px)',
-      // height: '1px',
-      border: '1px',
-      borderTop: '1px',
-      borderColor: 'gray',
-      borderStyle: 'solid'
+    <div className="btn-group" role="group"  style={{
+        display: "flex",
+        width: "100%"
     }}>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", visibility: page <= 0 ? "collapse" : "visible", padding: '10px' }} to={"../"+ (page - 1)}>Previous</Link>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", padding: '10px'}} to={"../"+ (page + 1)}>Next</Link>
+      <Link className='btn btn-secondary' disabled={page <= 0} to={"../"+ (page - 1)}>Previous</Link>
+      <Link className='btn btn-primary' style={{ padding: '10px'}} to={"../"+ (page + 1)}>Next</Link>
     </div>
     {/* <span style={{
       display: "block",
@@ -256,7 +251,7 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
   </div>);
 };
 
-var ghHostApiUrl = "";
+var ghHostApiUrl = "https://supreme-goggles-pp7xqvvg674h757w-5000.app.github.dev";
 
 interface ILog {
   id: number,
