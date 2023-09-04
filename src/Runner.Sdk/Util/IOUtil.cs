@@ -249,7 +249,7 @@ namespace GitHub.Runner.Sdk
             Directory.CreateDirectory(Path.GetDirectoryName(stagingDir));
 
             // move source to staging
-            MoveOrCopy(sourceDir, stagingDir);
+            MoveOrCopy(sourceDir, stagingDir, token);
 
             // delete existing targetDir
             DeleteDirectory(targetDir, token);
@@ -258,7 +258,7 @@ namespace GitHub.Runner.Sdk
             Directory.CreateDirectory(Path.GetDirectoryName(targetDir));
 
             // move staging to target
-            MoveOrCopy(stagingDir, targetDir);
+            MoveOrCopy(stagingDir, targetDir, token);
         }
 
         /// <summary>
