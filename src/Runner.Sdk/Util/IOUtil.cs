@@ -205,7 +205,7 @@ namespace GitHub.Runner.Sdk
         }
 
         private static bool IsChildPath(string relativeTo, string sourceDir) {
-            var relativePath = Path.GetRelativePath(drive.RootDirectory, sourceDir);
+            var relativePath = Path.GetRelativePath(relativeTo, sourceDir);
             return relativePath != sourceDir && !relativePath.StartsWith("..");
         }
 
