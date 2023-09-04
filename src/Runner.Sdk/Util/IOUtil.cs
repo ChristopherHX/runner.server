@@ -214,7 +214,7 @@ namespace GitHub.Runner.Sdk
             DriveInfo ret = null;
             foreach (DriveInfo drive in allDrives)
             {
-                if (IsChildPath(drive.RootDirectory, sourceDir) && (ret == null || IsChildPath(ret.RootDirectory, drive.RootDirectory)))
+                if (IsChildPath(drive.RootDirectory.FullName, sourceDir) && (ret == null || IsChildPath(ret.RootDirectory.FullName, drive.RootDirectory.FullName)))
                 {
                     ret = drive;
                 }
