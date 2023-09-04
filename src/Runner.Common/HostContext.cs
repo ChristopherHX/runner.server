@@ -254,7 +254,7 @@ namespace GitHub.Runner.Common
                         GetDirectory(WellKnownDirectory.Root),
                         Constants.Path.ExternalsDirectory);
                     // No longer create the local externals folder if it doesn't exist
-                    if(!new DirectoryInfo(TargetDirectory).Exists) {
+                    if(!new DirectoryInfo(path).Exists) {
                         path = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage());
                     }
 #endif
