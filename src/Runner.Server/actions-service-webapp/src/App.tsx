@@ -88,7 +88,7 @@ function List() {
       <Link className='btn btn-primary w-50' to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
     </div>
     {jobs.map(val => (
-      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 active' : 'btn btn-outline-secondary w-100'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
+      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 text-start active' : 'btn btn-outline-secondary w-100 text-start'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
     ))}
   { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </span>);
@@ -173,7 +173,7 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
     </div>
     {jobs.map(val => (
       <div key={param.id(val)} className="btn-group w-100" role="group">
-        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} className='btn btn-outline-secondary w-100'>{param.summary(val, params)}</NavLink>
+        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} className='btn btn-outline-secondary text-start w-100'>{param.summary(val, params)}</NavLink>
         {(param.actions && param.actions(val, params)) || ""}
       </div>
     ))}
@@ -511,7 +511,7 @@ interface CollapsibleProps {
 const Collapsible : React.FC<CollapsibleProps> = props => {
   const [open, setOpen] = useState<boolean>();
   const [implicitOpen, setImplicitOpen] = useState<boolean>(false);
-  return (<div style={{display: "block"}}><div tabIndex={0} onKeyPress={() => setOpen(open => !open)} onClick={() => setOpen(open => !open)} style={{display: "flex", border: "1px", margin: "1px", width: "calc(100% - 4px)", borderStyle: "solid"}}><span style={{width: "100%"}}>{props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" } - {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}>{(open === undefined ? implicitOpen : open) ? (open === undefined ? "Implicit Expanded" : "Expanded"): "Collapsed"}</span></div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
+  return (<div className='mt-1 mb-1' style={{display: "block"}}><div tabIndex={0} onClick={() => setOpen(open => !open)} className={open ? 'd-flex btn btn-secondary text-start w-100 active' : 'd-flex btn btn-secondary text-start w-100'}><span style={{width: "100%"}}>{props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" } - {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}>{(open === undefined ? implicitOpen : open) ? (open === undefined ? "Implicit Expanded" : "Expanded"): "Collapsed"}</span></div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
     props.registerLiveLog(recordId, line => {
       var impl = implicitOpen;
       setImplicitOpen(true);
@@ -523,7 +523,7 @@ const Collapsible : React.FC<CollapsibleProps> = props => {
     });
   }} unregisterLiveLog={recordId => props.unregisterLiveLog(recordId)}/>)}</div>)
 }
-//key={timelineEntry.id}
+
 interface IWorkflowRun {
   id: string,
   fileName: string,
@@ -672,55 +672,55 @@ function JobPage() {
     {(() => {
       if(job !== undefined && job != null) {
           if(!job.result && (!job.errors || job.errors.length === 0)) {
-              return <div>
-                  <button onClick={(event) => {
+              return <div className="btn-group" role="group">
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancelWorkflow/" + job.runid, { method: "POST" });
                       })();
                   }}>Cancel Workflow</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
                       })();
                   }}>Cancel</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId + "?force=true", { method: "POST" });
                       })();
                   }}>Force Cancel</button>
               </div>;
           } else {
-              return <div>
-                  <button onClick={(event) => {
+              return <div className="btn-group" role="group">
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + job.runid, { method: "POST" });
                       })();
                   }}>Rerun Workflow</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + job.runid, { method: "POST" });
                       })();
                   }}>Rerun Failed Jobs</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId, { method: "POST" });
                       })();
                   }}>Rerun</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + job.runid + "?onLatestCommit=true", { method: "POST" });
                       })();
-                  }}>Rerun Workflow ( Latest Commit )</button>
-                  <button onClick={(event) => {
+                  }}>Rerun Workflow (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + job.runid + "?onLatestCommit=true", { method: "POST" });
                       })();
-                  }}>Rerun Failed Jobs ( Latest Commit )</button>
-                  <button onClick={(event) => {
+                  }}>Rerun Failed Jobs (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId + "?onLatestCommit=true", { method: "POST" });
                       })();
-                  }}>Rerun ( Latest Commit )</button>
+                  }}>Rerun (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
               </div>;
           }
       } else if(workflowRun !== undefined && workflowRun != null) {
@@ -767,9 +767,6 @@ function JobPage() {
     { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
     {(() => {
       if((timeline?.length || 0) > 1) {
-        // return (<span style={{width: '100%', height: '100%', overflowY: 'auto'}}>{timeline?.map(timelineEntry => (<Detail key={timelineEntry.id} timeline={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>))}</span>);
-        // return (<span style={{width: '100%', height: '100%', overflowY: 'auto'}}>{timeline?.map((timelineEntry, i) => (<div key={timelineEntry.id} tabIndex={0} onKeyPress={() => console.log("btn clicked")} onClick={() => console.log("clicked")} style={{display: "block", border: "1px", margin: "1px", width: "calc(100% - 4px)", borderStyle: "solid"}}>{timelineEntry.result} - {timelineEntry.name}</div>))}</span>);
-        // return (<>{timeline?.map((timelineEntry, i) => (<Collapsible key={timelineEntry.id} timelineEntry={timelineEntry} content={() => (<Detail key={timelineEntry.id} timeline={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>)}></Collapsible>))}</>);
         return (<>{timeline?.map((timelineEntry, i) => (<Collapsible key={timelineEntry.id} timelineEntry={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}></Collapsible>))}</>);
       }
       return (<Detail timeline={(timeline || [null])[0]} render={true} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>)
