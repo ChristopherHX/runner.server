@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { Link, Navigate, NavLink, Route, Routes, useParams, Params, useResolvedPath, resolvePath } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useParams, Params, useResolvedPath, resolvePath, LinkProps } from 'react-router-dom';
 import Convert from 'ansi-to-html'; 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -150,6 +150,15 @@ interface GenericListProps<T> {
   eventQuery?: (params : Readonly<Params<string>>) => string
 }
 
+interface DisableableProp {
+  disabled?: boolean
+}
+
+const DisableableLink = (param : LinkProps & React.RefAttributes<HTMLAnchorElement> & DisableableProp) => {
+  const { disabled, ...otherProps } = param;
+  return disabled ? (<button className={param.className} disabled={disabled} >{param.children}</button>) : (<Link {...otherProps}></Link>);
+};
+
 const GenericList = <T, >(param : GenericListProps<T>) => {
   var parentPath = useResolvedPath("..");
   var resolved = resolvePath("..", parentPath.pathname);
@@ -198,51 +207,17 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
   }, [params, param]);
   var page = Number.parseInt(params["page"] || "0");
   return (<div style={{width: "100%", height: "100%", overflowY: 'auto'}}>
-    <Link style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: !param.hasBack ? "none" : "block",
-      border: '1px',
-      borderBottom: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid',
-      padding: '10px' }} to={resolved}>Back</Link>
-    {param.externalBackUrl && param.externalBackLabel && param.externalBackLabel(params) ? <a style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: !param.externalBackUrl ? "none" : "block",
-      border: '1px',
-      borderBottom: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid',
-      padding: '10px' }} href={param.externalBackUrl(params) || ""} target="_blank" rel="noreferrer">{param.externalBackLabel(params)}</a>: <></>}
-    <div className="btn-group" role="group"  style={{
-        display: "flex",
-        width: "100%"
-    }}>
-      <Link className='btn btn-secondary' disabled={page <= 0} to={"../"+ (page - 1)}>Previous</Link>
-      <Link className='btn btn-primary' style={{ padding: '10px'}} to={"../"+ (page + 1)}>Next</Link>
+    <div className="btn-group w-100" role="group">
+      <DisableableLink className='btn btn-outline-secondary w-50' disabled={!param.hasBack} to={resolved}>Back</DisableableLink>
+      {param.externalBackUrl && param.externalBackLabel && param.externalBackLabel(params) ? <a className='btn btn-outline-secondary w-50' href={param.externalBackUrl(params) || ""} target="_blank" rel="noreferrer">{param.externalBackLabel(params)}</a>:<></>}
     </div>
-    {/* <span style={{
-      display: "block",
-      width: '100%',
-      height: '1px',
-      backgroundColor: 'gray'
-    }}></span> */}
+    <div className="btn-group w-100" role="group">
+      <DisableableLink className='btn btn-secondary w-50' disabled={page <= 0} to={"../"+ (page - 1)}>Previous</DisableableLink>
+      <Link className='btn btn-primary w-50' to={"../"+ (page + 1)}>Next</Link>
+    </div>
     {jobs.map(val => (
-      <div key={param.id(val)} style={{
-        width: 'calc(100% - 2px)',
-        display: "flex",
-        borderLeft: "1px",
-        borderRight: "1px",
-        borderBottom: "1px",
-        borderTop: "0",
-        borderStyle: 'solid',
-        borderColor: 'gray',
-        // margin: "1rem 0",
-      }} >
-        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} style={({ isActive }) => {
-          return {
-            width: "100%",
-            textDecoration: 'none',
-            color: 'black',
-            background: isActive ? "lightblue" : "white"
-          };
-        }}>{param.summary(val, params)}</NavLink>
+      <div key={param.id(val)} className="btn-group w-100" role="group">
+        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} className='btn btn-outline-secondary w-100'>{param.summary(val, params)}</NavLink>
         {(param.actions && param.actions(val, params)) || ""}
       </div>
       
@@ -251,7 +226,7 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
   </div>);
 };
 
-var ghHostApiUrl = "https://supreme-goggles-pp7xqvvg674h757w-5000.app.github.dev";
+var ghHostApiUrl = "";
 
 interface ILog {
   id: number,
@@ -952,15 +927,15 @@ function App() {
         <Route path="/timeline/:timeLineId" element={<TimeLineViewer></TimeLineViewer>}/>
         <Route path="/master/:a/:b/detail/:id" element={<RedirectOldUrl/>}/>
         <Route path="/master" element={<Navigate to={"0"}/>}/>
-        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
+        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
         <Route path="/" element={<Navigate to={"0"}/>}/>
         <Route path=":page/:owner/*" element={
           <Routes>
-            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
+            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
             <Route path="/" element={<Navigate to={"0"}/>}/>
             <Route path=":page/:repo/*" element={
               <Routes>
-                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="workflowrun" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
+                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="workflowrun" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
                 <Route path="/" element={<Navigate to={"0"}/>}/>
                 <Route path=":page/:runid/*" element={
                   <div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>
