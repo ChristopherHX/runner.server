@@ -81,58 +81,14 @@ function List() {
       borderRight: '1px',
       borderColor: 'gray',
       borderStyle: 'solid'}}>
-    <Link style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: "block",
-      border: '1px',
-      borderBottom: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid',
-      padding: '10px'}} to={resolved}>Back</Link>
-    <Link  to={"."} style={{
-        width: 'calc(100% - 22px)',
-        display: "block",
-        border: "1px",
-        borderStyle: 'solid',
-        borderColor: 'gray',
-        padding: '10px',
-        color: 'black',
-        textDecoration: 'none',
-        background: "white"
-      }}>Summary</Link>
-    <div style={{
-      display: "flex",
-      width: 'calc(100% - 2px)',
-      // height: '1px',
-      border: '1px',
-      borderTop: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid'
-    }}>
-      <Link className='btn btn-secondary' style={{width: "50%", visibility: page <= 0 ? "collapse" : "visible" }} to={"../"+ (page - 1)  + "/" + params['*']}>Previous</Link>
-      <Link className='btn btn-primary' style={{width: "50%"}} to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
+    <Link className='btn btn-outline-secondary w-100' to={resolved}>Back</Link>
+    <Link className='btn btn-outline-primary w-100' to={"."}>Summary</Link>
+    <div className="btn-group w-100" role="group">
+      <DisableableLink className='btn btn-secondary w-50' disabled={page <= 0} to={"../"+ (page - 1)  + "/" + params['*']}>Previous</DisableableLink>
+      <Link className='btn btn-primary w-50' to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
     </div>
-    {/* <span style={{
-      display: "block",
-      width: '100%',
-      height: '1px',
-      backgroundColor: 'gray'
-    }}></span> */}
     {jobs.map(val => (
-      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} style={({ isActive }) => {
-        return {
-          width: 'calc(100% - 2px)',
-          display: "block",
-          borderLeft: "1px",
-          borderRight: "1px",
-          borderBottom: "1px",
-          borderTop: "0",
-          borderStyle: 'solid',
-          borderColor: 'gray',
-          // margin: "1rem 0",
-          color: 'black',
-          textDecoration: 'none',
-          background: isActive ? "lightblue" : "white"
-        };
-      }}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
+      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 active' : 'btn btn-outline-secondary w-100'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
     ))}
   { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </span>);
@@ -220,7 +176,6 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
         <NavLink to={`${encodeURIComponent(param.id(val))}/0`} className='btn btn-outline-secondary w-100'>{param.summary(val, params)}</NavLink>
         {(param.actions && param.actions(val, params)) || ""}
       </div>
-      
     ))}
     { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </div>);
