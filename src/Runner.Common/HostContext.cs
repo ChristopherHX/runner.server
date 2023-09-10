@@ -66,6 +66,7 @@ namespace GitHub.Runner.Common
         private StartupType _startupType;
         private string _perfFile;
         private RunnerWebProxy _webProxy = new RunnerWebProxy();
+        private string configRoot = null;
 
         public event EventHandler Unloading;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
