@@ -7,16 +7,12 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import { CircleIcon, SkipIcon, StopIcon, XCircleFillIcon, CheckCircleFillIcon, ChevronDownIcon, ChevronRightIcon, GitCommitIcon, RepoIcon, PersonIcon, MeterIcon } from '@primer/octicons-react'
 
 var convert = new Convert({
   newline: true,
   escapeXML: true
 });
-
-interface IJobEvent {
-  repo: string,
-  job: IJob 
-}
 
 function List() {
   var params = useParams();
@@ -49,10 +45,27 @@ function List() {
         }
       })()
       if(page === 0) {
-        var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event?filter=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`);
+        var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?filter=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`);
         source.addEventListener("job", ev => {
-          var je = JSON.parse((ev as MessageEvent).data) as IJobEvent;
-          var x = je.job;
+          var x = JSON.parse((ev as MessageEvent).data) as IJob;
+          setJobs(_jobs => {
+              var jobs = [..._jobs];
+              var insertp = jobs.findIndex(j => j.runid > x.runid && j.attempt > x.attempt && j.requestId > x.requestId);
+              var sp = insertp > 0 ? jobs.splice(insertp) : jobs.splice(0);
+              if(sp.length > 0 && sp[0].jobId === x.jobId) {
+                sp.shift();
+              }
+              var final = [...jobs, x, ...sp];
+              // Remove elements from the first page
+              if(final.length > 30) {
+                  final.length = 30;
+              }
+              return final;
+          });
+        });
+        source.addEventListener("jobupdate", ev => {
+          console.log("jobupdate: " + JSON.stringify(ev));
+          var x = JSON.parse((ev as MessageEvent).data) as IJob;
           setJobs(_jobs => {
               var jobs = [..._jobs];
               var insertp = jobs.findIndex(j => j.runid > x.runid && j.attempt > x.attempt && j.requestId > x.requestId);
@@ -88,7 +101,7 @@ function List() {
       <Link className='btn btn-primary w-50' to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
     </div>
     {jobs.map(val => (
-      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 text-start active' : 'btn btn-outline-secondary w-100 text-start'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
+      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 text-start active' : 'btn btn-outline-secondary w-100 text-start'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;<TimelineStatus status={val.result ?? "inprogress"}/></span></NavLink>
     ))}
   { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </span>);
@@ -103,6 +116,7 @@ interface GenericListProps<T> {
   externalBackLabel?: (params : Readonly<Params<string>>) => string
   actions?: (el : T, params : Readonly<Params<string>>) => JSX.Element
   eventName?: string
+  eventUpdateName?: string
   eventQuery?: (params : Readonly<Params<string>>) => string
 }
 
@@ -144,19 +158,36 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
           setLoading(false);
         }
       })()
-      if((!params.page || params.page === "0") && param.eventName) {
+      if((!params.page || params.page === "0") && (param.eventName || param.eventUpdateName)) {
         var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?${(param.eventQuery && param.eventQuery(params)) ?? ""}`);
-        source.addEventListener(param.eventName, ev => {
-          var je = JSON.parse((ev as MessageEvent).data) as T;
-          setJobs(_jobs => {
-              var final = [je, ..._jobs];
-              // Remove elements from the first page
-              if(final.length > 30) {
-                  final.length = 30;
-              }
-              return final;
+        if(param.eventName) {
+          source.addEventListener(param.eventName, ev => {
+            var je = JSON.parse((ev as MessageEvent).data) as T;
+            setJobs(_jobs => {
+                var final = [je, ..._jobs];
+                // Remove elements from the first page
+                if(final.length > 30) {
+                    final.length = 30;
+                }
+                return final;
+            });
           });
-        });
+        }
+        if(param.eventUpdateName) {
+          source.addEventListener(param.eventUpdateName, ev => {
+            var je = JSON.parse((ev as MessageEvent).data) as T;
+            setJobs(_jobs => {
+              for(var i in _jobs) {
+                if(param.id(_jobs[i]) === param.id(je)) {
+                  var final = [..._jobs];
+                  final[i] = je;
+                  return final;
+                }
+              }
+              return _jobs;
+            });
+          });
+        }
         return () => source.close();
       }
     }
@@ -503,22 +534,44 @@ interface IWorkflowRunAttempt {
   timeLineId: string
 }
 
+const TimelineStatus = ({status, size} : { status : string, size?: number }) => {
+  switch(status?.toLowerCase()) {
+    case "inprogress":
+      return <MeterIcon className="text-warning progress-ring" size={size}/>
+    case "waiting":
+    case "pending":
+      return <CircleIcon verticalAlign="middle" size={size}/>
+    case "succeeded":
+      return <CheckCircleFillIcon className="text-success" verticalAlign="middle" size={size}/>
+    case "failed":
+      return <XCircleFillIcon className="text-danger" verticalAlign="middle" size={size}/>
+    case "skipped":
+      return <SkipIcon verticalAlign="middle" size={size}/>
+    case "canceled":
+      return <StopIcon verticalAlign="middle" size={size}/>
+    default:
+      return <span>{status}</span>
+  }
+};
+
 interface CollapsibleProps {
   timelineEntry : ITimeLine,
   registerLiveLog: (recordId: string, callback: (line: string[]) => void) => void
   unregisterLiveLog: (recordId: string) => void
 }
 const Collapsible : React.FC<CollapsibleProps> = props => {
-  const [open, setOpen] = useState<boolean>();
+  const [open, setOpen] = useState<boolean>(false);
   const [implicitOpen, setImplicitOpen] = useState<boolean>(false);
-  return (<div className='mt-1 mb-1' style={{display: "block"}}><div tabIndex={0} onClick={() => setOpen(open => !open)} className={open ? 'd-flex btn btn-secondary text-start w-100 active' : 'd-flex btn btn-secondary text-start w-100'}><span style={{width: "100%"}}>{props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" } - {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}>{(open === undefined ? implicitOpen : open) ? (open === undefined ? "Implicit Expanded" : "Expanded"): "Collapsed"}</span></div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
+  return (<div className='mt-1 mb-1' style={{display: "block"}}><div tabIndex={0} onClick={() => setOpen(open => !open)} className={open ? 'd-flex btn btn-secondary text-start w-100 active' : 'd-flex btn btn-secondary text-start w-100'}><span style={{width: "100%"}}>{open ? (<ChevronDownIcon/>) : (<ChevronRightIcon/>)} <TimelineStatus status={props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" }/> {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}></span></div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
     props.registerLiveLog(recordId, line => {
       var impl = implicitOpen;
-      setImplicitOpen(true);
       if(impl) {
         // Opening the log component causes a load request, which leads to duplicated lines.
         // Skipping the first live log events reduces the chance to see this.
         callback(line);
+      } else {
+        setImplicitOpen(true);
+        setOpen(true);
       }
     });
   }} unregisterLiveLog={recordId => props.unregisterLiveLog(recordId)}/>)}</div>)
@@ -668,7 +721,7 @@ function JobPage() {
     return () => signal.abort();
   }, [artifacts]);
   return ( <span style={{width: '100%', height: '100%', overflowY: 'auto'}}>
-    <h1>{workflowRun ? workflowRun.fileName : job ? (job?.result ? job.name + " completed with result: " + job.result : job?.name) : ""}</h1>
+    <h1>{workflowRun ? workflowRun.fileName : job ? (<><TimelineStatus status={job?.result ?? "inprogress"} size={32}/> {job.name}</>) : ""}</h1>
     {(() => {
       if(job !== undefined && job != null) {
           if(!job.result && (!job.errors || job.errors.length === 0)) {
@@ -724,36 +777,38 @@ function JobPage() {
               </div>;
           }
       } else if(workflowRun !== undefined && workflowRun != null) {
-        return (<><button onClick={(event) => {
+        return (<><div className="btn-group" role="group">
+        <button className='btn btn-secondary' onClick={(event) => {
           (async () => {
               await fetch(ghHostApiUrl + "/_apis/v1/Message/cancelWorkflow/" + params.runid, { method: "POST" });
           })();
         }}>Cancel Workflow</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
           (async () => {
               await fetch(ghHostApiUrl + "/_apis/v1/Message/forceCancelWorkflow/" + params.runid, { method: "POST" });
           })();
         }}>Force Cancel Workflow</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + params.runid, { method: "POST" });
             })();
         }}>Rerun Workflow</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + params.runid, { method: "POST" });
             })();
         }}>Rerun Failed Jobs</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + params.runid + "?onLatestCommit=true", { method: "POST" });
             })();
-        }}>Rerun Workflow ( Latest Commit )</button>
-        <button onClick={(event) => {
+        }}>Rerun Workflow (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + params.runid + "?onLatestCommit=true", { method: "POST" });
             })();
-        }}>Rerun Failed Jobs ( On Latest Commit )</button>
+        }}>Rerun Failed Jobs (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+        </div>
         {artifacts.map((container: ArtifactResponse) => <div>{(() => {
             if(container.files !== undefined) {
                 return (<div>{(container.files || []).filter(f => f.itemType === "file").map(file => <div><a href={file.contentLocation}>{file.path}</a></div>)}</div>);
@@ -879,15 +934,15 @@ function App() {
         <Route path="/timeline/:timeLineId" element={<TimeLineViewer></TimeLineViewer>}/>
         <Route path="/master/:a/:b/detail/:id" element={<RedirectOldUrl/>}/>
         <Route path="/master" element={<Navigate to={"0"}/>}/>
-        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
+        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer"><PersonIcon size={24}/></a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
         <Route path="/" element={<Navigate to={"0"}/>}/>
         <Route path=":page/:owner/*" element={
           <Routes>
-            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
+            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer"><RepoIcon size={24}/></a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
             <Route path="/" element={<Navigate to={"0"}/>}/>
             <Route path=":page/:repo/*" element={
               <Routes>
-                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="workflowrun" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
+                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} <TimelineStatus status={o.result ?? "Pending"}/></span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer"><GitCommitIcon verticalAlign='middle' size={24}/></a> : <></> } eventName="workflowrun" eventUpdateName="workflowrunupdate" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
                 <Route path="/" element={<Navigate to={"0"}/>}/>
                 <Route path=":page/:runid/*" element={
                   <div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>
@@ -905,16 +960,6 @@ function App() {
             }/>
           </Routes>
         }/>
-        {/* <Route path=":owner/:repo/:runid/*" element={
-        <>
-          <Routes>
-            <Route path=":page/*" element={<List/>}/>
-            <Route path="/" element={<Navigate to={"0"}/>}/>
-          </Routes>
-          <Routes>
-            <Route path=":page/:id/*" element={<JobPage></JobPage>}/>
-          </Routes>
-        </>}/> */}
       </Routes>
     );
 }
