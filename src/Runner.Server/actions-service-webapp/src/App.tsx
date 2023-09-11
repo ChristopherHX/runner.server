@@ -811,7 +811,7 @@ function JobPage() {
         </div>
         {artifacts.map((container: ArtifactResponse) => <div>{(() => {
             if(container.files !== undefined) {
-                return (<div>{(container.files || []).filter(f => f.itemType === "file").map(file => <div><a href={file.contentLocation}>{file.path}</a></div>)}</div>);
+                return (<div>{(container.files || []).filter(f => f.itemType === "file").map(file => <div><a className="btn btn-outline-secondary w-100 text-start" href={file.contentLocation}>{file.path}</a></div>)}</div>);
             }
             return <div/>;
         })()}</div>)}
