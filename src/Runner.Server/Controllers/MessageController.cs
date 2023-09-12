@@ -1412,8 +1412,8 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
                         attempt.Result = TaskResult.Skipped;
-                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                 };
@@ -1817,8 +1817,8 @@ namespace Runner.Server.Controllers
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowContext.WorkflowRunName}");
                     if(attempt.WorkflowRun != null && !string.IsNullOrEmpty(workflowContext.WorkflowRunName)) {
                         attempt.WorkflowRun.DisplayName = workflowContext.WorkflowRunName;
-                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                     }
                 }
 
@@ -2687,8 +2687,8 @@ namespace Runner.Server.Controllers
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
-                            UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
+                            UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                         }
                         _context.Dispose();
                     };
@@ -2949,8 +2949,8 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = true });
                     } else {
                         attempt.Result = TaskResult.Succeeded;
-                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                     }
                 }
             } catch(Exception ex) {
@@ -2960,8 +2960,8 @@ namespace Runner.Server.Controllers
                 } else {
                     //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                     attempt.Result = TaskResult.Failed;
-                    UpdateWorkflowRun(attempt, repository_name);
                     _context.SaveChanges();
+                    UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                 }
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
             } finally {
@@ -2973,7 +2973,7 @@ namespace Runner.Server.Controllers
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
         }
 
-        private static void UpdateWorkflowRun(WorkflowRunAttempt attempt, string repository_name)
+        private void UpdateWorkflowRun(WorkflowRunAttempt attempt, Guid workflowRecordId, string repository_name)
         {
             attempt.WorkflowRun.Result = attempt.Result;
             attempt.WorkflowRun.Ref = attempt.Ref;
@@ -2981,6 +2981,7 @@ namespace Runner.Server.Controllers
             attempt.WorkflowRun.EventName = attempt.EventName;
             var ownerAndRepo = repository_name.Split("/", 2);
             Task.Run(() => runupdateevent?.Invoke(ownerAndRepo[0], ownerAndRepo[1], attempt.WorkflowRun));
+            new TimelineController(_context, Configuration).UpdateTimeLine(attempt.TimeLineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(new List<TimelineRecord>{new TimelineRecord { Id = workflowRecordId, ParentId = attempt.TimeLineId, State = attempt.Result != null ? TimelineRecordState.Completed : null, Result = attempt.Result != null ? attempt.Result : null}}));
         }
 
         private struct NugetVersion {
@@ -3324,8 +3325,8 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
                         attempt.Result = TaskResult.Skipped;
-                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                 };
@@ -3377,8 +3378,8 @@ namespace Runner.Server.Controllers
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
                     if(attempt.WorkflowRun != null && !string.IsNullOrEmpty(workflowname)) {
                         attempt.WorkflowRun.DisplayName = workflowname;
-                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                     }
                 }
 
@@ -4599,8 +4600,8 @@ namespace Runner.Server.Controllers
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
-                            UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
+                            UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                         }
                         _context.Dispose();
                     };
@@ -4817,8 +4818,8 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = true });
                     } else {
                         attempt.Result = TaskResult.Succeeded;
-                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                     }
                 }
             } catch(Exception ex) {
@@ -4828,8 +4829,8 @@ namespace Runner.Server.Controllers
                 } else {
                     //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                     attempt.Result = TaskResult.Failed;
-                    UpdateWorkflowRun(attempt, repository_name);
                     _context.SaveChanges();
+                    UpdateWorkflowRun(attempt, workflowRecordId, repository_name);
                 }
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
             } finally {
