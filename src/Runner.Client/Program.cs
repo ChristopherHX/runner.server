@@ -1207,7 +1207,8 @@ namespace Runner.Client
                                         GITHUB_TOKEN = "",
                                         ReturnWithoutResolvingSha = false,
                                     }
-                                }.ToList()
+                                }.ToList(),
+                                DefaultWebUIView = "allworkflows"
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {

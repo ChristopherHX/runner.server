@@ -1,24 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { Link, Navigate, NavLink, Route, Routes, useParams, Params, useResolvedPath, resolvePath } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useParams, Params, useResolvedPath, resolvePath, LinkProps } from 'react-router-dom';
 import Convert from 'ansi-to-html'; 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import { CircleIcon, SkipIcon, StopIcon, XCircleFillIcon, CheckCircleFillIcon, ChevronDownIcon, ChevronRightIcon, GitCommitIcon, RepoIcon, PersonIcon, MeterIcon } from '@primer/octicons-react'
+import { ghHostApiUrl } from './config';
 
 var convert = new Convert({
   newline: true,
   escapeXML: true
 });
 
-interface IJobEvent {
-  repo: string,
-  job: IJob 
-}
-
-function List() {
+function List({ fullscreen } : { fullscreen?: boolean }) {
   var params = useParams();
   const [ jobs, setJobs ] = useState<IJob[]>([]);
   var page = Number.parseInt(params["page"] || "0");
@@ -29,10 +26,11 @@ function List() {
   useEffect(() => {
     setJobs([]);
     if(params.page) {
-      (async () => {
+        var runids = params.runid ? `&runid=${encodeURIComponent(params.runid || "")}` : "";
+        (async () => {
         try {
           setLoading(true);
-          var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent(page)}&repo=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`, { })
+          var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent(page)}&repo=${encodeURIComponent(params.owner && params.repo ? (params.owner + "/" + params.repo) : "")}${runids}`, { })
           if(resp.status === 200) {
             var jobs : IJob[] | null = await resp.json();
             setJobs(jobs || []);
@@ -48,12 +46,18 @@ function List() {
           setLoading(false);
         }
       })()
+      var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}${runids}`);
       if(page === 0) {
-        var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event?filter=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`);
         source.addEventListener("job", ev => {
-          var je = JSON.parse((ev as MessageEvent).data) as IJobEvent;
-          var x = je.job;
+          var x = JSON.parse((ev as MessageEvent).data) as IJob;
           setJobs(_jobs => {
+              for(var i in _jobs) {
+                if(_jobs[i].jobId === x.jobId) {
+                  var f = [..._jobs];
+                  f[i] = x;
+                  return f;
+                }
+              }
               var jobs = [..._jobs];
               var insertp = jobs.findIndex(j => j.runid > x.runid && j.attempt > x.attempt && j.requestId > x.requestId);
               var sp = insertp > 0 ? jobs.splice(insertp) : jobs.splice(0);
@@ -68,11 +72,24 @@ function List() {
               return final;
           });
         });
-        return () => source.close();
       }
+      source.addEventListener("jobupdate", ev => {
+        var x = JSON.parse((ev as MessageEvent).data) as IJob;
+        setJobs(_jobs => {
+          for(var i in _jobs) {
+            if(_jobs[i].jobId === x.jobId) {
+              var final = [..._jobs];
+              final[i] = x;
+              return final;
+            }
+          }
+          return _jobs;
+        });
+      });
+      return () => source.close();
     }
   }, [page, params.page, params.owner, params.repo, params.runid]);
-  return (<span style={{
+  return (<span style={fullscreen ? {width: '100%', height: '100%'} : {
       maxWidth: '400px',
       width: '40vw',
       height: '100%',
@@ -81,58 +98,14 @@ function List() {
       borderRight: '1px',
       borderColor: 'gray',
       borderStyle: 'solid'}}>
-    <Link style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: "block",
-      border: '1px',
-      borderBottom: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid',
-      padding: '10px'}} to={resolved}>Back</Link>
-    <Link  to={"."} style={{
-        width: 'calc(100% - 22px)',
-        display: "block",
-        border: "1px",
-        borderStyle: 'solid',
-        borderColor: 'gray',
-        padding: '10px',
-        color: 'black',
-        textDecoration: 'none',
-        background: "white"
-      }}>Summary</Link>
-    <div style={{
-      display: "flex",
-      width: 'calc(100% - 2px)',
-      // height: '1px',
-      border: '1px',
-      borderTop: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid'
-    }}>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", visibility: page <= 0 ? "collapse" : "visible", padding: '10px' }} to={"../"+ (page - 1)  + "/" + params['*']}>Previous</Link>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", padding: '10px'}} to={"../"+ (page + 1)  + "/" + params['*']}>Next</Link>
+    <Link className='btn btn-outline-secondary w-100' to={resolved}>Back</Link>
+    {params.runid ? (<Link className='btn btn-outline-primary w-100' to={"."}>Summary</Link>) : (<></>)}
+    <div className="btn-group w-100" role="group">
+      <DisableableLink className='btn btn-secondary w-50' disabled={page <= 0} to={"../"+ (page - 1) + (fullscreen ? "" : "/" + params['*'])}>Previous</DisableableLink>
+      <Link className='btn btn-primary w-50' to={"../"+ (page + 1) + (fullscreen ? "" : "/" + params['*'])}>Next</Link>
     </div>
-    {/* <span style={{
-      display: "block",
-      width: '100%',
-      height: '1px',
-      backgroundColor: 'gray'
-    }}></span> */}
     {jobs.map(val => (
-      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} style={({ isActive }) => {
-        return {
-          width: 'calc(100% - 2px)',
-          display: "block",
-          borderLeft: "1px",
-          borderRight: "1px",
-          borderBottom: "1px",
-          borderTop: "0",
-          borderStyle: 'solid',
-          borderColor: 'gray',
-          // margin: "1rem 0",
-          color: 'black',
-          textDecoration: 'none',
-          background: isActive ? "lightblue" : "white"
-        };
-      }}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
+      <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 text-start active' : 'btn btn-outline-secondary w-100 text-start'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{!params.runid ? (<>repo:&nbsp;{val.repo} workflow:&nbsp;{val.workflowname} runid:&nbsp;{val.runid} </>) : (<></>)}attempt:&nbsp;{val.attempt} result:&nbsp;<TimelineStatus status={val.result ?? "inprogress"}/></span></NavLink>
     ))}
   { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </span>);
@@ -147,8 +120,18 @@ interface GenericListProps<T> {
   externalBackLabel?: (params : Readonly<Params<string>>) => string
   actions?: (el : T, params : Readonly<Params<string>>) => JSX.Element
   eventName?: string
+  eventUpdateName?: string
   eventQuery?: (params : Readonly<Params<string>>) => string
 }
+
+interface DisableableProp {
+  disabled?: boolean
+}
+
+const DisableableLink = (param : LinkProps & React.RefAttributes<HTMLAnchorElement> & DisableableProp) => {
+  const { disabled, ...otherProps } = param;
+  return disabled ? (<button className={param.className} disabled={disabled} >{param.children}</button>) : (<Link {...otherProps}></Link>);
+};
 
 const GenericList = <T, >(param : GenericListProps<T>) => {
   var parentPath = useResolvedPath("..");
@@ -179,84 +162,62 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
           setLoading(false);
         }
       })()
-      if((!params.page || params.page === "0") && param.eventName) {
+      var pollNewJobs = (!params.page || params.page === "0") && param.eventName;
+      if(pollNewJobs || param.eventUpdateName) {
         var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?${(param.eventQuery && param.eventQuery(params)) ?? ""}`);
-        source.addEventListener(param.eventName, ev => {
-          var je = JSON.parse((ev as MessageEvent).data) as T;
-          setJobs(_jobs => {
-              var final = [je, ..._jobs];
-              // Remove elements from the first page
-              if(final.length > 30) {
-                  final.length = 30;
-              }
-              return final;
+        if(pollNewJobs && param.eventName) {
+          source.addEventListener(param.eventName, ev => {
+            var je = JSON.parse((ev as MessageEvent).data) as T;
+            setJobs(_jobs => {
+                var final = [je, ..._jobs];
+                // Remove elements from the first page
+                if(final.length > 30) {
+                    final.length = 30;
+                }
+                return final;
+            });
           });
-        });
+        }
+        if(param.eventUpdateName) {
+          source.addEventListener(param.eventUpdateName, ev => {
+            var je = JSON.parse((ev as MessageEvent).data) as T;
+            setJobs(_jobs => {
+              for(var i in _jobs) {
+                if(param.id(_jobs[i]) === param.id(je)) {
+                  var final = [..._jobs];
+                  final[i] = je;
+                  return final;
+                }
+              }
+              return _jobs;
+            });
+          });
+        }
         return () => source.close();
       }
     }
   }, [params, param]);
   var page = Number.parseInt(params["page"] || "0");
   return (<div style={{width: "100%", height: "100%", overflowY: 'auto'}}>
-    <Link style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: !param.hasBack ? "none" : "block",
-      border: '1px',
-      borderBottom: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid',
-      padding: '10px' }} to={resolved}>Back</Link>
-    {param.externalBackUrl && param.externalBackLabel && param.externalBackLabel(params) ? <a style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: !param.externalBackUrl ? "none" : "block",
-      border: '1px',
-      borderBottom: '0',
-      borderColor: 'gray',
-      borderStyle: 'solid',
-      padding: '10px' }} href={param.externalBackUrl(params) || ""} target="_blank" rel="noreferrer">{param.externalBackLabel(params)}</a>: <></>}
-    <div style={{
-      display: "flex",
-      width: 'calc(100% - 2px)',
-      // height: '1px',
-      border: '1px',
-      borderTop: '1px',
-      borderColor: 'gray',
-      borderStyle: 'solid'
-    }}>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", visibility: page <= 0 ? "collapse" : "visible", padding: '10px' }} to={"../"+ (page - 1)}>Previous</Link>
-      <Link style={{width: "50%", color: 'black', textDecoration: "none", padding: '10px'}} to={"../"+ (page + 1)}>Next</Link>
+    {param.hasBack || (param.externalBackUrl && param.externalBackLabel && param.externalBackLabel(params)) ?
+    <div className="btn-group w-100" role="group">
+      {param.hasBack ? <DisableableLink className='btn btn-outline-secondary w-50' to={resolved}>Back</DisableableLink> : <></>}
+      {param.externalBackUrl && param.externalBackLabel && param.externalBackLabel(params) ? <a className='btn btn-outline-secondary w-50' href={param.externalBackUrl(params) || ""} target="_blank" rel="noreferrer">{param.externalBackLabel(params)}</a>:<></>}
     </div>
-    {/* <span style={{
-      display: "block",
-      width: '100%',
-      height: '1px',
-      backgroundColor: 'gray'
-    }}></span> */}
+    : <></>}
+    <div className="btn-group w-100" role="group">
+      <DisableableLink className='btn btn-secondary w-50' disabled={page <= 0} to={"../"+ (page - 1)}>Previous</DisableableLink>
+      <Link className='btn btn-primary w-50' to={"../"+ (page + 1)}>Next</Link>
+    </div>
     {jobs.map(val => (
-      <div key={param.id(val)} style={{
-        width: 'calc(100% - 2px)',
-        display: "flex",
-        borderLeft: "1px",
-        borderRight: "1px",
-        borderBottom: "1px",
-        borderTop: "0",
-        borderStyle: 'solid',
-        borderColor: 'gray',
-        // margin: "1rem 0",
-      }} >
-        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} style={({ isActive }) => {
-          return {
-            width: "100%",
-            textDecoration: 'none',
-            color: 'black',
-            background: isActive ? "lightblue" : "white"
-          };
-        }}>{param.summary(val, params)}</NavLink>
+      <div key={param.id(val)} className="btn-group w-100" role="group">
+        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} className='btn btn-outline-secondary text-start w-100'>{param.summary(val, params)}</NavLink>
         {(param.actions && param.actions(val, params)) || ""}
       </div>
-      
     ))}
     { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </div>);
 };
-
-var ghHostApiUrl = "";
 
 interface ILog {
   id: number,
@@ -578,30 +539,54 @@ interface IWorkflowRunAttempt {
   timeLineId: string
 }
 
+const TimelineStatus = ({status, size} : { status : string, size?: number }) => {
+  switch(status?.toLowerCase()) {
+    case "inprogress":
+      return <MeterIcon className="text-warning progress-ring" size={size}/>
+    case "waiting":
+    case "pending":
+      return <CircleIcon verticalAlign="middle" size={size}/>
+    case "succeeded":
+      return <CheckCircleFillIcon className="text-success" verticalAlign="middle" size={size}/>
+    case "failed":
+      return <XCircleFillIcon className="text-danger" verticalAlign="middle" size={size}/>
+    case "skipped":
+      return <SkipIcon verticalAlign="middle" size={size}/>
+    case "canceled":
+      return <StopIcon verticalAlign="middle" size={size}/>
+    default:
+      return <span>{status}</span>
+  }
+};
+
 interface CollapsibleProps {
   timelineEntry : ITimeLine,
   registerLiveLog: (recordId: string, callback: (line: string[]) => void) => void
   unregisterLiveLog: (recordId: string) => void
 }
 const Collapsible : React.FC<CollapsibleProps> = props => {
-  const [open, setOpen] = useState<boolean>();
+  const [open, setOpen] = useState<boolean>(false);
   const [implicitOpen, setImplicitOpen] = useState<boolean>(false);
-  return (<div style={{display: "block"}}><div tabIndex={0} onKeyPress={() => setOpen(open => !open)} onClick={() => setOpen(open => !open)} style={{display: "flex", border: "1px", margin: "1px", width: "calc(100% - 4px)", borderStyle: "solid"}}><span style={{width: "100%"}}>{props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" } - {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}>{(open === undefined ? implicitOpen : open) ? (open === undefined ? "Implicit Expanded" : "Expanded"): "Collapsed"}</span></div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
+  return (<div className='mt-1 mb-1' style={{display: "block"}}><button tabIndex={0} onClick={() => setOpen(open => !open)} className={open ? 'd-flex btn btn-secondary text-start w-100 active' : 'd-flex btn btn-secondary text-start w-100'}><span style={{width: "100%"}}>{open ? (<ChevronDownIcon/>) : (<ChevronRightIcon/>)} <TimelineStatus status={props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" }/> {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}></span></button>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
     props.registerLiveLog(recordId, line => {
       var impl = implicitOpen;
-      setImplicitOpen(true);
       if(impl) {
         // Opening the log component causes a load request, which leads to duplicated lines.
         // Skipping the first live log events reduces the chance to see this.
         callback(line);
+      } else {
+        setImplicitOpen(true);
+        setOpen(true);
       }
     });
   }} unregisterLiveLog={recordId => props.unregisterLiveLog(recordId)}/>)}</div>)
 }
-//key={timelineEntry.id}
+
 interface IWorkflowRun {
   id: string,
   fileName: string,
+  owner?: string,
+  repo?: string,
   displayName: string,
   eventName: string,
   ref: string,
@@ -632,28 +617,30 @@ function JobPage() {
           var attempt = 1;
           var owner = params.owner || "";
           var repo = params.repo || "";
-          var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}/attempt/${attempt}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
-          if(resp.status === 200) {
-            var workflowRunAttempt : IWorkflowRunAttempt | null = await resp.json();
-            setWorkflowRunAttempt(workflowRunAttempt || undefined);
+          if(runid) {
+            var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}/attempt/${attempt}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
+            if(resp.status === 200) {
+              var workflowRunAttempt : IWorkflowRunAttempt | null = await resp.json();
+              setWorkflowRunAttempt(workflowRunAttempt || undefined);
+            }
+            resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
+            if(resp.status === 200) {
+              var workflowRun : IWorkflowRun | null = await resp.json();
+              setWorkflowRun(workflowRun || undefined);
+            }
+            var artifacts = await listArtifacts(Number.parseInt(runid || "1"));
+            if(artifacts.value !== undefined) {
+                for (let i = 0; i < artifacts.count; i++) {
+                    const element = artifacts.value[i];
+                    var items = await getContainerItems(element.name, element.fileContainerResourceUrl)
+                    if(items !== undefined) {
+                        element.files = items.value 
+                    }
+                }
+                setArtifacts(_ => artifacts.value);
+            }
+            setError("");
           }
-          resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
-          if(resp.status === 200) {
-            var workflowRun : IWorkflowRun | null = await resp.json();
-            setWorkflowRun(workflowRun || undefined);
-          }
-          var artifacts = await listArtifacts(Number.parseInt(runid || "1"));
-          if(artifacts.value !== undefined) {
-              for (let i = 0; i < artifacts.count; i++) {
-                  const element = artifacts.value[i];
-                  var items = await getContainerItems(element.name, element.fileContainerResourceUrl)
-                  if(items !== undefined) {
-                      element.files = items.value 
-                  }
-              }
-              setArtifacts(_ => artifacts.value);
-          }
-          setError("");
         } catch(ex) {
           if(ex instanceof Object) {
             setError(ex.toString());
@@ -743,95 +730,97 @@ function JobPage() {
     return () => signal.abort();
   }, [artifacts]);
   return ( <span style={{width: '100%', height: '100%', overflowY: 'auto'}}>
-    <h1>{workflowRun ? workflowRun.fileName : job ? (job?.result ? job.name + " completed with result: " + job.result : job?.name) : ""}</h1>
+    <h1>{workflowRun ? workflowRun.fileName : job ? (<><TimelineStatus status={job?.result ?? "inprogress"} size={32}/> {job.name}</>) : ""}</h1>
     {(() => {
       if(job !== undefined && job != null) {
           if(!job.result && (!job.errors || job.errors.length === 0)) {
-              return <div>
-                  <button onClick={(event) => {
+              return <div className="btn-group" role="group">
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancelWorkflow/" + job.runid, { method: "POST" });
                       })();
                   }}>Cancel Workflow</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
                       })();
                   }}>Cancel</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId + "?force=true", { method: "POST" });
                       })();
                   }}>Force Cancel</button>
               </div>;
           } else {
-              return <div>
-                  <button onClick={(event) => {
+              return <div className="btn-group" role="group">
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + job.runid, { method: "POST" });
                       })();
                   }}>Rerun Workflow</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + job.runid, { method: "POST" });
                       })();
                   }}>Rerun Failed Jobs</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId, { method: "POST" });
                       })();
                   }}>Rerun</button>
-                  <button onClick={(event) => {
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + job.runid + "?onLatestCommit=true", { method: "POST" });
                       })();
-                  }}>Rerun Workflow ( Latest Commit )</button>
-                  <button onClick={(event) => {
+                  }}>Rerun Workflow (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + job.runid + "?onLatestCommit=true", { method: "POST" });
                       })();
-                  }}>Rerun Failed Jobs ( Latest Commit )</button>
-                  <button onClick={(event) => {
+                  }}>Rerun Failed Jobs (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+                  <button className='btn btn-secondary' onClick={(event) => {
                       (async () => {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId + "?onLatestCommit=true", { method: "POST" });
                       })();
-                  }}>Rerun ( Latest Commit )</button>
+                  }}>Rerun (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
               </div>;
           }
       } else if(workflowRun !== undefined && workflowRun != null) {
-        return (<><button onClick={(event) => {
+        return (<><div className="btn-group" role="group">
+        <button className='btn btn-secondary' onClick={(event) => {
           (async () => {
               await fetch(ghHostApiUrl + "/_apis/v1/Message/cancelWorkflow/" + params.runid, { method: "POST" });
           })();
         }}>Cancel Workflow</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
           (async () => {
               await fetch(ghHostApiUrl + "/_apis/v1/Message/forceCancelWorkflow/" + params.runid, { method: "POST" });
           })();
         }}>Force Cancel Workflow</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + params.runid, { method: "POST" });
             })();
         }}>Rerun Workflow</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + params.runid, { method: "POST" });
             })();
         }}>Rerun Failed Jobs</button>
-        <button onClick={(event) => {
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + params.runid + "?onLatestCommit=true", { method: "POST" });
             })();
-        }}>Rerun Workflow ( Latest Commit )</button>
-        <button onClick={(event) => {
+        }}>Rerun Workflow (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+        <button className='btn btn-secondary' onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + params.runid + "?onLatestCommit=true", { method: "POST" });
             })();
-        }}>Rerun Failed Jobs ( On Latest Commit )</button>
+        }}>Rerun Failed Jobs (&nbsp;Latest&nbsp;Commit&nbsp;)</button>
+        </div>
         {artifacts.map((container: ArtifactResponse) => <div>{(() => {
             if(container.files !== undefined) {
-                return (<div>{(container.files || []).filter(f => f.itemType === "file").map(file => <div><a href={file.contentLocation}>{file.path}</a></div>)}</div>);
+                return (<div>{(container.files || []).filter(f => f.itemType === "file").map(file => <div><a className="btn btn-outline-secondary w-100 text-start" href={file.contentLocation}>{file.path}</a></div>)}</div>);
             }
             return <div/>;
         })()}</div>)}
@@ -842,9 +831,6 @@ function JobPage() {
     { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
     {(() => {
       if((timeline?.length || 0) > 1) {
-        // return (<span style={{width: '100%', height: '100%', overflowY: 'auto'}}>{timeline?.map(timelineEntry => (<Detail key={timelineEntry.id} timeline={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>))}</span>);
-        // return (<span style={{width: '100%', height: '100%', overflowY: 'auto'}}>{timeline?.map((timelineEntry, i) => (<div key={timelineEntry.id} tabIndex={0} onKeyPress={() => console.log("btn clicked")} onClick={() => console.log("clicked")} style={{display: "block", border: "1px", margin: "1px", width: "calc(100% - 4px)", borderStyle: "solid"}}>{timelineEntry.result} - {timelineEntry.name}</div>))}</span>);
-        // return (<>{timeline?.map((timelineEntry, i) => (<Collapsible key={timelineEntry.id} timelineEntry={timelineEntry} content={() => (<Detail key={timelineEntry.id} timeline={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>)}></Collapsible>))}</>);
         return (<>{timeline?.map((timelineEntry, i) => (<Collapsible key={timelineEntry.id} timelineEntry={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}></Collapsible>))}</>);
       }
       return (<Detail timeline={(timeline || [null])[0]} render={true} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>)
@@ -942,8 +928,24 @@ function TimeLineViewer() {
   </span>);
 }
 
+function AllJobs() {
+  return (<div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>
+    <Routes>
+      <Route path=":page/*" element={<List/>}/>
+      <Route path=":page/" element={<List fullscreen={true}/>}/>
+      <Route path="/" element={<Navigate to={"0"}/>}/>
+    </Routes>
+    <Routes>
+      <Route path=":page/:id/*" element={<JobPage></JobPage>}/>
+      <Route path=":page" element={<></>}/>
+    </Routes>
+  </div>);
+}
+
 function App() {
-  var [gitServerUrl, setGitServerUrl] = useState<string>()
+  var [gitServerUrl, setGitServerUrl] = useState<string>();
+  //let [searchParams, setSearchParams] = useSearchParams();
+  var searchParams = new URLSearchParams(window.location.search)
   useEffect(() => {
     (async () => {
       var resp = await fetch(ghHostApiUrl + "/_apis/v1/Message/gitserverurl");
@@ -952,20 +954,39 @@ function App() {
       }
     })()
   }, []);
-  return (
+  return searchParams.get("view") === "alljobs" ?
+    ( <AllJobs/> ) :
+    searchParams.get("view") === "allworkflows" ?
+    ( <Routes>
+      <Route path=":page" element={<GenericList hasBack={false} id={(o: IWorkflowRun) => o.id} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>{ o.owner && o.repo ? <>Repository: {o.owner}/{o.repo} </> : <></>}RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} <TimelineStatus status={o.result ?? "Pending"}/></span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?page=${params.page || "0"}`} eventName="workflowrun" eventUpdateName="workflowrunupdate" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
+      <Route path="/" element={<Navigate to={"0"}/>}/>
+      <Route path=":page/:runid/*" element={
+        <div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>
+          <Routes>
+            <Route path=":page/*" element={<List/>}/>
+            <Route path="/" element={<Navigate to={"0"}/>}/>
+          </Routes>
+          <Routes>
+            <Route path=":page/:id/*" element={<JobPage></JobPage>}/>
+            <Route path=":page" element={<JobPage></JobPage>}/>
+          </Routes>
+        </div>
+      }/>
+    </Routes> ) :
+    (
       <Routes>
         <Route path="/timeline/:timeLineId" element={<TimeLineViewer></TimeLineViewer>}/>
         <Route path="/master/:a/:b/detail/:id" element={<RedirectOldUrl/>}/>
         <Route path="/master" element={<Navigate to={"0"}/>}/>
-        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
+        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer"><PersonIcon size={24}/></a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
         <Route path="/" element={<Navigate to={"0"}/>}/>
         <Route path=":page/:owner/*" element={
           <Routes>
-            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
+            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer"><RepoIcon size={24}/></a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
             <Route path="/" element={<Navigate to={"0"}/>}/>
             <Route path=":page/:repo/*" element={
               <Routes>
-                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="workflowrun" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
+                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} <TimelineStatus status={o.result ?? "Pending"}/></span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a className='btn btn-outline-secondary' href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer"><GitCommitIcon verticalAlign='middle' size={24}/></a> : <></> } eventName="workflowrun" eventUpdateName="workflowrunupdate" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
                 <Route path="/" element={<Navigate to={"0"}/>}/>
                 <Route path=":page/:runid/*" element={
                   <div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>
@@ -983,16 +1004,6 @@ function App() {
             }/>
           </Routes>
         }/>
-        {/* <Route path=":owner/:repo/:runid/*" element={
-        <>
-          <Routes>
-            <Route path=":page/*" element={<List/>}/>
-            <Route path="/" element={<Navigate to={"0"}/>}/>
-          </Routes>
-          <Routes>
-            <Route path=":page/:id/*" element={<JobPage></JobPage>}/>
-          </Routes>
-        </>}/> */}
       </Routes>
     );
 }
