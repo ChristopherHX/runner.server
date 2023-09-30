@@ -52,7 +52,7 @@ namespace Runner.Server.Controllers
     [ApiController]
     [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    public class MessageController : VssControllerBase
+    public class MessageController : GitHubAppIntegrationBase
     {
         private string GitServerUrl;
         private string GitApiServerUrl;
@@ -73,8 +73,6 @@ namespace Runner.Server.Controllers
         private bool WriteAccessForPullRequestsFromForks { get; }
         private bool AllowJobNameOnJobProperties { get; }
         private bool HasPullRequestMergePseudoBranch { get; }
-        private string GitHubAppPrivateKeyFile { get; }
-        private int GitHubAppId { get; }
         private Dictionary<string, string> GitHubContext { get; }
         private bool AllowPrivateActionAccess { get; }
         private int Verbosity { get; }
@@ -136,8 +134,6 @@ namespace Runner.Server.Controllers
             WriteAccessForPullRequestsFromForks = configuration.GetSection("Runner.Server")?.GetValue<bool>("WriteAccessForPullRequestsFromForks") ?? false;
             AllowJobNameOnJobProperties = configuration.GetSection("Runner.Server")?.GetValue<bool>("AllowJobNameOnJobProperties") ?? false;
             HasPullRequestMergePseudoBranch = configuration.GetSection("Runner.Server")?.GetValue<bool>("HasPullRequestMergePseudoBranch") ?? false;
-            GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
-            GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 1) ?? 1;
@@ -702,6 +698,12 @@ namespace Runner.Server.Controllers
             } else {
                 _context.SaveChanges();
             }
+            run.Result = _attempt.Result;
+            run.Ref = _attempt.Ref;
+            run.Sha = _attempt.Sha;
+            run.EventName = _attempt.EventName;
+            run.Owner = owner_name;
+            run.Repo = repo_name;
             Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
             workflowrun?.Invoke(run.Id);
             var runid = run.Id;
@@ -799,6 +801,12 @@ namespace Runner.Server.Controllers
             } else {
                 _context.SaveChanges();
             }
+            run.Result = _attempt.Result;
+            run.Ref = _attempt.Ref;
+            run.Sha = _attempt.Sha;
+            run.EventName = _attempt.EventName;
+            run.Owner = owner_name;
+            run.Repo = repo_name;
             Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
             workflowrun?.Invoke(run.Id);
             var runid = run.Id;
@@ -867,6 +875,10 @@ namespace Runner.Server.Controllers
             }
         }
 
+        public static void UpdateJob(object sender, Job job) {
+            Task.Run(() => jobupdateevent?.Invoke(sender, job.repo, job));
+        }
+
         private Job GetJob(Guid id) {
             return (from job in _context.Jobs where job.JobId == id select job).Include(j => j.WorkflowRunAttempt).FirstOrDefault();
         }
@@ -876,43 +888,6 @@ namespace Runner.Server.Controllers
             public void Invoke(JobCompletedEvent ev) {
                 JobCompleted?.Invoke(ev);
             }
-        }
-
-        private async Task<string> CreateGithubAppToken(string repository_name) {
-            if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                try {
-                    var ownerAndRepo = repository_name.Split("/", 2);
-                    // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                    var generator = new GitHubJwt.GitHubJwtFactory(
-                        new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                        new GitHubJwt.GitHubJwtFactoryOptions
-                        {
-                            AppIntegrationId = GitHubAppId, // The GitHub App Id
-                            ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                        }
-                    );
-                    var jwtToken = generator.CreateEncodedJwtToken();
-                    // Pass the JWT as a Bearer token to Octokit.net
-                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                    {
-                        Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                    };
-                    var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                    var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", contents = "read" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                    return response.Body.Token;
-                } catch {
-
-                }
-            }
-            return null;
-        }
-
-        private async Task DeleteGithubAppToken(string token) {
-            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-            {
-                Credentials = new Octokit.Credentials(token)
-            };
-            await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
         }
 
         private class WorkflowContext {
@@ -1136,30 +1111,14 @@ namespace Runner.Server.Controllers
                         } catch {
 
                         }
-                    } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                        try {
-                            // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                            var generator = new GitHubJwt.GitHubJwtFactory(
-                                new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                new GitHubJwt.GitHubJwtFactoryOptions
-                                {
-                                    AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                    ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                                }
-                            );
-                            var jwtToken = generator.CreateEncodedJwtToken();
-                            // Pass the JWT as a Bearer token to Octokit.net
-                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                            };
-                            var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                            var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(response.Body.Token)
-                            };
+                    } else {
+                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
+                        if(ghAppToken != null) {
                             try {
+                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
+                                {
+                                    Credentials = new Octokit.Credentials(ghAppToken)
+                                };
                                 Octokit.CheckConclusion? conclusion = null;
                                 if(status == TaskResult.Skipped) {
                                     conclusion = Octokit.CheckConclusion.Skipped;
@@ -1174,10 +1133,8 @@ namespace Runner.Server.Controllers
                                 var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
                                 next.CheckRunStarted = true;
                             } finally {
-                                await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
+                                await DeleteGithubAppToken(ghAppToken);
                             }
-                        } catch {
-
                         }
                         
                     }
@@ -1459,6 +1416,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
                         attempt.Result = TaskResult.Skipped;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
@@ -1714,7 +1672,7 @@ namespace Runner.Server.Controllers
                             if(workflowSecrets != null) {
                                 foreach(var secret in workflowSecrets) {
                                     var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
-                                    if(secretName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", secretName) == 0) {
+                                    if(IsReservedVariable(secretName)) {
                                         throw new Exception($"This workflow defines the reserved secret {secretName}, using it can cause undefined behavior");
                                     }
                                     var secretMapping = secret.Value?.AssertMapping($"on.workflow_call.secrets.{secretName}");
@@ -1861,8 +1819,9 @@ namespace Runner.Server.Controllers
                 workflowContext.WorkflowRunName = callingJob?.WorkflowRunName ?? evalRunName(workflowTraceWriter, (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value) ?? evalRunName(workflowContext.HasFeature("system.runner.server.debugdefrunname") ? workflowTraceWriter : new EmptyTraceWriter(), new BasicExpressionToken(null, null, null, "github.event_name == 'push' && github.event.head_commit.message || startswith(github.event_name, 'pull_request') && github.event.pull_request.title || ''")) ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowContext.WorkflowRunName}");
-                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowContext.WorkflowRunName)) {
+                    if(attempt.WorkflowRun != null && !string.IsNullOrEmpty(workflowContext.WorkflowRunName)) {
                         attempt.WorkflowRun.DisplayName = workflowContext.WorkflowRunName;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -2732,6 +2691,7 @@ namespace Runner.Server.Controllers
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
+                            UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
                         }
                         _context.Dispose();
@@ -2993,6 +2953,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = true });
                     } else {
                         attempt.Result = TaskResult.Succeeded;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -3003,6 +2964,7 @@ namespace Runner.Server.Controllers
                 } else {
                     //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                     attempt.Result = TaskResult.Failed;
+                    UpdateWorkflowRun(attempt, repository_name);
                     _context.SaveChanges();
                 }
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
@@ -3013,6 +2975,18 @@ namespace Runner.Server.Controllers
                 }
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
+        }
+
+        private static void UpdateWorkflowRun(WorkflowRunAttempt attempt, string repository_name)
+        {
+            attempt.WorkflowRun.Result = attempt.Result;
+            attempt.WorkflowRun.Ref = attempt.Ref;
+            attempt.WorkflowRun.Sha = attempt.Sha;
+            attempt.WorkflowRun.EventName = attempt.EventName;
+            var ownerAndRepo = repository_name.Split("/", 2);
+            attempt.WorkflowRun.Owner = ownerAndRepo[0];
+            attempt.WorkflowRun.Repo = ownerAndRepo[1];
+            Task.Run(() => runupdateevent?.Invoke(ownerAndRepo[0], ownerAndRepo[1], attempt.WorkflowRun));
         }
 
         private struct NugetVersion {
@@ -3111,30 +3085,14 @@ namespace Runner.Server.Controllers
                         } catch {
 
                         }
-                    } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                        try {
-                            // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                            var generator = new GitHubJwt.GitHubJwtFactory(
-                                new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                new GitHubJwt.GitHubJwtFactoryOptions
-                                {
-                                    AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                    ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                                }
-                            );
-                            var jwtToken = generator.CreateEncodedJwtToken();
-                            // Pass the JWT as a Bearer token to Octokit.net
-                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                            };
-                            var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                            var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(response.Body.Token)
-                            };
+                    } else {
+                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
+                        if(ghAppToken != null) {
                             try {
+                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
+                                {
+                                    Credentials = new Octokit.Credentials(ghAppToken)
+                                };
                                 Octokit.CheckConclusion? conclusion = null;
                                 if(status == TaskResult.Skipped) {
                                     conclusion = Octokit.CheckConclusion.Skipped;
@@ -3149,12 +3107,9 @@ namespace Runner.Server.Controllers
                                 var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
                                 next.CheckRunStarted = true;
                             } finally {
-                                await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
+                                await DeleteGithubAppToken(ghAppToken);
                             }
-                        } catch {
-
                         }
-                        
                     }
                 }
             };
@@ -3375,6 +3330,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
                         attempt.Result = TaskResult.Skipped;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
@@ -3425,8 +3381,9 @@ namespace Runner.Server.Controllers
                 workflowname = pipeline.Name ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
-                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
+                    if(attempt.WorkflowRun != null && !string.IsNullOrEmpty(workflowname)) {
                         attempt.WorkflowRun.DisplayName = workflowname;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -4648,6 +4605,7 @@ namespace Runner.Server.Controllers
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
+                            UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
                         }
                         _context.Dispose();
@@ -4865,6 +4823,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = true });
                     } else {
                         attempt.Result = TaskResult.Succeeded;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -4875,6 +4834,7 @@ namespace Runner.Server.Controllers
                 } else {
                     //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                     attempt.Result = TaskResult.Failed;
+                    UpdateWorkflowRun(attempt, repository_name);
                     _context.SaveChanges();
                 }
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
@@ -5112,7 +5072,7 @@ namespace Runner.Server.Controllers
                 {
                     var _hook = workflowContext.EventPayload;
                     var _ghook = _hook.ToObject<GiteaHook>();
-                    isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && (_ghook?.pull_request?.head?.Repo?.Fork ?? false);
+                    isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && _ghook?.pull_request?.Base?.Repo?.full_name != null && (_ghook?.pull_request?.Base?.Repo?.full_name != _ghook?.pull_request?.head?.Repo?.full_name);
                     calculatedPermissions["metadata"] = "read";
                     var stkn = jobPermissions as StringToken;
                     if(jobPermissions == null && callingJob?.Permissions != null) {
@@ -5687,50 +5647,54 @@ namespace Runner.Server.Controllers
                         variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
                         variables.Add("DistributedTask.EnhancedAnnotations", new VariableValue("true", false));
                         variables.Add("DistributedTask.UploadStepSummary", new VariableValue("true", false));
+                        variables.Add("DistributedTask.AddWarningToNode12Action", new VariableValue("true", false));
+                        variables.Add("DistributedTask.AllowRunnerContainerHooks", new VariableValue("true", false));
+                        variables.Add("DistributedTask.DeprecateStepOutputCommands", new VariableValue("true", false));
+                        variables.Add("DistributedTask.ForceGithubJavascriptActionsToNode16", new VariableValue("true", false)); // https://github.blog/changelog/2023-05-04-github-actions-all-actions-will-run-on-node16-instead-of-node12/
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
                         var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                         fileContainerId = resp.Id;
                         variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
-                        foreach(var secr in secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name)) {
-                            variables[secr.Key] = new VariableValue(secr.Value, false);
+                        bool sendUserVariables = !isFork || !workflowContext.HasFeature("system.runner.server.NoVarsForPRFromFork");
+                        // Only send referenced action variables
+                        var allvars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue?.Name).ToArray();
+                        var varKeys = (from kv in allvars select $"vars.{kv.Key}").ToArray();
+                        var referencedVars = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(varKeys, templateContext.Flags)).ToArray();
+                        var varsContext = new DictionaryContextData();
+                        for(int i = 0; i < allvars.Length; i++) {
+                            // Only send referenced or reserved variables
+                            if(IsReservedVariable(allvars[i].Key)) {
+                                variables[allvars[i].Key] = new VariableValue(allvars[i].Value, false);
+                            } else if(sendUserVariables && referencedVars.Any(rs => rs != null && rs[i]) || IsActionsDebugVariable(allvars[i].Key)) {
+                                varsContext[allvars[i].Key] = new StringContextData(allvars[i].Value);
+                            }
                         }
-                        if(!isFork) {
-                            foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name)) {
-                                variables[secr.Key] = new VariableValue(secr.Value, true);
+                        // Pass action user variables
+                        contextData["vars"] = varsContext;
+                        bool sendUserSecrets = !isFork;
+                        // Only send referenced action secrets
+                        var allsecrets = secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name).ToArray();
+                        var secretKeys = (from kv in allsecrets select $"secrets.{kv.Key}").ToArray();
+                        var referencedSecrets = (from tmplBlock in (workflowEnvironment?.Append(run)?.ToArray() ?? new [] { run }) select tmplBlock.CheckReferencesContext(secretKeys, templateContext.Flags)).ToArray();
+                        for(int i = 0; i < allsecrets.Length; i++) {
+                            // Only send referenced or reserved secrets
+                            if(sendUserSecrets && referencedSecrets.Any(rs => rs != null && rs[i]) || IsReservedVariable(allsecrets[i].Key) || IsActionsDebugVariable(allsecrets[i].Key)) {
+                                variables[allsecrets[i].Key] = new VariableValue(allsecrets[i].Value, true);
                             }
                         }
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
-                        } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                            try {
-                                var ownerAndRepo = repo.Split("/", 2);
-                                // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                                var generator = new GitHubJwt.GitHubJwtFactory(
-                                    new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                    new GitHubJwt.GitHubJwtFactoryOptions
-                                    {
-                                        AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                        ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                                    }
-                                );
-                                var jwtToken = generator.CreateEncodedJwtToken();
-                                // Pass the JWT as a Bearer token to Octokit.net
-                                var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                                {
-                                    Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                                };
-                                var installation = appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]).GetAwaiter().GetResult();
-                                var ghappPerm = new Dictionary<string, string>(calculatedPermissions, StringComparer.OrdinalIgnoreCase);
-                                // id_token is provided by the systemvssconnection, not by github_token
-                                ghappPerm.Remove("id_token");
-                                var response = appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = ghappPerm }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview).GetAwaiter().GetResult();
-                                runnerToken = response.Body.Token;
-                                variables["github_token"] = variables["system.github.token"] = new VariableValue(response.Body.Token, true);
+                        } else {
+                            var ownerAndRepo = repo.Split("/", 2);
+                            var ghappPerm = new Dictionary<string, string>(calculatedPermissions, StringComparer.OrdinalIgnoreCase);
+                            // id_token is provided by the systemvssconnection, not by github_token
+                            ghappPerm.Remove("id_token");
+                            runnerToken = CreateGithubAppToken(repo, new { Permissions = ghappPerm }).GetAwaiter().GetResult();
+                            if(runnerToken != null) {
+                                variables["github_token"] = variables["system.github.token"] = new VariableValue(runnerToken, true);
                                 variables["system.github.token.permissions"] = new VariableValue(Newtonsoft.Json.JsonConvert.SerializeObject(calculatedPermissions), false);
-                            } catch {
-
                             }
                         }
                         var tokenDescriptor = new SecurityTokenDescriptor
@@ -6902,11 +6866,20 @@ namespace Runner.Server.Controllers
             IDictionary<string, string> GetReservedSecrets();
         }
 
+        private static bool IsReservedVariable(string v) {
+            var pattern = new Regex("^[a-zA-Z_][a-zA-Z_0-9]*$");
+            return !pattern.IsMatch(v) || v.StartsWith("GITHUB_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsActionsDebugVariable(string v) {
+            return string.Equals(v, "ACTIONS_STEP_DEBUG", StringComparison.OrdinalIgnoreCase) || string.Equals(v, "ACTIONS_RUNNER_DEBUG", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static IDictionary<string, string> WithReservedSecrets(IDictionary<string, string> dict, IDictionary<string, string> reservedsecrets) {
             var ret = dict == null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
             if(reservedsecrets != null) {
                 foreach(var kv in reservedsecrets) {
-                    if(kv.Key.Contains(".") || string.Equals(kv.Key, "GITHUB_TOKEN", StringComparison.OrdinalIgnoreCase)) {
+                    if(IsReservedVariable(kv.Key) || /* Allow overriding them while calling reusable workflows */ !ret.ContainsKey(kv.Key) && IsActionsDebugVariable(kv.Key)) {
                         ret[kv.Key] = kv.Value;
                     }
                 }
@@ -7125,6 +7098,8 @@ namespace Runner.Server.Controllers
             }
             var hook = obj.Key;
             var requestAborted = HttpContext.RequestAborted;
+            // For debugging purposes of missing logs in Runner.Client
+            bool sendLostLogEvents = varEnvironments.TryGetValue("", out var fflags) && fflags.TryGetValue("system.runner.server.sendlostevents", out var fflagvalue) ? string.Equals(fflagvalue, "true", StringComparison.OrdinalIgnoreCase) : false;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
                 ConcurrentDictionary<Guid, Job> jobCache = new ConcurrentDictionary<Guid, Job>();
@@ -7141,12 +7116,18 @@ namespace Runner.Server.Controllers
                         if (TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        } else if(sendLostLogEvents) {
+                            // For debugging purposes of missing logs in Runner.Client
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
                         if(TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        } else if(sendLostLogEvents) {
+                            // For debugging purposes of missing logs in Runner.Client
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
@@ -7267,7 +7248,7 @@ namespace Runner.Server.Controllers
 
         [HttpGet("workflow/runs")]
         public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
-            var query = (from j in _context.Set<WorkflowRunAttempt>() where j.Attempt == 1 && j.WorkflowRun.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower() && j.WorkflowRun.Workflow.Repository.Name.ToLower() == repo.ToLower() orderby j.WorkflowRun.Id descending select j).Include(j => j.WorkflowRun).Select(j => new WorkflowRun() { EventName = j.EventName, Ref = j.Ref, Sha = j.Sha, Result = j.Result, FileName = j.WorkflowRun.FileName, DisplayName = j.WorkflowRun.DisplayName, Id = j.WorkflowRun.Id});
+            var query = (from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && (string.IsNullOrEmpty(owner) || run.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower()) && (string.IsNullOrEmpty(repo) || run.Workflow.Repository.Name.ToLower() == repo.ToLower()) orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
@@ -7521,9 +7502,11 @@ namespace Runner.Server.Controllers
 
         private delegate void JobEvent(object sender, string repo, Job job);
         private static event JobEvent jobevent;
+        private static event JobEvent jobupdateevent;
         private static event Action<Owner> ownerevent;
         private static event Action<Repository> repoevent;
         private static event Action<string, string, WorkflowRun> runevent;
+        private static event Action<string, string, WorkflowRun> runupdateevent;
         public class WorkflowEventArgs {
             public long runid {get;set;}
             public bool Success {get;set;}
@@ -7587,6 +7570,12 @@ namespace Runner.Server.Controllers
                             chwriter.WriteAsync(new KeyValuePair<string, object>("job", job));
                         }
                     };
+                    JobEvent updatehandler = (sender, crepo, job) => {
+                        var repoowner = crepo.Split("/", 2);
+                        if((string.IsNullOrEmpty(owner) || owner.ToLower() == repoowner[0].ToLower()) && (string.IsNullOrEmpty(repo) || repo.ToLower() == repoowner[1].ToLower()) && (runid == null || runid == job.runid)) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("jobupdate", job));
+                        }
+                    };
                     Action<Owner> ownerh = cowner => {
                         if(string.IsNullOrEmpty(owner)) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("owner", cowner));
@@ -7600,6 +7589,11 @@ namespace Runner.Server.Controllers
                     Action<string, string, WorkflowRun> runh = (cowner, crepo, crun) => {
                         if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrun", crun));
+                        }
+                    };
+                    Action<string, string, WorkflowRun> runupdateh = (cowner, crepo, crun) => {
+                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrunupdate", crun));
                         }
                     };
                     var chreader = queue2.Reader;
@@ -7624,17 +7618,21 @@ namespace Runner.Server.Controllers
                         }
                     }, requestAborted);
                     jobevent += handler;
+                    jobupdateevent += updatehandler;
                     ownerevent += ownerh;
                     repoevent += repoh;
                     runevent += runh;
+                    runupdateevent += runupdateh;
                     try {
                         await ping;
                     } catch(OperationCanceledException) {
 
                     } finally {
+                        runupdateevent -= runupdateh;
                         runevent -= runh;
                         repoevent -= repoh;
                         ownerevent -= ownerh;
+                        jobupdateevent -= updatehandler;
                         jobevent -= handler;
                     }
                 }

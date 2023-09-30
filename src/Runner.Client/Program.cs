@@ -160,6 +160,7 @@ namespace Runner.Client
             public string RunnerVersion { get; set; }
             public bool Interactive { get; internal set; }
             public string[] LocalRepositories { get; set; }
+            public bool Trace { get; set; }
 
             public Parameters ShallowCopy()
             {
@@ -495,6 +496,8 @@ namespace Runner.Client
                         var code = await inv.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
                         int execAttempt = 1;
                         var success = false;
+                        // unset RUNNER_SERVER_CONFIG_ROOT to not appear in jobs created by external runners
+                        runnerEnv.Remove("RUNNER_SERVER_CONFIG_ROOT");
                         while(true) {
                             file = runner;
                             try {
@@ -862,6 +865,9 @@ namespace Runner.Client
             var interactiveOpt = new Option<bool>(
                 new[] {"--interactive"},
                 "Run interactively");
+            var traceOpt = new Option<bool>(
+                new[] {"--trace"},
+                "Client Trace of console log events, to debug missing live logs");
             var quietOpt = new Option<bool>(
                 new[] {"-q", "--quiet"},
                 "Display no progress in the cli");
@@ -982,6 +988,7 @@ namespace Runner.Client
                 actorOpt,
                 watchOpt,
                 interactiveOpt,
+                traceOpt,
                 quietOpt,
                 privilegedOpt,
                 usernsOpt,
@@ -1109,7 +1116,7 @@ namespace Runner.Client
                 if(parameters.Parallel > 0) {
                     var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
                     if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
-                        parameters.RunnerVersion = "3.218.0";
+                        parameters.RunnerVersion = "3.225.0";
                     }
                     if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
                         parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
@@ -1200,7 +1207,8 @@ namespace Runner.Client
                                         GITHUB_TOKEN = "",
                                         ReturnWithoutResolvingSha = false,
                                     }
-                                }.ToList()
+                                }.ToList(),
+                                DefaultWebUIView = "allworkflows"
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
@@ -2005,6 +2013,10 @@ namespace Runner.Client
                                             if(line == "event: ") {
                                                 break;
                                             }
+                                            if(parameters.Trace) {
+                                                Console.WriteLine($"##[Trace]{line}");
+                                                Console.WriteLine($"##[Trace]{data}");
+                                            }
                                             if(!parameters.Quiet && line == "event: log") {
                                                 var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
                                                 TimeLineEntry rec;
@@ -2378,6 +2390,7 @@ namespace Runner.Client
                 parameters.Actor = bindingContext.ParseResult.GetValueForOption(actorOpt);
                 parameters.Watch = bindingContext.ParseResult.GetValueForOption(watchOpt);
                 parameters.Interactive = bindingContext.ParseResult.GetValueForOption(interactiveOpt);
+                parameters.Trace = bindingContext.ParseResult.GetValueForOption(traceOpt);
                 parameters.Quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
                 parameters.Privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
                 parameters.Userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
