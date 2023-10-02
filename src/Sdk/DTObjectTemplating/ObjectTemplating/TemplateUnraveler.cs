@@ -1621,7 +1621,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             /// <summary>
             /// Indicates whether leaving the expression
             /// </summary>
-            public Boolean IsEnd => Sequence == null && Mapping == null || i >= (Sequence?.Count ?? Mapping?.Count ?? 0);
+            public Boolean IsEnd => (Sequence != null || Mapping != null) && i >= (Sequence?.Count ?? Mapping?.Count ?? 0);
 
             private int i;
 
