@@ -136,6 +136,7 @@ public class Pipeline {
             if(parent.Variables != null) {
                 if (Variables == null) {
                     Variables = parent.Variables;
+                    variablesMetaData = parent.variablesMetaData;
                 } else {
                     // emulate the error message provided by Azure Pipelines
                     throw new NotSupportedException("__built-in-schema.yml (Line: 40, Col:11): 'variables' is already defined");
