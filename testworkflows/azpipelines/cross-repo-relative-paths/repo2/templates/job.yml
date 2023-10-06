@@ -2,4 +2,4 @@
 jobs:
 - job: job1
   steps:
-  - template: step.yml # relative to this repo
+  - template: step.yml@shared # scoped relative path
