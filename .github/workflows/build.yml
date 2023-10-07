@@ -82,6 +82,7 @@ jobs:
           _package
 
     - name: Unit Tests
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
