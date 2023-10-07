@@ -80,6 +80,12 @@ jobs:
         name: runner-package-${{ matrix.runtime }}
         path: | 
           _package
+
+    - name: Unit Tests
+      run: |
+        ${{ matrix.devScript }} test
+      working-directory: src
+
     - name: Setup
       if: 'false' # Disabled due to 403 of statuses api with this token and rate limit
       shell: pwsh
