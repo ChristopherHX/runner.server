@@ -40,7 +40,7 @@ jobs:
           dotnet workload install wasm-tools
           npm run build
           node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
-          node_modules/.bin/vsce pack --prerelease -o azure-pipelines-vscode-ext-prerelease.vsix
+          node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
       - name: Make layout
         run: |
