@@ -5,23 +5,16 @@ namespace Runner.Server.Azure.Devops
     {
         public static string ToYaml(this Pipeline pipeline)
         {
-            try
-            {
-                // convert back to JToken
-                var newcontent = pipeline.ToContextData().ToJToken().ToString();
+            // convert back to JToken
+            var newcontent = pipeline.ToContextData().ToJToken().ToString();
 
-                // serialize back to YAML
-                var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().Build();
-                var serializer = new YamlDotNet.Serialization.SerializerBuilder().WithEventEmitter(emitter =>
-                {
-                    return new MyEventEmitter(emitter);
-                }).Build();
-                return serializer.Serialize(deserializer.Deserialize<Object>(newcontent));
-            }
-            catch (Exception ex)
+            // serialize back to YAML
+            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().Build();
+            var serializer = new YamlDotNet.Serialization.SerializerBuilder().WithEventEmitter(emitter =>
             {
-                return ex.Message;
-            }
+                return new MyEventEmitter(emitter);
+            }).Build();
+            return serializer.Serialize(deserializer.Deserialize<Object>(newcontent));   
         }
 
         private class MyEventEmitter : YamlDotNet.Serialization.EventEmitters.ChainedEventEmitter
@@ -32,9 +25,15 @@ namespace Runner.Server.Azure.Devops
 
             private class ReplaceDescriptor : YamlDotNet.Serialization.IObjectDescriptor
             {
+                public ReplaceDescriptor(Type type, Type staticType)
+                {
+                    Type = type;
+                    StaticType = staticType;
+                }
+
                 public object? Value { get; set; }
-                public Type Type { get; set; }
-                public Type StaticType { get; set; }
+                public Type Type { get; private set; }
+                public Type StaticType { get; private set; }
                 public YamlDotNet.Core.ScalarStyle ScalarStyle { get; set; }
             }
 
@@ -45,7 +44,12 @@ namespace Runner.Server.Azure.Devops
                     // Apply expression escaping to allow parsing the result without errors
                     if (svalue.Contains("${{"))
                     {
-                        eventInfo = new YamlDotNet.Serialization.ScalarEventInfo(new ReplaceDescriptor { Value = svalue.Replace("${{", "${{ '${{' }}"), Type = eventInfo.Source.Type, StaticType = eventInfo.Source.StaticType, ScalarStyle = eventInfo.Source.ScalarStyle });
+                        eventInfo = new YamlDotNet.Serialization.ScalarEventInfo(
+                            new ReplaceDescriptor(type: eventInfo.Source.Type, staticType: eventInfo.Source.StaticType)
+                            {
+                                Value = svalue.Replace("${{", "${{ '${{' }}"),
+                                ScalarStyle = eventInfo.Source.ScalarStyle
+                            });
                     }
                     if (svalue.Contains('\n'))
                     {
