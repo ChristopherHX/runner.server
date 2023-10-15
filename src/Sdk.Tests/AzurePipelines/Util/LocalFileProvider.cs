@@ -18,9 +18,9 @@ namespace Runner.Server.Azure.Devops
         #region Helper methods for local repositories
         public void AddRepo(string repositoryAndRef, string folderPath)
         {
-            if (!folderPath.EndsWith(@"\"))
+            if (!folderPath.EndsWith(Path.DirectorySeparatorChar))
             {
-                folderPath = $"{folderPath}\\";
+                folderPath = $"{folderPath}{Path.DirectorySeparatorChar}";
             }
             string repoName = repositoryAndRef.Split("@")[0];
             repos[repoName] = folderPath;

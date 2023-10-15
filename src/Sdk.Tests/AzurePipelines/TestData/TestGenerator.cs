@@ -18,7 +18,7 @@ namespace Runner.Server.Azure.Devops
                 bool asPipeline = false;
 
                 // prioritize filtering pipeline*.yml files
-                var pipelines = files.Where(i => i.Contains("\\pipeline"));
+                var pipelines = files.Where(i => i.Contains($"{Path.DirectorySeparatorChar}pipeline"));
                 if (pipelines.Any())
                 {
                     asPipeline = true;
