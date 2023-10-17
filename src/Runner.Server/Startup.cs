@@ -106,6 +106,7 @@ namespace Runner.Server
                         Type = ReferenceType.SecurityScheme
                     }
                 };
+                c.EnableAnnotations(enableAnnotationsForInheritance: true, enableAnnotationsForPolymorphism: true);
                 c.AddSecurityDefinition(securityScheme.Reference.Id, securityScheme);
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
@@ -113,6 +114,7 @@ namespace Runner.Server
                 });
 
             });
+            services.Replace(ServiceDescriptor.Transient<ISerializerDataContractResolver>((s) => new NewtonsoftDataContractResolver(new VssJsonMediaTypeFormatter().SerializerSettings)));
 #if EF_MIGRATION
             // By default we use an InMemoryDatabase, which is incompatible with sqlite migrations
             var sqlitecon = "Data Source=Agents.db;";
