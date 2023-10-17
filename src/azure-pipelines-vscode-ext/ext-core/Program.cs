@@ -1,3 +1,4 @@
+using Runner.Server.Azure.Devops;
 using System;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
@@ -34,7 +35,7 @@ public class MyClass {
             };
             var template = await AzureDevops.ReadTemplate(context, currentFileName);
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
-            return pipeline.ToContextData().ToYaml();
+            return pipeline.ToYaml();
         } catch(Exception ex) {
             await Interop.Message(2, ex.ToString());
             return null;
