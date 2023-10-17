@@ -40,6 +40,9 @@ using System.Reflection;
 using Microsoft.AspNetCore.Rewrite;
 using System.Net;
 using Microsoft.Net.Http.Headers;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using GitHub.Services.WebApi;
+using Swashbuckle.AspNetCore.Newtonsoft;
 
 namespace Runner.Server
 {
