@@ -474,6 +474,8 @@ public class AzureDevops {
         if(fileContent == null) {
             throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
         }
+        context.TraceWriter?.Info($"Parsing template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"}) using Schema {schemaName ?? "pipeline-root"}");
+        context.TraceWriter?.Verbose(fileContent);
 
         TemplateToken token;
         using (var stringReader = new StringReader(fileContent))
@@ -591,6 +593,7 @@ public class AzureDevops {
 
         var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
         templateContext.Errors.Check();
+        context.TraceWriter?.Verbose(evaluatedResult.ToContextData().ToJToken().ToString());
         return evaluatedResult.AssertMapping("root");
     }
 
