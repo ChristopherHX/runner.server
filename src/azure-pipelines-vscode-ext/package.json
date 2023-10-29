@@ -135,7 +135,7 @@
 							"type": "azure-pipelines-vscode-ext",
 							"request": "launch",
 							"name": "Test Pipeline",
-							"program": "^\"\\${workspaceFolder}/azure-pipeline.yml",
+							"program": "^\"\\${workspaceFolder}/azure-pipeline.yml\"",
 							"repositories": {},
 							"parameters": {},
 							"variables": {}
