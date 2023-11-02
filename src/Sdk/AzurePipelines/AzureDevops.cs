@@ -440,7 +440,7 @@ public class AzureDevops {
 
     public static string RelativeTo(string cwd, string filename) {
         var fullPath = $"{cwd}/{filename}";
-        var seps = new char[] {'/', '\\'}
+        var seps = new char[] {'/', '\\'};
         if (filename.LastIndexOfAny(seps, 0) == 0) // use filename if absolute path is provided
         {
             fullPath = filename;
