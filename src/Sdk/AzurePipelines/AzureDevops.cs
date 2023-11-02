@@ -461,16 +461,20 @@ public class AzureDevops {
 
     public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null) {
         var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
-        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>(), context.Flags);
         var afilenameAndRef = filenameAndRef.Split("@", 2);
         var filename = afilenameAndRef[0];
-        var fileId = templateContext.GetFileId(filename);
         // Read the file
         var finalRepository = afilenameAndRef.Length == 1 ? context.RepositoryAndRef : string.Equals(afilenameAndRef[1], "self", StringComparison.OrdinalIgnoreCase) ? null : (context.Repositories?.TryGetValue(afilenameAndRef[1], out var ralias) ?? false) ? ralias : throw new Exception($"Couldn't find repository with alias {afilenameAndRef[1]} in repository resources");
         var finalFileName = context.RepositoryAndRef == finalRepository ? RelativeTo(context.CWD ?? ".", filename) : filename;
         if(finalFileName == null) {
             throw new Exception($"Couldn't find template location {filenameAndRef}");
         }
+
+        context.FileTable ??= new List<string>();
+        context.FileTable.Add(finalFileName);
+        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
+        var fileId = templateContext.GetFileId(finalFileName);
+
         var fileContent = await context.FileProvider.ReadFile(finalRepository, finalFileName);
         if(fileContent == null) {
             throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
