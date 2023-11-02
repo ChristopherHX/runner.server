@@ -470,17 +470,18 @@ public class AzureDevops {
             throw new Exception($"Couldn't find template location {filenameAndRef}");
         }
 
-        context.FileTable ??= new List<string>();
-        context.FileTable.Add(finalFileName);
-        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
-        var fileId = templateContext.GetFileId(finalFileName);
-
         var fileContent = await context.FileProvider.ReadFile(finalRepository, finalFileName);
         if(fileContent == null) {
             throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
         }
         context.TraceWriter?.Info("{0}", $"Parsing template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"}) using Schema {schemaName ?? "pipeline-root"}");
         context.TraceWriter?.Verbose("{0}", fileContent);
+
+        var errorTemplateFileName = $"({finalRepository ?? "self"})/{finalFileName}";
+        context.FileTable ??= new List<string>();
+        context.FileTable.Add(errorTemplateFileName);
+        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
+        var fileId = templateContext.GetFileId(errorTemplateFileName);
 
         TemplateToken token;
         using (var stringReader = new StringReader(fileContent))
