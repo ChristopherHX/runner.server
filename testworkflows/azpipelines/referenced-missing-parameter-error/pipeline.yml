@@ -1,4 +1,4 @@
-# ExpectedException: ArgumentException
+# ExpectedException: TemplateValidationException
 # ExpectedErrorMessage: test6
 
 parameters:
