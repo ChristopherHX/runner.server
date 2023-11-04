@@ -87,10 +87,17 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 			});
 			var doc = await vscode.workspace.openTextDocument(uri);
 			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
-			this.disposables.push(vscode.window.onDidChangeVisibleTextEditors(textEditors => {
-				if(!requestReOpen && !vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()))) {
-					console.log(`file closed ${self.name}`);
+			this.disposables.push(vscode.window.tabGroups.onDidChangeTabs(e => {
+				if(!vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()))) {
+					if(!requestReOpen) {
+						console.log(`file closed ${self.name}`);
+					}
 					requestReOpen = true;
+				} else {
+					if(requestReOpen) {
+						console.log(`file opened ${self.name}`);
+					}
+					requestReOpen = false;
 				}
 			}));
 			this.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
