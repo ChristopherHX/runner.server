@@ -1958,7 +1958,7 @@ namespace Runner.Client
                                         payloadContent = new JObject();
                                     }
                                     if(parameters.Event == "workflow_dispatch") {
-                                        var inputs = new JObject();
+                                        var inputs = payloadContent.TryGetValue("inputs", out var oinputs) ? (JObject)oinputs : new JObject();
                                         payloadContent["inputs"] = inputs;
                                         if(parameters.InputFiles?.Length > 0) {
                                             foreach(var file in parameters.InputFiles) {
