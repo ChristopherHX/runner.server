@@ -11,6 +11,10 @@ interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	program: string;
 	trace?: boolean;
 	watch?: boolean;
+	preview?: boolean;
+	repositories?: string[];
+	variables?: string[];
+	parameters?: string[];
 }
 
 interface IAttachRequestArguments extends ILaunchRequestArguments { }
@@ -22,6 +26,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
     name: string
     expandAzurePipeline: any
     changed: any
+	disposables: vscode.Disposable[]
 
 	public constructor(virtualFiles: any, name: string, expandAzurePipeline: any, changed: any) {
 		super("azure-pipelines-debug.yml");
@@ -31,6 +36,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
         this.name = name;
         this.expandAzurePipeline = expandAzurePipeline;
         this.changed = changed;
+		this.disposables = [];
 	}
 
 	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
@@ -67,11 +73,12 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 		return this.launchRequest(response, args);
 	}
 
-	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: any) {
+	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: ILaunchRequestArguments) {
 		logger.setup(args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Stop, false);
 
 		var self = this;
 		var message = null;
+		var requestReOpen = false;
 		if(args.preview) {
 			self.virtualFiles[self.name] = "";
 			var uri = vscode.Uri.from({
@@ -79,17 +86,26 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				path: this.name
 			});
 			var doc = await vscode.workspace.openTextDocument(uri);
-			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
-			vscode.workspace.onDidCloseTextDocument(adoc => {
-				if(doc === adoc) {
-					this.sendEvent(new TerminatedEvent());
+			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+			this.disposables.push(vscode.window.onDidChangeVisibleTextEditors(textEditors => {
+				if(!requestReOpen && !vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()))) {
+					console.log(`file closed ${self.name}`);
+					requestReOpen = true;
 				}
-			});
+			}));
+			this.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
+				if(doc === adoc) {
+					delete self.virtualFiles[self.name];
+				}
+			}));
 			self.changed(uri);
 		}
 		var run = async() => {
-			await this.expandAzurePipeline(false, args.repositories, args.variables, args.parameters, result => {
+			await this.expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
 				if(args.preview) {
+					if(requestReOpen) {
+						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+					}
 					self.virtualFiles[self.name] = result;
 					self.changed(uri);
 				} else {
@@ -97,6 +113,9 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				}
 			}, args.program, async errmsg => {
 				if(args.preview) {
+					if(requestReOpen) {
+						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+					}
 					self.virtualFiles[self.name] = errmsg;
 					self.changed(uri);
 				} else if(args.watch) {
@@ -148,6 +167,12 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
         if (this.watcher) {
             this.watcher.dispose();
         }
+		if (this.disposables) {
+			for(const disposable of this.disposables) {
+				disposable.dispose();
+			}
+		}
+		delete this.virtualFiles[self.name];
 		this.sendResponse(response);
 	}
 }

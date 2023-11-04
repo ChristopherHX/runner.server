@@ -1,4 +1,4 @@
-# Azure Pipelines VSCode Extension
+# Azure Pipelines Tools VSCode Extension
 
 This is a minimal Azure Pipelines Extension, the first vscode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
 
@@ -58,6 +58,10 @@ Sample Debugging configuration
 - You could self-host Azure Devops Server and commit your changes to your local system, may have license implications with more accurate results of the template engine
 - May not have feature parity with Azure Pipelines
 - Missing predefined Variables, feel free to add them manually as needed
+
+## Available in the VSCode Marketplace
+
+[christopherhx.azure-pipelines-vscode-ext](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
 
 ## Running the Extension
 
