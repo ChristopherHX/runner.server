@@ -74,11 +74,12 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 	}
 
 	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: ILaunchRequestArguments) {
-		logger.setup(args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Stop, false);
+		logger.setup(args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Warn, false);
 
 		var self = this;
 		var message = null;
 		var requestReOpen = false;
+		var assumeIsOpen = false;
 		if(args.preview) {
 			self.virtualFiles[self.name] = "";
 			var uri = vscode.Uri.from({
@@ -87,19 +88,25 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 			});
 			var doc = await vscode.workspace.openTextDocument(uri);
 			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
-			this.disposables.push(vscode.window.tabGroups.onDidChangeTabs(e => {
-				if(!vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()))) {
-					if(!requestReOpen) {
-						console.log(`file closed ${self.name}`);
+			var previewIsOpen = () => vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()));
+			assumeIsOpen = !previewIsOpen();
+			if(assumeIsOpen) {
+				logger.error("failed to detect that the textdocument has been opended as a tab, assume that it is open and don't try to show it multiple times");
+			} else {
+				this.disposables.push(vscode.window.tabGroups.onDidChangeTabs(e => {
+					if(!previewIsOpen()) {
+						if(!requestReOpen) {
+							console.log(`file closed ${self.name}`);
+						}
+						requestReOpen = true;
+					} else {
+						if(requestReOpen) {
+							console.log(`file opened ${self.name}`);
+						}
+						requestReOpen = false;
 					}
-					requestReOpen = true;
-				} else {
-					if(requestReOpen) {
-						console.log(`file opened ${self.name}`);
-					}
-					requestReOpen = false;
-				}
-			}));
+				}));
+			}
 			this.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
 				if(doc === adoc) {
 					delete self.virtualFiles[self.name];
@@ -112,6 +119,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				if(args.preview) {
 					if(requestReOpen) {
 						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+						requestReOpen = false;
 					}
 					self.virtualFiles[self.name] = result;
 					self.changed(uri);
@@ -122,6 +130,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				if(args.preview) {
 					if(requestReOpen) {
 						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+						requestReOpen = false;
 					}
 					self.virtualFiles[self.name] = errmsg;
 					self.changed(uri);
