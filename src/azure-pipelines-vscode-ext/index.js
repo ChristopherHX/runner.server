@@ -207,7 +207,7 @@ function activate(context) {
 				for(var workspace of vscode.workspace.workspaceFolders) {
 					if(fspathname.startsWith(workspace.uri.fsPath)) {
 						base = workspace.uri;
-						filename = vscode.workspace.asRelativePath(workspace.uri.with({path: workspace.uri.path + "/" + fspathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/")})), false;
+						filename = vscode.workspace.asRelativePath(workspace.uri.with({path: workspace.uri.path + "/" + fspathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/")}), false);
 						break;
 					}
 				}
