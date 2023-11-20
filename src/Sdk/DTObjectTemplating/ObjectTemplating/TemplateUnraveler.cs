@@ -894,7 +894,21 @@ namespace GitHub.DistributedTask.ObjectTemplating
             var parentSequenceState = expressionState.Parent as SequenceState;
             bool skip = false;
             bool metastate = false;
-            if(expressionState.Value.Type == TokenType.IfExpression || (parentMappingState != null && parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip) || parentSequenceState != null && parentSequenceState.IfExpressionResults.TryGetValue(parentSequenceState.Index - 1, out skip)) && skip) {
+            Func<bool> shouldRun = () => {
+                if(parentMappingState != null) {
+                    if(parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip)) {
+                        return skip;
+                    }
+                    m_context.Error(expressionState.Value, "This token must be chained after an if token in the parent mapping");
+                } else if(parentSequenceState != null) {
+                    if(parentSequenceState.IfExpressionResults.TryGetValue(parentSequenceState.Index - 1, out skip)) {
+                        return skip;
+                    }
+                    m_context.Error(expressionState.Value, "This token must be chained after an if token in the parent sequence");
+                }
+                return false;
+            };
+            if(expressionState.Value.Type == TokenType.IfExpression || shouldRun()) {
                 metastate = skip = expressionState.Value.Type == TokenType.ElseExpression ? false : !PipelineTemplateConverter.ConvertToIfResult(m_context, new BasicExpressionToken(expressionState.Value.FileId, expressionState.Value.Line, expressionState.Value.Column, expressionState.Value.Condition).EvaluateTemplateToken(m_context, out _));
             } else {
                 skip = true;
