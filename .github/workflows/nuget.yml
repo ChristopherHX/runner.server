@@ -102,9 +102,9 @@ jobs:
     - name: Test
       run: |
         set -x
-        gharun -C testworkflows/workflowerrors || :
-        gharun -C testworkflows/workflowerrors --trace --var system.runner.server.sendlostevents=true || :
-        gharun -W testworkflows/testlocalcheckout.yml
+        gharun -C testworkflows/workflowerrors -v || :
+        gharun -C testworkflows/workflowerrors --trace --var system.runner.server.sendlostevents=true -v  || :
+        gharun -W testworkflows/testlocalcheckout.yml -v 
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
         gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets
