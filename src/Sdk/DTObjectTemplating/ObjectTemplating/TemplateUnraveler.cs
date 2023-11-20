@@ -899,12 +899,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     if(parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip)) {
                         return skip;
                     }
-                    m_context.Error(expressionState.Value, "This token must be chained after an if token in the parent mapping");
+                    m_context.Error(expressionState.Value, $"This {expressionState.Value.ToString()} must be chained after an if token in the parent mapping");
                 } else if(parentSequenceState != null) {
                     if(parentSequenceState.IfExpressionResults.TryGetValue(parentSequenceState.Index - 1, out skip)) {
                         return skip;
                     }
-                    m_context.Error(expressionState.Value, "This token must be chained after an if token in the parent sequence");
+                    m_context.Error(expressionState.Value, $"This {expressionState.Value.ToString()} must be chained after an if token in the parent sequence");
                 }
                 return false;
             };
