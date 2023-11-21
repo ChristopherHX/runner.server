@@ -915,7 +915,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 metastate = false;
             }
             if(parentSequenceState == null) {
-                parentMappingState.IfExpressionResults[parentMappingState.Index] = metastate;
+                if(expressionState.Value.Type != TokenType.ElseExpression) {
+                    // Don't set this for ${{ else }}: tokens, because an else token is the last in the sequence
+                    parentMappingState.IfExpressionResults[parentMappingState.Index] = metastate;
+                }
                 var nestedValue = parentMappingState.Value[parentMappingState.Index].Value;
                 var nestedMapping = nestedValue as MappingToken;
                 var removeBytes = 0;
@@ -962,7 +965,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     expressionState.End();
                 }
             } else {
-                parentSequenceState.IfExpressionResults[parentSequenceState.Index] = metastate;
+                if(expressionState.Value.Type != TokenType.ElseExpression) {
+                    // Don't set this for ${{ else }}: tokens, because an else token is the last in the sequence
+                    parentSequenceState.IfExpressionResults[parentSequenceState.Index] = metastate;
+                }
                 var nestedValue = (parentSequenceState.Value[parentSequenceState.Index] as MappingToken)[0].Value;
                 var nestedSequence = nestedValue as SequenceToken;
                 var removeBytes = 0;
