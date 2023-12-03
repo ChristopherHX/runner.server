@@ -158,7 +158,7 @@ function activate(context) {
 		var oldConf = vscode.workspace.getConfiguration("azure-pipelines");
 		var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
 		var repositories = {};
-		for(var repo of conf.repositories ?? oldConf.repositories ?? []) {
+		for(var repo of [...(oldConf.repositories ?? []), ...(conf.repositories ?? [])]) {
 			var line = repo.split("=");
 			var name = line.shift();
 			repositories[name] = line.join("=");
@@ -169,7 +169,7 @@ function activate(context) {
 			}
 		}
 		var variables = {};
-		for(var repo of conf.variables ?? oldConf.variables ?? []) {
+		for(var repo of [...(oldConf.variables ?? []), ...(conf.variables ?? [])]) {
 			var line = repo.split("=");
 			var name = line.shift();
 			variables[name] = line.join("=");
@@ -185,7 +185,7 @@ function activate(context) {
 				parameters[name] = JSON.stringify(params[name]);
 			}
 		} else {
-			for(var repo of conf.parameters ?? oldConf.parameters ?? []) {
+			for(var repo of [...(oldConf.parameters ?? []), ...(conf.parameters ?? [])]) {
 				var line = repo.split("=");
 				var name = line.shift();
 				parameters[name] = line.join("=");
