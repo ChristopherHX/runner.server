@@ -47,7 +47,7 @@ namespace Runner.Server.Controllers
         [HttpPost("CreateArtifact")]
         public async Task<string> CreateArtifact([FromBody, Protobuf] Github.Actions.Results.Api.V1.CreateArtifactRequest body) {
             var guid = Guid.Parse(body.WorkflowJobRunBackendId);
-            var jobInfo = (from j in _context.Jobs where j.JobId == guid select new { j.runid, Attempt = j.WorkflowRunAttempt.Id }).FirstOrDefault();
+            var jobInfo = (from j in _context.Jobs where j.JobId == guid select new { j.runid, j.WorkflowRunAttempt.Attempt }).FirstOrDefault();
             var artifacts = new ArtifactController(_context, Configuration);
             var fname = $"{body.Name}.zip";
             var container = await artifacts.CreateContainer(jobInfo.runid, jobInfo.Attempt, new CreateActionsStorageArtifactParameters() { Name = body.Name }, jobInfo.Attempt);
