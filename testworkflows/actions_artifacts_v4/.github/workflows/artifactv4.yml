@@ -25,5 +25,3 @@ jobs:
     - run: '[ "$(cat gzip2.txt)" == "$(cat gz/gzip.txt)" ]'
     # Try Download everything with legacy v3
     - uses: actions/download-artifact@v3
-    # Try Download everything with legacy v1
-    - uses: actions/download-artifact@v1
