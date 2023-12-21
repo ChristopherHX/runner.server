@@ -27,9 +27,9 @@ jobs:
       id: build
       run: |
         $d = Get-Date
-        $runnerversion = $($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
-        dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$runnerversion /p:RuntimeFrameworkVersion=6.0.0
-        echo "version=$runnerversion" > $env:GITHUB_OUTPUT
+        $version = $("$(gh release view --repo christopherhx/runner.server --json tagName -t "{{.tagName}}")" + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
+        dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$version /p:RuntimeFrameworkVersion=6.0.0
+        echo "version=$version" > $env:GITHUB_OUTPUT
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Pack
