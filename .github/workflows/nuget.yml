@@ -27,7 +27,7 @@ jobs:
       id: build
       run: |
         $d = Get-Date
-        $version = $("$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
+        $version = $("$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")".TrimStart("v") + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
         dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$version /p:RuntimeFrameworkVersion=6.0.0
         echo "version=$version" > $env:GITHUB_OUTPUT
       shell: pwsh
