@@ -1,3 +1,4 @@
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Runner.Server.Azure.Devops;
 using Newtonsoft.Json;
@@ -71,6 +72,10 @@ public class MyClass {
         }
     }
 
+    public class ErrorWrapper {
+        public string Message { get; set; }
+        public List<string> Errors { get; set; }
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent) {
@@ -89,13 +94,24 @@ public class MyClass {
             var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             return pipeline.ToYaml();
+        } catch(TemplateValidationException ex) when(returnErrorContent) {
+            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+            var allErrors = new List<string>();
+            foreach(var error in ex.Errors) {
+                var errorContent = fileIdReplacer.Replace(error.Message, match => {
+                    return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+                });
+                allErrors.Add(errorContent);
+            }
+            await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = allErrors }));
+            return null;
         } catch(Exception ex) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
             var errorContent = fileIdReplacer.Replace(ex.Message, match => {
-                return $"File: {context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+                return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
             });
             if(returnErrorContent) {
-                await Interop.Error(handle, errorContent);
+                await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = new List<string> { errorContent } }));
             } else {
                 await Interop.Message(handle, 2, errorContent);
             }

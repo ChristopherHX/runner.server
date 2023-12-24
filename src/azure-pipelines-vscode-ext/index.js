@@ -259,20 +259,64 @@ function activate(context) {
 			base ??= current.with({ path: current.path.substring(0, li)});
 			filename ??= current.path.substring(li + 1);
 		}
-		var handle = { base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, error: error && (ex => {
-			const foundErrors = [...ex?.matchAll(/\(([^\\\)\(]+)\)([^\\\)\(]+) \(Line: (\d+), Col: (\d+)\): ([^\\\)\(]+)/g)];
+		var handle = { base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, error: error && (jsonex => {
 			var items = [];
-			for(var err of foundErrors) {
-				var repositoryAndRef = err[1];
-				var filename = err[2];
-				var row = parseInt(err[3]) - 1;
-				var column = parseInt(err[4]) - 1;
-				var msg = err[5];
-				var range = new vscode.Range(new vscode.Position(row, column), new vscode.Position(row, integer.MAX_VALUE));
-				var diag = new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error);
-				var uri = handle.refToUri[`(${repositoryAndRef ?? "self"})${filename}`];
-				if(uri) {
-					items.push([uri, [diag]]);
+			var pex = JSON.parse(jsonex);
+			for(var ex of pex.Errors) {
+				var matched = false;
+				//var err = ex.match(/^(.*) \(Line: (\d+), Col: (\d+)\): (.*)$/);
+				var err = null;
+				let i = ex.indexOf(" (Line: ");
+				if(i !== -1) {
+					let m = ex.substring(i).match(/^ \(Line: (\d+), Col: (\d+)\): (.*)$/);
+					if(m) {
+						err = [m.shift(), ex.substring(0, i), ...m];
+					}
+				}
+				if(err) {
+					var ref = err[1];
+					var row = parseInt(err[2]) - 1;
+					var column = parseInt(err[3]) - 1;
+					var msg = err[4];
+					var range = new vscode.Range(new vscode.Position(row, column), new vscode.Position(row, integer.MAX_VALUE));
+					var diag = new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error);
+					var uri = handle.refToUri[ref];
+					if(uri) {
+						matched = true;
+						items.push([uri, [diag]]);
+					}
+				}
+				//foundError = [...ex?.matchAll(/\(([^\\\)\(]+)\)([^\\\)\(]+): \(Line: (\d+), Col: (\d+), Idx: \d+\) - \(Line: (\d+), Col: (\d+), Idx: \d+\): ([^\\\)\(]+)/g)];
+				//var err = ex.match(/^(.*): \(Line: (\d+), Col: (\d+), Idx: \d+\) - \(Line: (\d+), Col: (\d+), Idx: \d+\): (.*)$/);
+				err = null;
+				if(i !== -1) {
+					let m = ex.substring(i - 1).match(/^: \(Line: (\d+), Col: (\d+), Idx: \d+\) - \(Line: (\d+), Col: (\d+), Idx: \d+\): (.*)$/);
+					if(m) {
+						err = [m.shift(), ex.substring(0, i - 1), ...m];
+					}
+				}
+				if(err) {
+					var ref = err[1];
+					var row = parseInt(err[2]) - 1;
+					var column = parseInt(err[3]) - 1;
+					var rowEnd = parseInt(err[4]) - 1;
+					var columnEnd = parseInt(err[5]) - 1;
+					var msg = err[6];
+					var range = new vscode.Range(new vscode.Position(row, column), new vscode.Position(rowEnd, columnEnd));
+					var diag = new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error);
+					var uri = handle.refToUri[ref];
+					if(uri) {
+						matched = true;
+						items.push([uri, [diag]]);
+					}
+				}
+				if(!matched) {
+					var uri = handle.refToUri[`(self)/${handle.filename}`];
+					var range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
+					var diag = new vscode.Diagnostic(range, ex, vscode.DiagnosticSeverity.Error);
+					if(uri) {
+						items.push([uri, [diag]]);
+					}
 				}
 			}
 			for(var uri of handle.referencedFiles) {
@@ -281,7 +325,7 @@ function activate(context) {
 				}
 			}
 			collection.set(items);
-			return error(ex);
+			return error(pex.Message);
 		}), referencedFiles: [], refToUri: {}, task: task };
 		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true);
 

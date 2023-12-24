@@ -1,3 +1,4 @@
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
@@ -26,11 +27,15 @@ namespace Runner.Server.Azure.Devops
         public async Task<Pipeline> Parse(Context context, TemplateToken source) {
             var pipelineRootToken = source.AssertMapping("pipeline-root");
             Pipeline parent = null;
+            MappingToken unparsedTokens = new MappingToken(null, null, null);
+            var defers = new List<Func<Task>>();
             foreach(var kv in pipelineRootToken) {
                 switch(kv.Key.AssertString("key").Value) {
                     case "name":
                         Name = kv.Value.AssertLiteralString("name");
                     break;
+                    case "parameters":
+                        break;
                     case "variables":
                         variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
                         await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
@@ -41,6 +46,15 @@ namespace Runner.Server.Azure.Devops
                         var ext = kv.Value.AssertMapping("extends");
                         string template = null;
                         Dictionary<string, TemplateToken> parameters = null;
+                        if(ext.Count == 2 && (ext[0].Key as StringToken)?.Value != "template") {
+                            throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(ext[0].Key)}Unexpected yaml key {(ext[0].Key as StringToken)?.Value} expected template")});
+                        }
+                        if(ext.Count == 2 && (ext[1].Key as StringToken)?.Value != "parameters") {
+                            throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(ext[1].Key)}Unexpected yaml key {(ext[1].Key as StringToken)?.Value} expected parameters")});
+                        }
+                        if(ext.Count > 2) {
+                            throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(ext[2].Key)}Unexpected yaml keys {(ext[2].Key as StringToken)?.Value} after template reference")});
+                        }
                         foreach(var ev in ext) {
                             switch(ev.Key.AssertString("").Value) {
                                 case "template":
@@ -51,24 +65,34 @@ namespace Runner.Server.Azure.Devops
                                 break;
                             }
                         }
-                        var templ = await AzureDevops.ReadTemplate(context, template, parameters);
-                        parent = await new Pipeline().Parse(context.ChildContext(templ, template), templ);
+                        try {
+                            var templ = await AzureDevops.ReadTemplate(context, template, parameters);
+                            parent = await new Pipeline().Parse(context.ChildContext(templ, template), templ);
+                        } catch(TemplateValidationException ex) {
+                            throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(ext)}Found Errors inside Template Reference: {ex.Message}")));
+                        }
                     break;
                     case "stages":
                         Stages = new List<Stage>();
                         await Stage.ParseStages(context, Stages, kv.Value.AssertSequence("stages"));
                     break;
                     case "steps":
-                        var implicitJob = await new Job().Parse(context, source);
-                        implicitJob.Name = null;
-                        Stages = new List<Stage>{ new Stage {
-                            Jobs = new List<Job>{ implicitJob }
-                        } };
+                        unparsedTokens.Add(kv);
+                        defers.Add(async () => {
+                            var implicitJob = await new Job().Parse(context, unparsedTokens, skipRootCheck: true);
+                            implicitJob.Name = null;
+                            Stages = new List<Stage>{ new Stage {
+                                Jobs = new List<Job>{ implicitJob }
+                            } };
+                        });
                     break;
                     case "jobs":
-                        var implicitStage = await new Stage().Parse(context, source);
-                        implicitStage.Name = null;
-                        Stages = new List<Stage>{ implicitStage };
+                        unparsedTokens.Add(kv);
+                        defers.Add(async () => {
+                            var implicitStage = await new Stage().Parse(context, unparsedTokens, skipRootCheck: true);
+                            implicitStage.Name = null;
+                            Stages = new List<Stage>{ implicitStage };
+                        });
                     break;
                     case "resources":
                         foreach(var resource in kv.Value.AssertMapping("resources")) {
@@ -107,7 +131,13 @@ namespace Runner.Server.Azure.Devops
                     case "schedules":
                         Schedules = kv.Value;
                     break;
+                    default:
+                        unparsedTokens.Add(kv);
+                    break;
                 }
+            }
+            foreach(var defer in defers) {
+                await defer();
             }
             if(parent != null) {
                 Stages = parent.Stages;
