@@ -86,6 +86,7 @@ public class MyClass {
             RequiredParametersProvider = new RequiredParametersProvider(handle),
             VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) }
         };
+        string yaml = null;
         try {
             Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>();
             foreach(var kv in JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters)) {
@@ -93,7 +94,10 @@ public class MyClass {
             }
             var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
-            return pipeline.ToYaml();
+            yaml = pipeline.ToYaml();
+            // The errors generated here shouldn't prevent the preview to show the result
+            pipeline.CheckPipelineForRuntimeFailure();
+            return yaml;
         } catch(TemplateValidationException ex) when(returnErrorContent) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
             var allErrors = new List<string>();
@@ -104,7 +108,7 @@ public class MyClass {
                 allErrors.Add(errorContent);
             }
             await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = allErrors }));
-            return null;
+            return yaml;
         } catch(Exception ex) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
             var errorContent = fileIdReplacer.Replace(ex.Message, match => {
@@ -115,7 +119,7 @@ public class MyClass {
             } else {
                 await Interop.Message(handle, 2, errorContent);
             }
-            return null;
+            return yaml;
         }
     }
 }

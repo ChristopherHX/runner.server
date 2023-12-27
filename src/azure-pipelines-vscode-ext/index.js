@@ -8,6 +8,7 @@ import { integer } from "vscode-languageclient";
  */
 function activate(context) {
 	basePaths.basedir = context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/blazor.boot.json" }).toString();
+	// var dotnet = null;
 	var { dotnet } = require("./build/AppBundle/_framework/dotnet.js");
 	customImports["dotnet.runtime.js"] = require("./build/AppBundle/_framework/dotnet.runtime.js");
 	customImports["dotnet.native.js"] = require("./build/AppBundle/_framework/dotnet.native.js");
@@ -31,13 +32,19 @@ function activate(context) {
 		cancellable: true
 	}, async (progress, token) => {
 		logchannel.appendLine("Updating Runtime");
+		// var res = await import("./build/AppBundle/_framework/dotnet.js");
+		// dotnet = res.dotnet;
+		// customImports["dotnet.runtime.js"] = await import("./build/AppBundle/_framework/dotnet.runtime.js");
+		// customImports["dotnet.native.js"] = await import("./build/AppBundle/_framework/dotnet.native.js");
 		var items = 1;
 		var citem = 0;
 		var runtime = await dotnet.withOnConfigLoaded(async config => {
 			items = Object.keys(config.resources.assembly).length;
 		}).withConfigSrc(context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/blazor.boot.json" }).toString()).withResourceLoader((type, name, defaultUri, integrity, behavior) => {
 			if(type === "dotnetjs") {
-				return name;
+				// Allow both nodejs and browser to use the same code
+				customImports[defaultUri] = customImports[name];
+				return defaultUri;
 			}
 			return (async () => {
 				if(type === "assembly") {
@@ -77,19 +84,25 @@ function activate(context) {
 						}
 					} else {
 						// Get current textEditor content for the entrypoint
-						var doc = handle.textEditor ? handle.textEditor.document : null;
-						if(handle.filename === filename && doc && !handle.skipCurrentEditor) {
-							handle.referencedFiles.push(handle.textEditor.document.uri);
-							handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = handle.textEditor.document.uri;
-							return doc.getText();
-						}
+						// var doc = handle.textEditor ? handle.textEditor.document : null;
+						// if(handle.filename === filename && doc && !handle.skipCurrentEditor) {
+						// 	handle.referencedFiles.push(handle.textEditor.document.uri);
+						// 	handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = handle.textEditor.document.uri;
+						// 	return doc.getText();
+						// }
 						uri = handle.base.with({ path: joinPath(handle.base.path, filename) });
 					}
 					handle.referencedFiles.push(uri);
 					handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = uri;
-					// Read template references via filesystem api
-					var content = await vscode.workspace.fs.readFile(uri);
-					var scontent = new TextDecoder().decode(content);
+					var scontent = null;
+					var textDocument = vscode.workspace.textDocuments.find(t => t.uri.toString() === uri.toString());
+					if(textDocument) {
+						scontent = textDocument.getText();
+					} else {
+						// Read template references via filesystem api
+						var content = await vscode.workspace.fs.readFile(uri);
+						scontent = new TextDecoder().decode(content);
+					}
 					return scontent;
 				} catch(ex) {
 					logchannel.error(`Failed to access ${filename} (${repositoryAndRef ?? "self"}), error: ${ex.toString()}`);
@@ -213,7 +226,7 @@ function activate(context) {
 				}
 			}
 			if(filename == null) {
-				for(var workspace of vscode.workspace.workspaceFolders) {
+				for(var workspace of (vscode.workspace.workspaceFolders || [])) {
 					// Normalize
 					var nativepathname = vscode.Uri.file(fspathname).fsPath;
 					if(nativepathname.startsWith(workspace.uri.fsPath)) {
@@ -226,7 +239,7 @@ function activate(context) {
 			if(filename == null) {
 				// untitled uris will land here
 				var current = vscode.Uri.parse(fspathname);
-				for(var workspace of vscode.workspace.workspaceFolders) {
+				for(var workspace of (vscode.workspace.workspaceFolders || [])) {
 					var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
 					if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
 						base = workspace.uri;
@@ -247,7 +260,7 @@ function activate(context) {
 		} else {
 			filename = null;
 			var current = textEditor.document.uri;
-			for(var workspace of vscode.workspace.workspaceFolders) {
+			for(var workspace of (vscode.workspace.workspaceFolders || [])) {
 				var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
 				if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
 					base = workspace.uri;
@@ -259,15 +272,14 @@ function activate(context) {
 			base ??= current.with({ path: current.path.substring(0, li)});
 			filename ??= current.path.substring(li + 1);
 		}
-		var handle = { base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, error: error && (jsonex => {
+		var handle = { hasErrors: false, base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, error: (async jsonex => {
 			var items = [];
 			var pex = JSON.parse(jsonex);
 			for(var ex of pex.Errors) {
 				var matched = false;
-				//var err = ex.match(/^(.*) \(Line: (\d+), Col: (\d+)\): (.*)$/);
 				var err = null;
 				let i = ex.indexOf(" (Line: ");
-				if(i !== -1) {
+				if(i !== -1 && !matched) {
 					let m = ex.substring(i).match(/^ \(Line: (\d+), Col: (\d+)\): (.*)$/);
 					if(m) {
 						err = [m.shift(), ex.substring(0, i), ...m];
@@ -286,10 +298,8 @@ function activate(context) {
 						items.push([uri, [diag]]);
 					}
 				}
-				//foundError = [...ex?.matchAll(/\(([^\\\)\(]+)\)([^\\\)\(]+): \(Line: (\d+), Col: (\d+), Idx: \d+\) - \(Line: (\d+), Col: (\d+), Idx: \d+\): ([^\\\)\(]+)/g)];
-				//var err = ex.match(/^(.*): \(Line: (\d+), Col: (\d+), Idx: \d+\) - \(Line: (\d+), Col: (\d+), Idx: \d+\): (.*)$/);
 				err = null;
-				if(i !== -1) {
+				if(i !== -1 && !matched) {
 					let m = ex.substring(i - 1).match(/^: \(Line: (\d+), Col: (\d+), Idx: \d+\) - \(Line: (\d+), Col: (\d+), Idx: \d+\): (.*)$/);
 					if(m) {
 						err = [m.shift(), ex.substring(0, i - 1), ...m];
@@ -303,6 +313,18 @@ function activate(context) {
 					var columnEnd = parseInt(err[5]) - 1;
 					var msg = err[6];
 					var range = new vscode.Range(new vscode.Position(row, column), new vscode.Position(rowEnd, columnEnd));
+					var diag = new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error);
+					var uri = handle.refToUri[ref];
+					if(uri) {
+						matched = true;
+						items.push([uri, [diag]]);
+					}
+				}
+				err = !matched ? ex.match(/^([^:]+): (.*)$/) : null;
+				if(err) {
+					var ref = err[1];
+					var msg = err[2];
+					var range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
 					var diag = new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error);
 					var uri = handle.refToUri[ref];
 					if(uri) {
@@ -324,20 +346,29 @@ function activate(context) {
 					items.push([uri, []]);
 				}
 			}
+			handle.hasErrors = true;
 			collection.set(items);
-			return error(pex.Message);
+			if(!error) {
+				await vscode.window.showErrorMessage(pex.Message);
+				return;
+			}
+			return await error(pex.Message);
 		}), referencedFiles: [], refToUri: {}, task: task };
 		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true);
 
 		if(result) {
 			logchannel.debug(result);
-			var items = [];
-			for(var uri of handle.referencedFiles) {
-				items.push([uri, []]);
+			if(!handle.hasErrors) {
+				var items = [];
+				for(var uri of handle.referencedFiles) {
+					items.push([uri, []]);
+				}
+				collection.set(items);
 			}
-			collection.set(items);
 			if(validate) {
-				await vscode.window.showInformationMessage("No issues found");
+				if(!handle.hasErrors) {
+					await vscode.window.showInformationMessage("No issues found");
+				}
 			} else if(callback) {
 				callback(result);
 			} else {
@@ -415,6 +446,7 @@ function activate(context) {
 	onTextEditChanged(vscode.window.activeTextEditor);
 	var executor = new vscode.CustomExecution(async def => {
 		const writeEmitter = new vscode.EventEmitter();
+		const closeEmitter = new vscode.EventEmitter();
 		var self = {
 			virtualFiles: virtualFiles,
 			name: `azure-pipelines-preview-${z++}.yml`,
@@ -452,6 +484,8 @@ function activate(context) {
 		var close = () => {
 			console.log("closed");
 			writeEmitter.dispose();
+			closeEmitter.fire(0);
+			closeEmitter.dispose();
 			if(self.watcher) {
 				self.watcher.dispose();
 			}
@@ -464,6 +498,7 @@ function activate(context) {
 		return {
 			close: close,
 			onDidWrite: writeEmitter.event,
+			onDidClose: closeEmitter.event,
 			open: () => {
 				var args = def;
 				if(args.preview) {
@@ -494,44 +529,76 @@ function activate(context) {
 					}));
 				}
 
+				var inProgress = false;
 				var run = async () => {
-					await expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
-						task.info(result);
-						if(args.preview) {
-							await reopenPreviewIfNeeded();
-							self.virtualFiles[self.name] = result;
-							self.changed(uri);
-						} else {
-							vscode.window.showInformationMessage("No Issues found");
-						}
-					}, args.program, async errmsg => {
-						task.error(errmsg);
-						if(args.preview) {
-							await reopenPreviewIfNeeded();
-							self.virtualFiles[self.name] = errmsg;
-							self.changed(uri);
-						} else {
-							vscode.window.showErrorMessage(errmsg);
-						}
-					}, task, self.collection);
+					if(inProgress) {
+						return;
+					}
+					inProgress = true;
+					try {
+						var hasErrors = false;
+						await expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
+							task.info(result);
+							if(args.preview) {
+								await reopenPreviewIfNeeded();
+								self.virtualFiles[self.name] = result;
+								self.changed(uri);
+							} else if(!hasErrors) {
+								vscode.window.showInformationMessage("No Issues found");
+							}
+						}, args.program, async errmsg => {
+							hasErrors = true;
+							task.error(errmsg);
+							if(args.preview) {
+								await reopenPreviewIfNeeded();
+								self.virtualFiles[self.name] = errmsg;
+								self.changed(uri);
+							} else {
+								vscode.window.showErrorMessage(errmsg);
+							}
+						}, task, self.collection);
+					} catch {
+
+					}
+					inProgress = false;
 					if(!args.watch) {
 						close();
 					}
 				};
 				run();
 				if(def.watch) {
+					// Reload yaml on file and textdocument changes
+					self.disposables.push(vscode.workspace.onDidChangeTextDocument(ch => {
+						var doc = ch.document;
+						if(self.collection.has(doc.uri)) {
+							console.log(`changed(doc): ${doc.uri.toString()}`);
+							run();
+						}
+					}));
+					// vscode.workspace.onDidSaveTextDocument(ev => {
+					// 	ev.
+					// })
+					//new vscode.RelativePattern()
+					//var btn = vscode.QuickInputButtons.Back;
+					
 					self.watcher = vscode.workspace.createFileSystemWatcher("**/*.{yml,yaml}");
 					self.watcher.onDidCreate(e => {
-						console.log(`created: ${e.toString()}`);
-						run();
+						if(self.collection.has(e)) {
+							console.log(`created: ${e.toString()}`);
+							run();
+						}
 					});
 					self.watcher.onDidChange(e => {
-						console.log(`changed: ${e.toString()}`);
-						run();
+						if(self.collection.has(e) && !vscode.workspace.textDocuments.find(t => t.uri.toString() === e.toString())) {
+							console.log(`changed: ${e.toString()}`);
+							run();
+						}
 					});
 					self.watcher.onDidDelete(e => {
-						console.log(`deleted: ${e.toString()}`);
-						run();
+						if(self.collection.has(e)) {
+							console.log(`deleted: ${e.toString()}`);
+							run();
+						}
 					});
 				}
 			}
