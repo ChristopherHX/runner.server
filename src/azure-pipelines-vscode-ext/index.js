@@ -164,7 +164,7 @@ function activate(context) {
 	});
 
 	var defcollection = vscode.languages.createDiagnosticCollection();
-	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection) => {
+	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state) => {
 		collection ??= defcollection;
 		var textEditor = vscode.window.activeTextEditor;
 		if(!textEditor && !fspathname) {
@@ -356,6 +356,10 @@ function activate(context) {
 		}), referencedFiles: [], refToUri: {}, task: task };
 		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true);
 
+        if(state) {
+            state.referencedFiles = handle.referencedFiles;
+        }
+
 		if(result) {
 			logchannel.debug(result);
 			if(!handle.hasErrors) {
@@ -530,10 +534,13 @@ function activate(context) {
 				}
 
 				var inProgress = false;
+				var waiting = false;
 				var run = async () => {
 					if(inProgress) {
+						waiting = true;
 						return;
 					}
+					waiting = false;
 					inProgress = true;
 					try {
 						var hasErrors = false;
@@ -556,7 +563,7 @@ function activate(context) {
 							} else {
 								vscode.window.showErrorMessage(errmsg);
 							}
-						}, task, self.collection);
+						}, task, self.collection, self);
 					} catch {
 
 					}
@@ -564,38 +571,37 @@ function activate(context) {
 					if(!args.watch) {
 						close();
 					}
+					if(waiting) {
+						run();
+					}
 				};
 				run();
 				if(def.watch) {
+					var isReferenced = uri => self.referencedFiles.find((u) => u.toString() === uri.toString());
 					// Reload yaml on file and textdocument changes
 					self.disposables.push(vscode.workspace.onDidChangeTextDocument(ch => {
 						var doc = ch.document;
-						if(self.collection.has(doc.uri)) {
+						if(isReferenced(doc.uri)) {
 							console.log(`changed(doc): ${doc.uri.toString()}`);
 							run();
 						}
 					}));
-					// vscode.workspace.onDidSaveTextDocument(ev => {
-					// 	ev.
-					// })
-					//new vscode.RelativePattern()
-					//var btn = vscode.QuickInputButtons.Back;
 					
 					self.watcher = vscode.workspace.createFileSystemWatcher("**/*.{yml,yaml}");
 					self.watcher.onDidCreate(e => {
-						if(self.collection.has(e)) {
+						if(isReferenced(e)) {
 							console.log(`created: ${e.toString()}`);
 							run();
 						}
 					});
 					self.watcher.onDidChange(e => {
-						if(self.collection.has(e) && !vscode.workspace.textDocuments.find(t => t.uri.toString() === e.toString())) {
+						if(isReferenced(e) && !vscode.workspace.textDocuments.find(t => t.uri.toString() === e.toString())) {
 							console.log(`changed: ${e.toString()}`);
 							run();
 						}
 					});
 					self.watcher.onDidDelete(e => {
-						if(self.collection.has(e)) {
+						if(isReferenced(e)) {
 							console.log(`deleted: ${e.toString()}`);
 							run();
 						}
