@@ -26,7 +26,6 @@ public class ArtfactsTests
                 ArtifactsMinAttempt = 1,
                 Attempt = 1,
                 WorkflowRun = new WorkflowRun {
-                    Id = 1,
                 }
             }
         };
@@ -34,6 +33,8 @@ public class ArtfactsTests
         using(var db = scope.ServiceProvider.GetRequiredService<SqLiteDb>()) {
             db.Jobs.Add(job);
             db.Artifacts.Add(new ArtifactContainer() { Attempt = job.WorkflowRunAttempt } );
+            db.SaveChanges();
+            job.runid = job.WorkflowRunAttempt.WorkflowRun.Id;
             db.SaveChanges();
         }
     }
@@ -53,7 +54,7 @@ public class ArtfactsTests
             Name = "test",
             WorkflowJobRunBackendId = job.JobId.ToString(),
             Version = 4,
-            WorkflowRunBackendId = "1"
+            WorkflowRunBackendId = job.runid.ToString()
         }), Encoding.UTF8, "application/json"));
 
 
@@ -79,7 +80,7 @@ public class ArtfactsTests
             Name = "test",
             WorkflowJobRunBackendId = job.JobId.ToString(),
             Version = 4,
-            WorkflowRunBackendId = "1"
+            WorkflowRunBackendId = job.runid.ToString()
         }), Encoding.UTF8, "application/json"));
 
 
@@ -95,7 +96,7 @@ public class ArtfactsTests
         {
             Name = "test",
             WorkflowJobRunBackendId = job.JobId.ToString(),
-            WorkflowRunBackendId = "1"
+            WorkflowRunBackendId = job.runid.ToString()
         }), Encoding.UTF8, "application/json"));
 
         // Assert
@@ -110,7 +111,7 @@ public class ArtfactsTests
             Name = "test",
             WorkflowJobRunBackendId = job.JobId.ToString(),
             Version = 4,
-            WorkflowRunBackendId = "1"
+            WorkflowRunBackendId = job.runid.ToString()
         }), Encoding.UTF8, "application/json"));
 
 
@@ -154,7 +155,7 @@ public class ArtfactsTests
             Name = "test",
             WorkflowJobRunBackendId = job.JobId.ToString(),
             Version = 4,
-            WorkflowRunBackendId = "1"
+            WorkflowRunBackendId = job.runid.ToString()
         }), Encoding.UTF8, "application/json"));
 
         resp = CreateArtifactResponse.Parser.ParseJson(await response.Content.ReadAsStringAsync());
@@ -162,7 +163,7 @@ public class ArtfactsTests
         Assert.False(resp.Ok, "Not Ok response");
     }
 
-    private static string GetJobAuthToken()
+    private string GetJobAuthToken()
     {
         var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
 
@@ -182,7 +183,7 @@ public class ArtfactsTests
                 new Claim("localcheckout", ""),
                 new Claim("runid", "1"),
                 new Claim("github_token", ""),
-                new Claim("scp", $"Actions.Results:{1}:{1}")
+                new Claim("scp", $"Actions.Results:{job.runid}:{job.JobId}")
             }),
             Expires = DateTime.UtcNow.AddMinutes(10),
             Issuer = myIssuer,
