@@ -5713,7 +5713,7 @@ namespace Runner.Server.Controllers
                                 new Claim("runid", runid.ToString()),
                                 new Claim("github_token", variables.TryGetValue("github_token", out var ghtoken) ? ghtoken.Value : ""),
                                 new Claim("scp", $"Actions.Results:{runid}:{job.JobId}"),
-                                new Claim("ac", $"[]")
+                                new Claim("ac", "[{\"Scope\": \"\", \"Permission\": 3}]")
                             }),
                             Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes + 10),
                             Issuer = myIssuer,
