@@ -113,7 +113,7 @@ namespace Runner.Server.Controllers
             {
                 JobKey key = context.JobDetail.Key;
                 var cronGroup = key.Group;
-                var workflowFileFilter = cronGroup.Substring(cronGroup.LastIndexOf(workflowRootFolder));
+                var workflowFileFilter = cronGroup.Substring(cronGroup.LastIndexOf(controller.workflowRootFolder));
                 var payload = context.MergedJobDataMap.GetString("payload");
                 var jobj = JObject.Parse(payload);
                 await controller.ExecuteWebhook("schedule", new KeyValuePair<GiteaHook, JObject>(jobj.ToObject<GiteaHook>(), jobj), workflowFileFilter);
