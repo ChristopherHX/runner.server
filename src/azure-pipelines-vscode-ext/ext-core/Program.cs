@@ -78,14 +78,17 @@ public class MyClass {
         public List<string> Errors { get; set; }
     }
 
+    private static readonly Context CacheCtx = new();
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent) {
         var context = new Runner.Server.Azure.Devops.Context {
             FileProvider = new MyFileProvider(handle),
-            TraceWriter = new TraceWriter(handle),
-            Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
+            //TraceWriter = new TraceWriter(handle),
+            Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert,
             RequiredParametersProvider = new RequiredParametersProvider(handle),
-            VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) }
+            VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) },
+            YamlCache = CacheCtx.YamlCache
         };
         string yaml = null;
         try {

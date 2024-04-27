@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -622,26 +624,56 @@ namespace Runner.Server.Azure.Devops {
             {
                 throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
             }
-            context.TraceWriter?.Info("{0}", $"Parsing template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"}) using Schema {schemaName ?? "pipeline-root"}");
-            context.TraceWriter?.Verbose("{0}", fileContent);
-
+            var key = SHA1.HashData(Encoding.Default.GetBytes(fileContent));
+            
             var errorTemplateFileName = $"({finalRepository ?? "self"})/{finalFileName}";
             context.FileTable ??= new List<string>();
             context.FileTable.Add(errorTemplateFileName);
             var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
             var fileId = templateContext.GetFileId(errorTemplateFileName);
 
-            TemplateToken token;
-            using (var stringReader = new StringReader(fileContent))
-            {
-                // preserveString is needed for azure pipelines compatability of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
-                var yamlObjectReader = new YamlObjectReader(fileId, stringReader, preserveString: true, forceAzurePipelines: true);
-                token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
+            MappingToken pipelineroot;
+            context.TraceWriter?.Info("{0}", $"Parsing template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"}) using Schema {schemaName ?? "pipeline-root"}");
+            if(!context.YamlCache.TryGetValue(key, out pipelineroot)) {
+                context.TraceWriter?.Verbose("{0}", fileContent);
+
+                TemplateToken token;
+                using (var stringReader = new StringReader(fileContent))
+                {
+                    // preserveString is needed for azure pipelines compatability of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
+                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader, preserveString: true, forceAzurePipelines: true);
+                    token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
+                }
+
+                templateContext.Errors.Check();
+
+                pipelineroot = token.AssertMapping("root");
+                context.YamlCache.TryAdd(key, pipelineroot.Clone() as MappingToken);
+            } else {
+                Console.WriteLine("Cache Hit Yaml!");
+                pipelineroot = pipelineroot.Clone() as MappingToken;
             }
-
-            templateContext.Errors.Check();
-
-            var pipelineroot = token.AssertMapping("root");
+            var h = SHA1.Create();
+            h.TransformBlock(key, 0, key.Length, null, 0);
+            if(cparameters != null) {
+                foreach (var p in cparameters)
+                {
+                    Console.WriteLine($"{p.Key}: {p.Value?.ToContextData()?.ToJToken()}");
+                    var k = Encoding.Default.GetBytes(p.Key.ToString());
+                    h.TransformBlock(k, 0, k.Length, null, 0);
+                    foreach (var item in p.Value.Traverse())
+                    {
+                        var inp = Encoding.Default.GetBytes(item.ToString());
+                        h.TransformBlock(inp, 0, inp.Length, null, 0);
+                    }
+                }
+            }
+            h.TransformFinalBlock(new byte[0], 0, 0);
+            var ha = h.Hash;
+            if(context.YamlCache.TryGetValue(ha, out var x)) {
+                Console.WriteLine("Cache Hit Eval!");
+                return x.Clone() as MappingToken;
+            }
 
             TemplateToken parameters = null;
             TemplateToken rawStaticVariables = null;
@@ -800,7 +832,7 @@ namespace Runner.Server.Azure.Devops {
             var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
             templateContext.Errors.Check();
             context.TraceWriter?.Verbose("{0}", evaluatedResult.ToContextData().ToJToken().ToString());
-            return evaluatedResult.AssertMapping("root");
+            return context.YamlCache[ha] = evaluatedResult.AssertMapping("root");
 
             async Task<TemplateContext> evalJobsWithExtraVars(Context context, TemplateContext templateContext, int fileId, DictionaryContextData contextData, DictionaryContextData variablesData, Dictionary<string, object> dict, GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject stage, DictionaryContextData vardata)
             {
