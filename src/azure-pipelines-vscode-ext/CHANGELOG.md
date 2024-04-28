@@ -2,6 +2,7 @@
 - Variables defined in referenced templates are now available for template expansion
 - Fixed each and if expressions broke resources.containers validation
 - [dotnet/runtime/eng/pipelines/runtime.yml](https://github.com/dotnet/runtime/blob/d79bb01433401a144816a386c5411ac4c08b6187/eng/pipelines/runtime.yml) can now be expanded without generating an invalid pipeline
+- Fixed relative paths didn't work for variable templates
 
 ### v0.0.13
 - Only ask on the first run of a watch task for required inputs and repositories
