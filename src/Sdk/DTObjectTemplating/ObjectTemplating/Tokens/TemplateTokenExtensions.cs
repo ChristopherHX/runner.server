@@ -139,7 +139,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 val = true;
                 return true;
             }
-            if(string.Equals(literalString, "false", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "f", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "no", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "off", StringComparison.OrdinalIgnoreCase)) {
+            if(string.Equals(literalString, "false", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "n", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "no", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "off", StringComparison.OrdinalIgnoreCase)) {
                 val = false;
                 return true;
             }
