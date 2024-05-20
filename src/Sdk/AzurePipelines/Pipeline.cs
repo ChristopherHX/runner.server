@@ -472,7 +472,7 @@ namespace Runner.Server.Azure.Devops
                             CheckSingleRuntimeExpression(errors, job.Container?.Alias ?? job.Container?.Image);
                             if(job.Steps != null) {
                                 foreach(var step in job.Steps) {
-                                    CheckConditionalExpressions(errors, job.Condition, Level.Step);
+                                    CheckConditionalExpressions(errors, step.Condition, Level.Step);
                                 }
                             }
                         }
