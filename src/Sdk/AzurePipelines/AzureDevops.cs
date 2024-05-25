@@ -239,7 +239,8 @@ namespace Runner.Server.Azure.Devops {
                     }
                     else if (template != null)
                     {
-                        var file = await ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
+                        var evalp = parameters != null && staticVarCtx != null ? TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : null;
+                        var file = await ReadTemplate(context, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                         var res = await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), staticVarCtx);
                         if (res is SequenceToken sq) {
                             await foreach(var x in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, sq)) {
@@ -690,6 +691,8 @@ namespace Runner.Server.Azure.Devops {
                 return x.Clone() as MappingToken;
             }
 
+            var childContext = context.ChildContext(pipelineroot, filenameAndRef);
+
             TemplateToken parameters = null;
             TemplateToken rawStaticVariables = null;
             foreach (var kv in pipelineroot)
@@ -826,7 +829,7 @@ namespace Runner.Server.Azure.Devops {
                 // templateContext.Errors.Check();
 
                 IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                pipelineroot[pipelineroot.Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), await ParseVariables(context, pvars, rawStaticVariables, templateContext));
+                pipelineroot[pipelineroot.Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), await ParseVariables(childContext, pvars, rawStaticVariables, templateContext));
                 foreach (var v in pvars)
                 {
                     variablesData[v.Key] = new StringContextData(v.Value.Value);
@@ -866,7 +869,7 @@ namespace Runner.Server.Azure.Devops {
                                 templateContext.ExpressionValues["variables"] = vardata;
                             }
                             IDictionary<string, VariableValue> pjvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            jvars = await ParseVariables(context, pjvars, jvars, templateContext);
+                            jvars = await ParseVariables(childContext, pjvars, jvars, templateContext);
                             var varjdata = (vardata ?? variablesData).Clone() as DictionaryContextData;
                             foreach (var v in pjvars)
                             {
@@ -902,7 +905,7 @@ namespace Runner.Server.Azure.Devops {
                                 templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
                             }
                             IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            vars = await ParseVariables(context, pvars, vars, templateContext);
+                            vars = await ParseVariables(childContext, pvars, vars, templateContext);
                             var vardata = variablesData.Clone() as DictionaryContextData;
                             foreach (var v in pvars)
                             {
