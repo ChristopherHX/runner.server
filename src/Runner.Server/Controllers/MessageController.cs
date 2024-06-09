@@ -163,14 +163,18 @@ namespace Runner.Server.Controllers
         {
             Session session;
             if(_cache.TryGetValue(sessionId, out session) && session.TaskAgentSession.SessionId == sessionId) {
-                session.MessageLock.Wait(50000);
-                session.Timer.Stop();
-                session.Timer.Start();
-                session.DropMessage = null;
-                if(session.Job != null && !session.JobAccepted) {
-                    session.JobAccepted = true;
+                if(session.MessageLock.Wait(50000)) {
+                    try {
+                        session.Timer.Stop();
+                        session.Timer.Start();
+                        session.DropMessage = null;
+                        if(session.Job != null && !session.JobAccepted) {
+                            session.JobAccepted = true;
+                        }
+                    } finally {
+                        session.MessageLock.Release();
+                    }
                 }
-                session.MessageLock.Release();
                 return Ok();
             } else {
                 return NotFound();
@@ -6418,12 +6422,12 @@ namespace Runner.Server.Controllers
                 Exception except = Request.Headers.UserAgent.FirstOrDefault()?.Contains("Vsts") == true ? new Microsoft.TeamFoundation.DistributedTask.WebApi.TaskAgentSessionExpiredException("This server has been restarted AZP") : new TaskAgentSessionExpiredException("This server has been restarted");
                 return await Ok(new WrappedException(except, true, new Version(2, 0)));
             }
+            var ts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, new CancellationTokenSource(TimeSpan.FromSeconds(50)).Token);
+            await session.MessageLock.WaitAsync(ts.Token);
             try {
-                var ts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, new CancellationTokenSource(TimeSpan.FromSeconds(50)).Token);
-                await session.MessageLock.WaitAsync(ts.Token);
                 session.Timer.Stop();
                 session.Timer.Start();
-                if(session.DropMessage != null && !session.JobAccepted) {
+                if(session.DropMessage != null && session.Job != null && !session.JobAccepted) {
                     return await SendJob(sessionId, session, null, 0, session.Job);
                 }
                 session.DropMessage?.Invoke("Called GetMessage without deleting the old Message");
@@ -6481,6 +6485,7 @@ namespace Runner.Server.Controllers
                                     if(res is NoContentResult) {
                                         continue;
                                     }
+                                    return res;
                                 }
                             } catch(Exception ex) {
                                 session.DropMessage?.Invoke(ex.Message);
