@@ -6569,9 +6569,10 @@ namespace Runner.Server.Controllers
                 try
                 {
                     session.JobAccepted = false;
+                    HashSet<string> agentlabels = null;
                     if(queues != null)
                     {
-                        var agentlabels = queues[i].Key;
+                        agentlabels = queues[i].Key;
                         TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Read Job from Queue: {req.name} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
                         req.SessionId = sessionId;
                         if (req.CancelRequest.IsCancellationRequested)
@@ -6589,6 +6590,7 @@ namespace Runner.Server.Controllers
                             session.JobTimer?.Stop();
                         };
                     }
+                    agentlabels ??= new HashSet<string>();
                     try
                     {
                         if (req.message == null)
