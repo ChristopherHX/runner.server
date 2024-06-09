@@ -6504,6 +6504,9 @@ namespace Runner.Server.Controllers
                         }
                         if(!jobRunningToken.IsCancellationRequested && job.CancelRequest.IsCancellationRequested) {
                             try {
+                                session.DropMessage = (reason) => {
+                                    job.Cancelled = false;
+                                };
                                 job.Cancelled = true;
                                 session.Key.GenerateIV();
                                 // await Task.Delay(2500);
