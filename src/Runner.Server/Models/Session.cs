@@ -27,6 +27,9 @@ namespace Runner.Server.Models
 
         public CancellationToken JobRunningToken { get => source.Token; }
         public Job Job { get => job; set {
+                if(value == job) {
+                    return;
+                }
                 if(job != null) {
                     job.SessionId = Guid.Empty;
                     try {
