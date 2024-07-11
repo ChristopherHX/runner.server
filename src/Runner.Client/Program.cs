@@ -986,7 +986,7 @@ namespace Runner.Client
                 "Change the docker container linux user namespace, only applies to container jobs using this Runner fork");
             var containerDaemonSocketOpt = new Option<string>(
                 new [] { "--container-daemon-socket" },
-                "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork");
+                "Change the docker container socket location that is mounted, only applies to container jobs using this Runner fork");
             var containerPlatformOpt = new Option<string>(
                 new [] { "--container-architecture", "--container-platform" },
                 "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork");
