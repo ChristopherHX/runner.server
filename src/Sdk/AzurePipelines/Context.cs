@@ -1,10 +1,27 @@
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace Runner.Server.Azure.Devops
 {
+    public class HashComparer : IEqualityComparer<byte[]>
+    {
+        public bool Equals(byte[] x, byte[] y)
+        {
+            return x.SequenceEqual(y);
+        }
+
+        public int GetHashCode([DisallowNull] byte[] obj)
+        {
+            return obj[0] << 24 | obj[1] << 16 | obj[2] << 8 | obj[3];
+        }
+
+    }
+
     public class Context {
         public ExpressionFlags Flags { get; set; }
         public IFileProvider FileProvider { get; set; }
@@ -17,6 +34,11 @@ namespace Runner.Server.Azure.Devops
         public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
         public IRequiredParametersProvider RequiredParametersProvider { get; set; }
         public List<string> FileTable { get; set; } = new List<string>();
+
+        public IDictionary<byte[], MappingToken> YamlCache  { get; set; } = new Dictionary<byte[], MappingToken>(new HashComparer());
+        public IDictionary<byte[], Stage> StagesCache  { get; set; } = new Dictionary<byte[], Stage>(new HashComparer());
+        public IDictionary<byte[], Job> JobsCache  { get; set; } = new Dictionary<byte[], Job>(new HashComparer());
+        public IDictionary<byte[], Step> StepsCache  { get; set; } = new Dictionary<byte[], Step>(new HashComparer());
 
         public Context Clone() {
             return MemberwiseClone() as Context;
