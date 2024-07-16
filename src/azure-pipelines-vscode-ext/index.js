@@ -53,8 +53,8 @@ function activate(context) {
 				if(type === "assembly") {
 					await progress.report({ message: name, increment: citem++ / items });
 				}
-				if(type == "globalization" && name.endsWith(".dat")) {
-					name = name.substring(name.length - 3) + "icu";
+				if(name.endsWith(".dat")) {
+					name = name.substring(0, name.length - 3) + "icu";
 				}
 				var content = await vscode.workspace.fs.readFile(context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/" + name }));
 				return new Response(content, { status: 200 });
