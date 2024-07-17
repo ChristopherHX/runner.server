@@ -1837,6 +1837,12 @@
                     "lockBehavior": {
                         "type": "lockBehavior"
                     },
+                    "trigger": {
+                        "type": "stageTrigger"
+                    },
+                    "isSkippable": {
+                        "type": "azp-boolean"
+                    },
                     "templateContext": {
                         "type": "templateContext"
                     }
@@ -1877,6 +1883,22 @@
             "one-of": [
                 "lockBehavior-0",
                 "lockBehavior-1"
+            ]
+        },
+        "stageTrigger-0": {
+            "string": {
+                "pattern": "^manual$"
+            }
+        },
+        "stageTrigger-1": {
+            "string": {
+                "pattern": "^automatic$"
+            }
+        },
+        "stageTrigger": {
+            "one-of": [
+                "stageTrigger-0",
+                "stageTrigger-1"
             ]
         },
         "extendsParameters": {
@@ -3087,6 +3109,9 @@
                     "fetchDepth": {
                         "type": "azp-string"
                     },
+                    "fetchFilter": {
+                        "type": "azp-string"
+                    },
                     "fetchTags": {
                         "type": "azp-string"
                     },
@@ -3100,6 +3125,9 @@
                         "type": "azp-string"
                     },
                     "path": {
+                        "type": "azp-string"
+                    },
+                    "workspaceRepo": {
                         "type": "azp-string"
                     },
                     "condition": {
@@ -3192,6 +3220,9 @@
                     },
                     "patterns": {
                         "type": "azp-string"
+                    },
+                    "inputs": {
+                        "type": "mappingOfStringString"
                     },
                     "condition": {
                         "type": "azp-string"
@@ -3664,25 +3695,25 @@
         },
         "task-task-2": {
             "string": {
-                "constant": "AzurePowerShell@2",
+                "constant": "AzurePowerShell@4",
                 "ignore-case": true
             }
         },
         "task-task-3": {
             "string": {
-                "constant": "AzurePowerShell@3",
+                "constant": "AzurePowerShell@5",
                 "ignore-case": true
             }
         },
         "task-task-4": {
             "string": {
-                "constant": "AzurePowerShell@4",
+                "constant": "AzurePowerShell@2",
                 "ignore-case": true
             }
         },
         "task-task-5": {
             "string": {
-                "constant": "AzurePowerShell@5",
+                "constant": "AzurePowerShell@3",
                 "ignore-case": true
             }
         },
@@ -3712,37 +3743,37 @@
         },
         "task-task-10": {
             "string": {
-                "constant": "Maven@3",
+                "constant": "Maven@4",
                 "ignore-case": true
             }
         },
         "task-task-11": {
             "string": {
-                "constant": "Maven@4",
+                "constant": "Maven@2",
                 "ignore-case": true
             }
         },
         "task-task-12": {
             "string": {
-                "constant": "Maven@1",
+                "constant": "Maven@3",
                 "ignore-case": true
             }
         },
         "task-task-13": {
             "string": {
-                "constant": "Maven@2",
+                "constant": "Maven@1",
                 "ignore-case": true
             }
         },
         "task-task-14": {
             "string": {
-                "constant": "DotNetCoreCLI@2",
+                "constant": "DotNetCoreCLI@0",
                 "ignore-case": true
             }
         },
         "task-task-15": {
             "string": {
-                "constant": "DotNetCoreCLI@0",
+                "constant": "DotNetCoreCLI@2",
                 "ignore-case": true
             }
         },
@@ -3760,25 +3791,25 @@
         },
         "task-task-18": {
             "string": {
-                "constant": "AzureRmWebAppDeployment@2",
+                "constant": "AzureRmWebAppDeployment@4",
                 "ignore-case": true
             }
         },
         "task-task-19": {
             "string": {
-                "constant": "AzureRmWebAppDeployment@4",
+                "constant": "AzureRmWebAppDeployment@2",
                 "ignore-case": true
             }
         },
         "task-task-20": {
             "string": {
-                "constant": "AzureRmWebAppDeployment@3",
+                "constant": "AzureRMWebAppDeployment@1",
                 "ignore-case": true
             }
         },
         "task-task-21": {
             "string": {
-                "constant": "PowerShellOnTargetMachines@3",
+                "constant": "AzureRmWebAppDeployment@3",
                 "ignore-case": true
             }
         },
@@ -3790,13 +3821,13 @@
         },
         "task-task-23": {
             "string": {
-                "constant": "PowerShellOnTargetMachines@2",
+                "constant": "PowerShellOnTargetMachines@3",
                 "ignore-case": true
             }
         },
         "task-task-24": {
             "string": {
-                "constant": "PublishCodeCoverageResults@1",
+                "constant": "PowerShellOnTargetMachines@2",
                 "ignore-case": true
             }
         },
@@ -3808,1301 +3839,1379 @@
         },
         "task-task-26": {
             "string": {
-                "constant": "RunVisualStudioTestsusingTestAgent@1",
+                "constant": "PublishCodeCoverageResults@1",
                 "ignore-case": true
             }
         },
         "task-task-27": {
             "string": {
-                "constant": "ManualIntervention@8",
+                "constant": "RunVisualStudioTestsusingTestAgent@1",
                 "ignore-case": true
             }
         },
         "task-task-28": {
             "string": {
-                "constant": "InstallAppleProvisioningProfile@1",
+                "constant": "ManualIntervention@6",
                 "ignore-case": true
             }
         },
         "task-task-29": {
             "string": {
-                "constant": "InstallAppleProvisioningProfile@0",
+                "constant": "ManualIntervention@7",
                 "ignore-case": true
             }
         },
         "task-task-30": {
             "string": {
-                "constant": "SonarQubePostTest@1",
+                "constant": "ManualIntervention@8",
                 "ignore-case": true
             }
         },
         "task-task-31": {
             "string": {
-                "constant": "PyPIPublisher@0",
+                "constant": "InstallAppleProvisioningProfile@1",
                 "ignore-case": true
             }
         },
         "task-task-32": {
             "string": {
-                "constant": "ChefKnife@1",
+                "constant": "InstallAppleProvisioningProfile@0",
                 "ignore-case": true
             }
         },
         "task-task-33": {
             "string": {
-                "constant": "GoTool@0",
+                "constant": "SonarQubePostTest@1",
                 "ignore-case": true
             }
         },
         "task-task-34": {
             "string": {
-                "constant": "XcodePackageiOS@0",
+                "constant": "PyPIPublisher@0",
                 "ignore-case": true
             }
         },
         "task-task-35": {
             "string": {
-                "constant": "Go@0",
+                "constant": "ChefKnife@1",
                 "ignore-case": true
             }
         },
         "task-task-36": {
             "string": {
-                "constant": "PublishPipelineMetadata@0",
+                "constant": "GoTool@0",
                 "ignore-case": true
             }
         },
         "task-task-37": {
             "string": {
-                "constant": "Docker@0",
+                "constant": "XcodePackageiOS@0",
                 "ignore-case": true
             }
         },
         "task-task-38": {
             "string": {
-                "constant": "Docker@1",
+                "constant": "Go@0",
                 "ignore-case": true
             }
         },
         "task-task-39": {
             "string": {
-                "constant": "Docker@2",
+                "constant": "PublishPipelineMetadata@0",
                 "ignore-case": true
             }
         },
         "task-task-40": {
             "string": {
-                "constant": "JenkinsQueueJob@1",
+                "constant": "Docker@1",
                 "ignore-case": true
             }
         },
         "task-task-41": {
             "string": {
-                "constant": "JenkinsQueueJob@2",
+                "constant": "Docker@0",
                 "ignore-case": true
             }
         },
         "task-task-42": {
             "string": {
-                "constant": "FtpUpload@2",
+                "constant": "Docker@2",
                 "ignore-case": true
             }
         },
         "task-task-43": {
             "string": {
-                "constant": "FtpUpload@1",
+                "constant": "JenkinsQueueJob@2",
                 "ignore-case": true
             }
         },
         "task-task-44": {
             "string": {
-                "constant": "WindowsMachineFileCopy@2",
+                "constant": "JenkinsQueueJob@1",
                 "ignore-case": true
             }
         },
         "task-task-45": {
             "string": {
-                "constant": "WindowsMachineFileCopy@1",
+                "constant": "FtpUpload@1",
                 "ignore-case": true
             }
         },
         "task-task-46": {
             "string": {
-                "constant": "AndroidBuild@1",
+                "constant": "FtpUpload@2",
                 "ignore-case": true
             }
         },
         "task-task-47": {
             "string": {
-                "constant": "TwineAuthenticate@1",
+                "constant": "WindowsMachineFileCopy@2",
                 "ignore-case": true
             }
         },
         "task-task-48": {
             "string": {
-                "constant": "TwineAuthenticate@0",
+                "constant": "WindowsMachineFileCopy@1",
                 "ignore-case": true
             }
         },
         "task-task-49": {
             "string": {
-                "constant": "IISWebAppDeploymentOnMachineGroup@0",
+                "constant": "AndroidBuild@1",
                 "ignore-case": true
             }
         },
         "task-task-50": {
             "string": {
-                "constant": "PythonScript@0",
+                "constant": "TwineAuthenticate@0",
                 "ignore-case": true
             }
         },
         "task-task-51": {
             "string": {
-                "constant": "HelmInstaller@1",
+                "constant": "TwineAuthenticate@1",
                 "ignore-case": true
             }
         },
         "task-task-52": {
             "string": {
-                "constant": "HelmInstaller@0",
+                "constant": "IISWebAppDeploymentOnMachineGroup@0",
                 "ignore-case": true
             }
         },
         "task-task-53": {
             "string": {
-                "constant": "NodeTaskRunnerInstaller@0",
+                "constant": "PythonScript@0",
                 "ignore-case": true
             }
         },
         "task-task-54": {
             "string": {
-                "constant": "XamarinLicense@1",
+                "constant": "HelmInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-55": {
             "string": {
-                "constant": "NuGetAuthenticate@0",
+                "constant": "HelmInstaller@1",
                 "ignore-case": true
             }
         },
         "task-task-56": {
             "string": {
-                "constant": "NuGetAuthenticate@1",
+                "constant": "NodeTaskRunnerInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-57": {
             "string": {
-                "constant": "DownloadGitHubNugetPackage@1",
+                "constant": "XamarinLicense@1",
                 "ignore-case": true
             }
         },
         "task-task-58": {
             "string": {
-                "constant": "MavenAuthenticate@0",
+                "constant": "NuGetAuthenticate@0",
                 "ignore-case": true
             }
         },
         "task-task-59": {
             "string": {
-                "constant": "ReviewApp@0",
+                "constant": "NuGetAuthenticate@1",
                 "ignore-case": true
             }
         },
         "task-task-60": {
             "string": {
-                "constant": "JavaToolInstaller@0",
+                "constant": "DownloadGitHubNugetPackage@1",
                 "ignore-case": true
             }
         },
         "task-task-61": {
             "string": {
-                "constant": "Chef@1",
+                "constant": "MavenAuthenticate@0",
                 "ignore-case": true
             }
         },
         "task-task-62": {
             "string": {
-                "constant": "AzureFunctionApp@2",
+                "constant": "ReviewApp@0",
                 "ignore-case": true
             }
         },
         "task-task-63": {
             "string": {
-                "constant": "AzureFunctionApp@1",
+                "constant": "JavaToolInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-64": {
             "string": {
-                "constant": "npmAuthenticate@0",
+                "constant": "Chef@1",
                 "ignore-case": true
             }
         },
         "task-task-65": {
             "string": {
-                "constant": "MSBuild@1",
+                "constant": "AzureFunctionApp@2",
                 "ignore-case": true
             }
         },
         "task-task-66": {
             "string": {
-                "constant": "PackerBuild@1",
+                "constant": "AzureFunctionApp@1",
                 "ignore-case": true
             }
         },
         "task-task-67": {
             "string": {
-                "constant": "PackerBuild@0",
+                "constant": "npmAuthenticate@0",
                 "ignore-case": true
             }
         },
         "task-task-68": {
             "string": {
-                "constant": "NuGetPackager@0",
+                "constant": "MSBuild@1",
                 "ignore-case": true
             }
         },
         "task-task-69": {
             "string": {
-                "constant": "DuffleInstaller@0",
+                "constant": "PackerBuild@0",
                 "ignore-case": true
             }
         },
         "task-task-70": {
             "string": {
-                "constant": "ServiceFabricUpdateAppVersions@1",
+                "constant": "PackerBuild@1",
                 "ignore-case": true
             }
         },
         "task-task-71": {
             "string": {
-                "constant": "ServiceFabricUpdateManifests@2",
+                "constant": "NuGetPackager@0",
                 "ignore-case": true
             }
         },
         "task-task-72": {
             "string": {
-                "constant": "AzureMonitor@1",
+                "constant": "DuffleInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-73": {
             "string": {
-                "constant": "AzureMonitor@0",
+                "constant": "ServiceFabricUpdateAppVersions@1",
                 "ignore-case": true
             }
         },
         "task-task-74": {
             "string": {
-                "constant": "AzureNLBManagement@1",
+                "constant": "ServiceFabricUpdateManifests@2",
                 "ignore-case": true
             }
         },
         "task-task-75": {
             "string": {
-                "constant": "ApacheJMeterLoadTest@1",
+                "constant": "AzureMonitor@1",
                 "ignore-case": true
             }
         },
         "task-task-76": {
             "string": {
-                "constant": "DockerCompose@0",
+                "constant": "AzureMonitor@0",
                 "ignore-case": true
             }
         },
         "task-task-77": {
             "string": {
-                "constant": "AzureMonitorAlerts@0",
+                "constant": "Notation@0",
                 "ignore-case": true
             }
         },
         "task-task-78": {
             "string": {
-                "constant": "XamarinTestCloud@1",
+                "constant": "AzureNLBManagement@1",
                 "ignore-case": true
             }
         },
         "task-task-79": {
             "string": {
-                "constant": "ServiceFabricDeploy@1",
+                "constant": "ApacheJMeterLoadTest@1",
                 "ignore-case": true
             }
         },
         "task-task-80": {
             "string": {
-                "constant": "Xcode@5",
+                "constant": "DockerCompose@0",
                 "ignore-case": true
             }
         },
         "task-task-81": {
             "string": {
-                "constant": "Xcode@3",
+                "constant": "DockerCompose@1",
                 "ignore-case": true
             }
         },
         "task-task-82": {
             "string": {
-                "constant": "Xcode@4",
+                "constant": "AzureMonitorAlerts@0",
                 "ignore-case": true
             }
         },
         "task-task-83": {
             "string": {
-                "constant": "Xcode@2",
+                "constant": "XamarinTestCloud@1",
                 "ignore-case": true
             }
         },
         "task-task-84": {
             "string": {
-                "constant": "NuGetPublisher@0",
+                "constant": "ServiceFabricDeploy@1",
                 "ignore-case": true
             }
         },
         "task-task-85": {
             "string": {
-                "constant": "queryWorkItems@0",
+                "constant": "Xcode@2",
                 "ignore-case": true
             }
         },
         "task-task-86": {
             "string": {
-                "constant": "AzureWebAppContainer@1",
+                "constant": "Xcode@1",
                 "ignore-case": true
             }
         },
         "task-task-87": {
             "string": {
-                "constant": "SqlDacpacDeploymentOnMachineGroup@0",
+                "constant": "Xcode@5",
                 "ignore-case": true
             }
         },
         "task-task-88": {
             "string": {
-                "constant": "CacheBeta@1",
+                "constant": "Xcode@3",
                 "ignore-case": true
             }
         },
         "task-task-89": {
             "string": {
-                "constant": "Cache@2",
+                "constant": "Xcode@4",
                 "ignore-case": true
             }
         },
         "task-task-90": {
             "string": {
-                "constant": "CacheBeta@0",
+                "constant": "NuGetPublisher@0",
                 "ignore-case": true
             }
         },
         "task-task-91": {
             "string": {
-                "constant": "CMake@1",
+                "constant": "queryWorkItems@0",
                 "ignore-case": true
             }
         },
         "task-task-92": {
             "string": {
-                "constant": "AppCenterTest@1",
+                "constant": "AzureWebAppContainer@1",
                 "ignore-case": true
             }
         },
         "task-task-93": {
             "string": {
-                "constant": "VSMobileCenterTest@0",
+                "constant": "SqlDacpacDeploymentOnMachineGroup@0",
                 "ignore-case": true
             }
         },
         "task-task-94": {
             "string": {
-                "constant": "DownloadSecureFile@1",
+                "constant": "CacheBeta@1",
                 "ignore-case": true
             }
         },
         "task-task-95": {
             "string": {
-                "constant": "AzureContainerApps@0",
+                "constant": "Cache@2",
                 "ignore-case": true
             }
         },
         "task-task-96": {
             "string": {
-                "constant": "AzureContainerApps@1",
+                "constant": "CacheBeta@0",
                 "ignore-case": true
             }
         },
         "task-task-97": {
             "string": {
-                "constant": "UseRubyVersion@0",
+                "constant": "CMake@1",
                 "ignore-case": true
             }
         },
         "task-task-98": {
             "string": {
-                "constant": "Grunt@0",
+                "constant": "VSMobileCenterTest@0",
                 "ignore-case": true
             }
         },
         "task-task-99": {
             "string": {
-                "constant": "SqlAzureDacpacDeployment@1",
+                "constant": "AppCenterTest@1",
                 "ignore-case": true
             }
         },
         "task-task-100": {
             "string": {
-                "constant": "ContainerStructureTest@0",
+                "constant": "DownloadSecureFile@1",
                 "ignore-case": true
             }
         },
         "task-task-101": {
             "string": {
-                "constant": "IISWebAppDeployment@1",
+                "constant": "AzureContainerApps@0",
                 "ignore-case": true
             }
         },
         "task-task-102": {
             "string": {
-                "constant": "CloudLoadTest@1",
+                "constant": "AzureContainerApps@1",
                 "ignore-case": true
             }
         },
         "task-task-103": {
             "string": {
-                "constant": "KubectlInstaller@0",
+                "constant": "UseRubyVersion@0",
                 "ignore-case": true
             }
         },
         "task-task-104": {
             "string": {
-                "constant": "CmdLine@1",
+                "constant": "Grunt@0",
                 "ignore-case": true
             }
         },
         "task-task-105": {
             "string": {
-                "constant": "CmdLine@2",
+                "constant": "SqlAzureDacpacDeployment@1",
                 "ignore-case": true
             }
         },
         "task-task-106": {
             "string": {
-                "constant": "NuGet@0",
+                "constant": "ContainerStructureTest@0",
                 "ignore-case": true
             }
         },
         "task-task-107": {
             "string": {
-                "constant": "ContainerBuild@0",
+                "constant": "IISWebAppDeployment@1",
                 "ignore-case": true
             }
         },
         "task-task-108": {
             "string": {
-                "constant": "NuGetRestore@1",
+                "constant": "CloudLoadTest@1",
                 "ignore-case": true
             }
         },
         "task-task-109": {
             "string": {
-                "constant": "NuGetCommand@2",
+                "constant": "KubectlInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-110": {
             "string": {
-                "constant": "NuGetInstaller@0",
+                "constant": "CmdLine@2",
                 "ignore-case": true
             }
         },
         "task-task-111": {
             "string": {
-                "constant": "Delay@1",
+                "constant": "CmdLine@1",
                 "ignore-case": true
             }
         },
         "task-task-112": {
             "string": {
-                "constant": "XamariniOS@2",
+                "constant": "NuGet@0",
                 "ignore-case": true
             }
         },
         "task-task-113": {
             "string": {
-                "constant": "XamariniOS@1",
+                "constant": "ContainerBuild@0",
                 "ignore-case": true
             }
         },
         "task-task-114": {
             "string": {
-                "constant": "PublishTestResults@1",
+                "constant": "NuGetCommand@2",
                 "ignore-case": true
             }
         },
         "task-task-115": {
             "string": {
-                "constant": "PublishTestResults@2",
+                "constant": "NuGetInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-116": {
             "string": {
-                "constant": "AzureFileCopy@2",
+                "constant": "NuGetRestore@1",
                 "ignore-case": true
             }
         },
         "task-task-117": {
             "string": {
-                "constant": "AzureFileCopy@4",
+                "constant": "Delay@1",
                 "ignore-case": true
             }
         },
         "task-task-118": {
             "string": {
-                "constant": "AzureFileCopy@5",
+                "constant": "XamariniOS@1",
                 "ignore-case": true
             }
         },
         "task-task-119": {
             "string": {
-                "constant": "AzureFileCopy@1",
+                "constant": "XamariniOS@2",
                 "ignore-case": true
             }
         },
         "task-task-120": {
             "string": {
-                "constant": "AzureFileCopy@3",
+                "constant": "PublishTestResults@1",
                 "ignore-case": true
             }
         },
         "task-task-121": {
             "string": {
-                "constant": "PublishSymbols@2",
+                "constant": "PublishTestResults@2",
                 "ignore-case": true
             }
         },
         "task-task-122": {
             "string": {
-                "constant": "PublishSymbols@1",
+                "constant": "AzureFileCopy@4",
                 "ignore-case": true
             }
         },
         "task-task-123": {
             "string": {
-                "constant": "CopyFilesOverSSH@0",
+                "constant": "AzureFileCopy@1",
                 "ignore-case": true
             }
         },
         "task-task-124": {
             "string": {
-                "constant": "Gradle@3",
+                "constant": "AzureFileCopy@5",
                 "ignore-case": true
             }
         },
         "task-task-125": {
             "string": {
-                "constant": "Gradle@1",
+                "constant": "AzureFileCopy@2",
                 "ignore-case": true
             }
         },
         "task-task-126": {
             "string": {
-                "constant": "Gradle@2",
+                "constant": "AzureFileCopy@6",
                 "ignore-case": true
             }
         },
         "task-task-127": {
             "string": {
-                "constant": "AppCenterDistribute@3",
+                "constant": "AzureFileCopy@3",
                 "ignore-case": true
             }
         },
         "task-task-128": {
             "string": {
-                "constant": "AppCenterDistribute@2",
+                "constant": "PublishSymbols@1",
                 "ignore-case": true
             }
         },
         "task-task-129": {
             "string": {
-                "constant": "AppCenterDistribute@0",
+                "constant": "PublishSymbols@2",
                 "ignore-case": true
             }
         },
         "task-task-130": {
             "string": {
-                "constant": "AppCenterDistribute@1",
+                "constant": "CopyFilesOverSSH@0",
                 "ignore-case": true
             }
         },
         "task-task-131": {
             "string": {
-                "constant": "NuGetToolInstaller@0",
+                "constant": "Gradle@3",
                 "ignore-case": true
             }
         },
         "task-task-132": {
             "string": {
-                "constant": "NuGetToolInstaller@1",
+                "constant": "Gradle@2",
                 "ignore-case": true
             }
         },
         "task-task-133": {
             "string": {
-                "constant": "JenkinsDownloadArtifacts@1",
+                "constant": "Gradle@1",
                 "ignore-case": true
             }
         },
         "task-task-134": {
             "string": {
-                "constant": "AzureFunctionAppContainer@1",
+                "constant": "Gradle@0",
                 "ignore-case": true
             }
         },
         "task-task-135": {
             "string": {
-                "constant": "DecryptFile@1",
+                "constant": "AppCenterDistribute@2",
                 "ignore-case": true
             }
         },
         "task-task-136": {
             "string": {
-                "constant": "HelmDeploy@0",
+                "constant": "AppCenterDistribute@1",
                 "ignore-case": true
             }
         },
         "task-task-137": {
             "string": {
-                "constant": "InstallAppleCertificate@2",
+                "constant": "AppCenterDistribute@3",
                 "ignore-case": true
             }
         },
         "task-task-138": {
             "string": {
-                "constant": "InstallAppleCertificate@1",
+                "constant": "AppCenterDistribute@0",
                 "ignore-case": true
             }
         },
         "task-task-139": {
             "string": {
-                "constant": "InstallAppleCertificate@0",
+                "constant": "NuGetToolInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-140": {
             "string": {
-                "constant": "AzureFunction@1",
+                "constant": "NuGetToolInstaller@1",
                 "ignore-case": true
             }
         },
         "task-task-141": {
             "string": {
-                "constant": "AzureFunction@0",
+                "constant": "JenkinsDownloadArtifacts@1",
                 "ignore-case": true
             }
         },
         "task-task-142": {
             "string": {
-                "constant": "OpenPolicyAgentInstaller@0",
+                "constant": "AzureFunctionAppContainer@1",
                 "ignore-case": true
             }
         },
         "task-task-143": {
             "string": {
-                "constant": "DownloadGitHubRelease@0",
+                "constant": "DecryptFile@1",
                 "ignore-case": true
             }
         },
         "task-task-144": {
             "string": {
-                "constant": "SSH@0",
+                "constant": "HelmDeploy@0",
                 "ignore-case": true
             }
         },
         "task-task-145": {
             "string": {
-                "constant": "PublishPipelineArtifact@0",
+                "constant": "HelmDeploy@1",
                 "ignore-case": true
             }
         },
         "task-task-146": {
             "string": {
-                "constant": "PublishPipelineArtifact@1",
+                "constant": "InstallAppleCertificate@2",
                 "ignore-case": true
             }
         },
         "task-task-147": {
             "string": {
-                "constant": "SonarQubePreBuild@1",
+                "constant": "InstallAppleCertificate@1",
                 "ignore-case": true
             }
         },
         "task-task-148": {
             "string": {
-                "constant": "DownloadFileshareArtifacts@1",
+                "constant": "InstallAppleCertificate@0",
                 "ignore-case": true
             }
         },
         "task-task-149": {
             "string": {
-                "constant": "Kubernetes@0",
+                "constant": "AzureFunction@1",
                 "ignore-case": true
             }
         },
         "task-task-150": {
             "string": {
-                "constant": "Kubernetes@1",
+                "constant": "AzureFunction@0",
                 "ignore-case": true
             }
         },
         "task-task-151": {
             "string": {
-                "constant": "AzureIoTEdge@2",
+                "constant": "OpenPolicyAgentInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-152": {
             "string": {
-                "constant": "ServiceFabricComposeDeploy@0",
+                "constant": "DownloadGitHubRelease@0",
                 "ignore-case": true
             }
         },
         "task-task-153": {
             "string": {
-                "constant": "AndroidSigning@2",
+                "constant": "SSH@0",
                 "ignore-case": true
             }
         },
         "task-task-154": {
             "string": {
-                "constant": "AndroidSigning@3",
+                "constant": "PublishPipelineArtifact@1",
                 "ignore-case": true
             }
         },
         "task-task-155": {
             "string": {
-                "constant": "AndroidSigning@1",
+                "constant": "PublishPipelineArtifact@0",
                 "ignore-case": true
             }
         },
         "task-task-156": {
             "string": {
-                "constant": "DownloadPipelineArtifact@1",
+                "constant": "SonarQubePreBuild@1",
                 "ignore-case": true
             }
         },
         "task-task-157": {
             "string": {
-                "constant": "DownloadPipelineArtifact@0",
+                "constant": "DownloadFileshareArtifacts@1",
                 "ignore-case": true
             }
         },
         "task-task-158": {
             "string": {
-                "constant": "DownloadPipelineArtifact@2",
+                "constant": "Kubernetes@0",
                 "ignore-case": true
             }
         },
         "task-task-159": {
             "string": {
-                "constant": "UsePythonVersion@0",
+                "constant": "Kubernetes@1",
                 "ignore-case": true
             }
         },
         "task-task-160": {
             "string": {
-                "constant": "ServiceFabricPowerShell@1",
+                "constant": "AzureIoTEdge@2",
                 "ignore-case": true
             }
         },
         "task-task-161": {
             "string": {
-                "constant": "VSTest@3",
+                "constant": "ServiceFabricComposeDeploy@0",
                 "ignore-case": true
             }
         },
         "task-task-162": {
             "string": {
-                "constant": "VSTest@1",
+                "constant": "AndroidSigning@1",
                 "ignore-case": true
             }
         },
         "task-task-163": {
             "string": {
-                "constant": "VSTest@2",
+                "constant": "AndroidSigning@2",
                 "ignore-case": true
             }
         },
         "task-task-164": {
             "string": {
-                "constant": "ManualValidation@0",
+                "constant": "AndroidSigning@3",
                 "ignore-case": true
             }
         },
         "task-task-165": {
             "string": {
-                "constant": "Ant@1",
+                "constant": "DownloadPipelineArtifact@2",
                 "ignore-case": true
             }
         },
         "task-task-166": {
             "string": {
-                "constant": "DeployVisualStudioTestAgent@2",
+                "constant": "DownloadPipelineArtifact@0",
                 "ignore-case": true
             }
         },
         "task-task-167": {
             "string": {
-                "constant": "DeployVisualStudioTestAgent@1",
+                "constant": "DownloadPipelineArtifact@1",
                 "ignore-case": true
             }
         },
         "task-task-168": {
             "string": {
-                "constant": "CondaEnvironment@1",
+                "constant": "UsePythonVersion@0",
                 "ignore-case": true
             }
         },
         "task-task-169": {
             "string": {
-                "constant": "CondaEnvironment@0",
+                "constant": "ServiceFabricPowerShell@1",
                 "ignore-case": true
             }
         },
         "task-task-170": {
             "string": {
-                "constant": "BatchScript@1",
+                "constant": "VSTest@1",
                 "ignore-case": true
             }
         },
         "task-task-171": {
             "string": {
-                "constant": "DownloadGithubNpmPackage@1",
+                "constant": "VSTest@2",
                 "ignore-case": true
             }
         },
         "task-task-172": {
             "string": {
-                "constant": "VSBuild@1",
+                "constant": "VSTest@3",
                 "ignore-case": true
             }
         },
         "task-task-173": {
             "string": {
-                "constant": "AzureKeyVault@2",
+                "constant": "ManualValidation@1",
                 "ignore-case": true
             }
         },
         "task-task-174": {
             "string": {
-                "constant": "AzureKeyVault@1",
+                "constant": "ManualValidation@0",
                 "ignore-case": true
             }
         },
         "task-task-175": {
             "string": {
-                "constant": "DotNetCoreInstaller@0",
+                "constant": "Ant@1",
                 "ignore-case": true
             }
         },
         "task-task-176": {
             "string": {
-                "constant": "DotNetCoreInstaller@1",
+                "constant": "DeployVisualStudioTestAgent@2",
                 "ignore-case": true
             }
         },
         "task-task-177": {
             "string": {
-                "constant": "UseDotNet@2",
+                "constant": "DeployVisualStudioTestAgent@1",
                 "ignore-case": true
             }
         },
         "task-task-178": {
             "string": {
-                "constant": "AzureAppServiceManage@0",
+                "constant": "CondaEnvironment@0",
                 "ignore-case": true
             }
         },
         "task-task-179": {
             "string": {
-                "constant": "KubeloginInstaller@0",
+                "constant": "CondaEnvironment@1",
                 "ignore-case": true
             }
         },
         "task-task-180": {
             "string": {
-                "constant": "FuncToolsInstaller@0",
+                "constant": "BatchScript@1",
                 "ignore-case": true
             }
         },
         "task-task-181": {
             "string": {
-                "constant": "FileTransform@1",
+                "constant": "DownloadGithubNpmPackage@1",
                 "ignore-case": true
             }
         },
         "task-task-182": {
             "string": {
-                "constant": "FileTransform@2",
+                "constant": "VSBuild@1",
                 "ignore-case": true
             }
         },
         "task-task-183": {
             "string": {
-                "constant": "ExtractFiles@1",
+                "constant": "AzureKeyVault@1",
                 "ignore-case": true
             }
         },
         "task-task-184": {
             "string": {
-                "constant": "XamarinAndroid@1",
+                "constant": "AzureKeyVault@2",
                 "ignore-case": true
             }
         },
         "task-task-185": {
             "string": {
-                "constant": "CopyPublishBuildArtifacts@1",
+                "constant": "DotNetCoreInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-186": {
             "string": {
-                "constant": "DownloadPackage@0",
+                "constant": "UseDotNet@2",
                 "ignore-case": true
             }
         },
         "task-task-187": {
             "string": {
-                "constant": "DownloadPackage@1",
+                "constant": "DotNetCoreInstaller@1",
                 "ignore-case": true
             }
         },
         "task-task-188": {
             "string": {
-                "constant": "AzureResourceGroupDeployment@2",
+                "constant": "AzureAppServiceManage@0",
                 "ignore-case": true
             }
         },
         "task-task-189": {
             "string": {
-                "constant": "AzureResourceManagerTemplateDeployment@3",
+                "constant": "KubeloginInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-190": {
             "string": {
-                "constant": "AzureResourceGroupDeployment@1",
+                "constant": "FuncToolsInstaller@0",
                 "ignore-case": true
             }
         },
         "task-task-191": {
             "string": {
-                "constant": "InvokeRESTAPI@0",
+                "constant": "FileTransform@2",
                 "ignore-case": true
             }
         },
         "task-task-192": {
             "string": {
-                "constant": "InvokeRESTAPI@1",
+                "constant": "FileTransform@1",
                 "ignore-case": true
             }
         },
         "task-task-193": {
             "string": {
-                "constant": "ArchiveFiles@1",
+                "constant": "ExtractFiles@1",
                 "ignore-case": true
             }
         },
         "task-task-194": {
             "string": {
-                "constant": "ArchiveFiles@2",
+                "constant": "XamarinAndroid@1",
                 "ignore-case": true
             }
         },
         "task-task-195": {
             "string": {
-                "constant": "GitHubComment@0",
+                "constant": "PublishBuildArtifacts@0",
                 "ignore-case": true
             }
         },
         "task-task-196": {
             "string": {
-                "constant": "CopyFiles@1",
+                "constant": "CopyPublishBuildArtifacts@1",
                 "ignore-case": true
             }
         },
         "task-task-197": {
             "string": {
-                "constant": "CopyFiles@2",
+                "constant": "DownloadPackage@1",
                 "ignore-case": true
             }
         },
         "task-task-198": {
             "string": {
-                "constant": "AzureMysqlDeployment@1",
+                "constant": "DownloadPackage@0",
                 "ignore-case": true
             }
         },
         "task-task-199": {
             "string": {
-                "constant": "Npm@0",
+                "constant": "AzureResourceGroupDeployment@1",
                 "ignore-case": true
             }
         },
         "task-task-200": {
             "string": {
-                "constant": "Npm@1",
+                "constant": "AzureResourceGroupDeployment@2",
                 "ignore-case": true
             }
         },
         "task-task-201": {
             "string": {
-                "constant": "AzureStaticWebApp@0",
+                "constant": "AzureResourceManagerTemplateDeployment@3",
                 "ignore-case": true
             }
         },
         "task-task-202": {
             "string": {
-                "constant": "UseNode@1",
+                "constant": "InvokeRESTAPI@0",
                 "ignore-case": true
             }
         },
         "task-task-203": {
             "string": {
-                "constant": "NodeTool@0",
+                "constant": "InvokeRESTAPI@1",
                 "ignore-case": true
             }
         },
         "task-task-204": {
             "string": {
-                "constant": "SqlServerDacpacDeployment@1",
+                "constant": "ArchiveFiles@1",
                 "ignore-case": true
             }
         },
         "task-task-205": {
             "string": {
-                "constant": "VisualStudioTestPlatformInstaller@1",
+                "constant": "ArchiveFiles@2",
                 "ignore-case": true
             }
         },
         "task-task-206": {
             "string": {
-                "constant": "PublishToAzureServiceBus@1",
+                "constant": "GitHubComment@0",
                 "ignore-case": true
             }
         },
         "task-task-207": {
             "string": {
-                "constant": "PublishToAzureServiceBus@0",
+                "constant": "CopyFiles@2",
                 "ignore-case": true
             }
         },
         "task-task-208": {
             "string": {
-                "constant": "KubernetesManifest@1",
+                "constant": "CopyFiles@1",
                 "ignore-case": true
             }
         },
         "task-task-209": {
             "string": {
-                "constant": "KubernetesManifest@0",
+                "constant": "AzureMysqlDeployment@1",
                 "ignore-case": true
             }
         },
         "task-task-210": {
             "string": {
-                "constant": "DownloadBuildArtifacts@1",
+                "constant": "Npm@0",
                 "ignore-case": true
             }
         },
         "task-task-211": {
             "string": {
-                "constant": "DownloadBuildArtifacts@0",
+                "constant": "Npm@1",
                 "ignore-case": true
             }
         },
         "task-task-212": {
             "string": {
-                "constant": "CocoaPods@0",
+                "constant": "AzureStaticWebApp@0",
                 "ignore-case": true
             }
         },
         "task-task-213": {
             "string": {
-                "constant": "AzureSpringCloud@0",
+                "constant": "NodeTool@0",
                 "ignore-case": true
             }
         },
         "task-task-214": {
             "string": {
-                "constant": "AzureWebApp@1",
+                "constant": "UseNode@1",
                 "ignore-case": true
             }
         },
         "task-task-215": {
             "string": {
-                "constant": "AzureCLI@1",
+                "constant": "SqlServerDacpacDeployment@1",
                 "ignore-case": true
             }
         },
         "task-task-216": {
             "string": {
-                "constant": "AzureCLI@0",
+                "constant": "VisualStudioTestPlatformInstaller@1",
                 "ignore-case": true
             }
         },
         "task-task-217": {
             "string": {
-                "constant": "AzureCLI@2",
+                "constant": "PublishToAzureServiceBus@1",
                 "ignore-case": true
             }
         },
         "task-task-218": {
             "string": {
-                "constant": "GitHubRelease@0",
+                "constant": "PublishToAzureServiceBus@2",
                 "ignore-case": true
             }
         },
         "task-task-219": {
             "string": {
-                "constant": "GitHubRelease@1",
+                "constant": "PublishToAzureServiceBus@0",
                 "ignore-case": true
             }
         },
         "task-task-220": {
             "string": {
-                "constant": "cURLUploader@1",
+                "constant": "KubernetesManifest@0",
                 "ignore-case": true
             }
         },
         "task-task-221": {
             "string": {
-                "constant": "cURLUploader@2",
+                "constant": "KubernetesManifest@1",
                 "ignore-case": true
             }
         },
         "task-task-222": {
             "string": {
-                "constant": "AzureAppServiceSettings@1",
+                "constant": "DownloadBuildArtifacts@1",
                 "ignore-case": true
             }
         },
         "task-task-223": {
             "string": {
-                "constant": "UniversalPackages@0",
+                "constant": "DownloadBuildArtifacts@0",
                 "ignore-case": true
             }
         },
         "task-task-224": {
             "string": {
-                "constant": "AzurePolicyCheckGate@0",
+                "constant": "CocoaPods@0",
                 "ignore-case": true
             }
         },
         "task-task-225": {
             "string": {
-                "constant": "AzureFunctionOnKubernetes@1",
+                "constant": "AzureSpringCloud@0",
                 "ignore-case": true
             }
         },
         "task-task-226": {
             "string": {
-                "constant": "AzureFunctionOnKubernetes@0",
+                "constant": "AzureWebApp@1",
                 "ignore-case": true
             }
         },
         "task-task-227": {
             "string": {
-                "constant": "Bash@3",
+                "constant": "AzureCLI@1",
                 "ignore-case": true
             }
         },
         "task-task-228": {
             "string": {
-                "constant": "ShellScript@2",
+                "constant": "AzureCLI@2",
                 "ignore-case": true
             }
         },
         "task-task-229": {
             "string": {
-                "constant": "PublishBuildArtifacts@1",
+                "constant": "AzureCLI@0",
                 "ignore-case": true
             }
         },
         "task-task-230": {
             "string": {
-                "constant": "InstallSSHKey@0",
+                "constant": "GitHubRelease@0",
                 "ignore-case": true
             }
         },
         "task-task-231": {
             "string": {
-                "constant": "AzureVmssDeployment@0",
+                "constant": "GitHubRelease@1",
                 "ignore-case": true
             }
         },
         "task-task-232": {
             "string": {
-                "constant": "AzureWebPowerShellDeployment@1",
+                "constant": "cURLUploader@1",
                 "ignore-case": true
             }
         },
         "task-task-233": {
             "string": {
-                "constant": "CondaAuthenticate@0",
+                "constant": "cURLUploader@2",
                 "ignore-case": true
             }
         },
         "task-task-234": {
             "string": {
-                "constant": "AzureCloudPowerShellDeployment@2",
+                "constant": "AzureAppServiceSettings@1",
                 "ignore-case": true
             }
         },
         "task-task-235": {
             "string": {
-                "constant": "AzureCloudPowerShellDeployment@1",
+                "constant": "UniversalPackages@0",
                 "ignore-case": true
             }
         },
         "task-task-236": {
             "string": {
-                "constant": "CargoAuthenticate@0",
+                "constant": "AzurePolicyCheckGate@0",
                 "ignore-case": true
             }
         },
         "task-task-237": {
             "string": {
-                "constant": "DeleteFiles@1",
+                "constant": "AzureFunctionOnKubernetes@0",
                 "ignore-case": true
             }
         },
         "task-task-238": {
             "string": {
-                "constant": "gulp@0",
+                "constant": "AzureFunctionOnKubernetes@1",
                 "ignore-case": true
             }
         },
         "task-task-239": {
             "string": {
-                "constant": "gulp@1",
+                "constant": "ShellScript@2",
                 "ignore-case": true
             }
         },
         "task-task-240": {
             "string": {
-                "constant": "QuickPerfTest@1",
+                "constant": "Bash@3",
                 "ignore-case": true
             }
         },
         "task-task-241": {
             "string": {
-                "constant": "IISWebAppManagementOnMachineGroup@0",
+                "constant": "ShellScript@1",
                 "ignore-case": true
             }
         },
         "task-task-242": {
+            "string": {
+                "constant": "PublishBuildArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-243": {
+            "string": {
+                "constant": "InstallSSHKey@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-244": {
+            "string": {
+                "constant": "AzureVmssDeployment@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-245": {
+            "string": {
+                "constant": "AzureWebPowerShellDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-246": {
+            "string": {
+                "constant": "CondaAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-247": {
+            "string": {
+                "constant": "AzureCloudPowerShellDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-248": {
+            "string": {
+                "constant": "AzureCloudPowerShellDeployment@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-249": {
+            "string": {
+                "constant": "CargoAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-250": {
+            "string": {
+                "constant": "DeleteFiles@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-251": {
+            "string": {
+                "constant": "gulp@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-252": {
+            "string": {
+                "constant": "gulp@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-253": {
+            "string": {
+                "constant": "QuickPerfTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-254": {
+            "string": {
+                "constant": "IISWebAppManagementOnMachineGroup@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-255": {
             "string": {
                 "constant": "DockerInstaller@0",
                 "ignore-case": true
