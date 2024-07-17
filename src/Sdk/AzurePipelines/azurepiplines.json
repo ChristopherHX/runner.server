@@ -5333,6 +5333,18 @@
             "one-of": [
                 "jobsTemplate-0"
             ]
+        },
+        "stage-template-root": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "stages": {
+                        "type": "stages"
+                    }
+                }
+            }
         }
     }
 }

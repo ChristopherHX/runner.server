@@ -272,7 +272,7 @@ targetSchema.definitions["pipeline-root"] = targetSchema.definitions["pipeline"]
 targetSchema.definitions["variable-template-root"] = targetSchema.definitions["variablesTemplate"]
 targetSchema.definitions["step-template-root"] = targetSchema.definitions["stepsTemplate"]
 targetSchema.definitions["job-template-root"] = targetSchema.definitions["jobsTemplate"]
-targetSchema.definitions["stage-template-root"] = targetSchema.definitions["stageTemplate"]
+targetSchema.definitions["stage-template-root"] = targetSchema.definitions["stagesTemplate"]
 
 targetSchema.definitions["containerArtifactType"] = {
     "one-of": [
