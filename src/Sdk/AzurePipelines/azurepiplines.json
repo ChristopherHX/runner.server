@@ -124,7 +124,10 @@
             "one-of": [
                 "any-0",
                 "any-1",
-                "any-2"
+                "any-2",
+                "boolean",
+                "null",
+                "number"
             ]
         },
         "pipeline-0": {
@@ -3674,7 +3677,10 @@
             "one-of": [
                 "any_allowExpressions-0",
                 "any_allowExpressions-1",
-                "any_allowExpressions-2"
+                "any_allowExpressions-2",
+                "boolean",
+                "null",
+                "number"
             ],
             "context": [
                 "parameters",
