@@ -294,7 +294,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         {
                             token = state.Current;
                             bool skip = false;
-                            if (state.IsMapping && pattern[level] != "" && token.AssertLiteralString("") != pattern[level]) {
+                            if (state.IsMapping && pattern[level] != "" && !(token is BasicExpressionToken) && token.AssertLiteralString("") != pattern[level]) {
                                 skip = true;
                             }
                             if(state.IsMapping) {
