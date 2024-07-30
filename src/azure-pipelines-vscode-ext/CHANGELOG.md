@@ -3,6 +3,7 @@
 - allow validate/extend azure pipelines to pass with a warning on nested templates (regression v0.1.0)
 - throttle parallel syntax check tasks while typing
 - statically check typed parameters passed to templates, when they can be found
+- full support of isSkippable
 
 ### v0.1.0
 - validate steps pipeline runtime expressions of container and continueOnError
