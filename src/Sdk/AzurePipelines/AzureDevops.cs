@@ -865,7 +865,7 @@ namespace Runner.Server.Azure.Devops {
                                 var skey = parameters[i].Key.ToString();
                                 if (!dict.ContainsKey(skey))
                                 {
-                                    templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(parameters[i].Key)}{skey} not defined in referenced template");
+                                    templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(parameters[i].Key)}Unexpected parameter '{skey}'");
                                 }
                             }
                         }
