@@ -725,7 +725,7 @@ namespace Runner.Server.Azure.Devops {
     
                 try {
                     var cCtx = context.ChildContext(token as MappingToken, finalFileName);
-                    foreach(var (extends, schema) in token.TraverseByPattern(new [] { "extends" }).Select(e => (e, (string)null))
+                    foreach(var (extends, schema) in token.TraverseByPattern(new [] { "extends" }).Select(e => (e, "extend-template-root"))
                         .Concat(token.TraverseByPattern(new [] { "stages", "*" }).Select(e => (e, "stage-template-root")))
                         .Concat(token.TraverseByPattern(new [] { "jobs", "*" }).Select(e => (e, "job-template-root")))
                         .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*" }).Select(e => (e, "job-template-root")))

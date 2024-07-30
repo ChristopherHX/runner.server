@@ -1,0 +1,11 @@
+extends:
+  template: tmpl.yml
+  parameters:
+    stages:
+    - stage:
+      jobs:
+      - job:
+        condition: false
+        steps:
+        - script: exit 0
+        - test: test

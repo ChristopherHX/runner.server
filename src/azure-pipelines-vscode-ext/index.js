@@ -9,7 +9,6 @@ import jsYaml from "js-yaml";
  */
 function activate(context) {
 	basePaths.basedir = context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/blazor.boot.json" }).toString();
-	// var dotnet = null;
 	var { dotnet } = require("./build/AppBundle/_framework/dotnet.js");
 	customImports["dotnet.runtime.js"] = require("./build/AppBundle/_framework/dotnet.runtime.js");
 	customImports["dotnet.native.js"] = require("./build/AppBundle/_framework/dotnet.native.js");
@@ -33,10 +32,6 @@ function activate(context) {
 		cancellable: true
 	}, async (progress, token) => {
 		logchannel.appendLine("Updating Runtime");
-		// var res = await import("./build/AppBundle/_framework/dotnet.js");
-		// dotnet = res.dotnet;
-		// customImports["dotnet.runtime.js"] = await import("./build/AppBundle/_framework/dotnet.runtime.js");
-		// customImports["dotnet.native.js"] = await import("./build/AppBundle/_framework/dotnet.native.js");
 		var items = 1;
 		var citem = 0;
 		var runtime = await dotnet.withOnConfigLoaded(async config => {
@@ -496,14 +491,16 @@ function activate(context) {
 		var stepsTempl = obj.steps instanceof Array;
 		var mustBeTempl = obj.parameters && (!(obj.parameters instanceof Array) || obj.parameters.find(x => x && x.type === "legacyObject"))
 		var schema = null;
-		if((mustBeTempl || !obj.extends) && (varTempl && !stageTempl && !jobsTempl && !stepsTempl)) {
-			schema = "variable-template-root"
+		if(mustBeTempl && obj.extends) {
+			schema = "extend-template-root"
 		} else if(mustBeTempl && (!varTempl && stageTempl && !jobsTempl && !stepsTempl)) {
 			schema = "stage-template-root"
 		} else if(mustBeTempl && (!varTempl && !stageTempl && jobsTempl && !stepsTempl)) {
 			schema = "job-template-root"
 		} else if(mustBeTempl && (!varTempl && !stageTempl && !jobsTempl && stepsTempl)) {
 			schema = "step-template-root"
+		} else if((mustBeTempl || !obj.extends) && (varTempl && !stageTempl && !jobsTempl && !stepsTempl)) {
+			schema = "variable-template-root"
 		}
 		if(collection) {
 			var hasError = false;
@@ -563,13 +560,16 @@ function activate(context) {
 					statusbar.show();
 				}
 				if(!conf.get("disable-auto-syntax-check")) {
-					vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(() => {
+					var _finally = () => {
 						var queue = lastLanguageChange;
 						if(queue !== undefined) {
 							onLanguageChanged(queue, true);
 						} else {
 							inProgress = false;
 						}
+					};
+					vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
+						_finally();
 					});
 				}
 			} else {
@@ -577,6 +577,7 @@ function activate(context) {
 					syntaxChecks.set(vscode.window.activeTextEditor.document.uri, []);
 				}
 				statusbar.hide();
+				inProgress = false;
 			}
 		} else {
 			lastLanguageChange = languageId;
