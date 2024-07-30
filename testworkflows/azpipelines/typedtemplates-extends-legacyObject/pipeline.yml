@@ -8,4 +8,3 @@ extends:
         condition: false
         steps:
         - script: exit 0
-        - test: test
