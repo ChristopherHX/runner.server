@@ -8,8 +8,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.JavaScript;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
+using System.Linq;
+using System.Text.RegularExpressions;
 
-while(true) {
+while (true) {
     await Interop.Sleep(10 * 60 * 1000);
 }
 
@@ -124,19 +127,74 @@ public class MyClass {
         }
     }
 
+    private static IEnumerable<string> AddSuggestion(TemplateSchema schema, AutoCompleteEntry bestMatch, Definition? def, DefinitionType[]? allowed)
+    {
+        // if(allowed != null && !allowed.Contains(def.DefinitionType)) {
+        //     yield break;
+        // }
+        if(bestMatch.Tokens != null) {
+            foreach(var k in bestMatch.AllowedContext) {
+                yield return k;
+            }
+            yield break;
+        }
+        if(def is MappingDefinition mapping)
+        {
+            var candidates = mapping.Properties.Where(p => (bestMatch.Token as MappingToken)?.FirstOrDefault(e => e.Key?.ToString() == p.Key).Key == null);
+            var hasFirstProperties = candidates.Any(c => c.Value.FirstProperty);
+            foreach(var k in candidates.Where(c => !hasFirstProperties || c.Value.FirstProperty).Select(p => {
+                var nested = schema.GetDefinition(p.Value.Type);
+                return p.Key + ":";
+            })) {
+                yield return k;
+            }
+            if(bestMatch.AllowedContext?.Length > 0) {
+                yield return "${{ insert }}:";
+                yield return "${{ if $1 }}:$0";
+                yield return "${{ elseif $1 }}:$0";
+                yield return "${{ else }}:";
+                yield return "${{ each $1 in $2 }}:$0";
+            }
+        }
+        if(def is SequenceDefinition sequence)
+        {
+            yield return "- ";
+        }
+        if(def is StringDefinition str)
+        {
+            if(str.Constant != null) {
+                yield return str.Constant;
+            }
+            if(str.Pattern != null && Regex.IsMatch(str.Pattern, "^\\^[^\\\\\\+\\[\\]\\*\\{\\}\\.]+\\$$")) {
+                yield return str.Pattern.Substring(1, str.Pattern.Length - 2);
+            }
+        }
+        if(def is OneOfDefinition oneOf) {
+            foreach(var k in oneOf.OneOf) {
+                var d = schema.GetDefinition(k);
+                foreach(var u in AddSuggestion(schema, bestMatch, d, allowed)) {
+                    yield return u;
+                }
+            }
+        }
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName) {
+    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName, int column, int row) {
         var context = new Context {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
             RequiredParametersProvider = new RequiredParametersProvider(handle),
-            VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() }
+            VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() },
+            Column = column,
+            Row = row
         };
+        var check = column == 0 && row == 0;
         try {
-            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName, schemaName);
+            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName, schemaName, check);
             Interop.Log(handle, 0, "Done: " + template.ToString());
-        } catch(TemplateValidationException ex) {
+        } catch(TemplateValidationException ex) when(check) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
             var allErrors = new List<string>();
             foreach(var error in ex.Errors) {
@@ -147,14 +205,26 @@ public class MyClass {
             }
             await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = allErrors }));
         } catch(Exception ex) {
-            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
-            var errorContent = fileIdReplacer.Replace(ex.Message, match => {
-                return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
-            });
-            await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = new List<string> { errorContent } }));
+            if(check) {
+                var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+                var errorContent = fileIdReplacer.Replace(ex.Message, match => {
+                    return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+                });
+                await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = new List<string> { errorContent } }));
+            }
         }
+        if(!check && context.AutoCompleteMatches.Count > 0) {
+            // Bug Only suggest scalar values if cursor is within the token
+            // Don't suggest mapping and array on the other location, or fix autocomplete structure
+            // transform string + multi enum values to oneofdefinition with constants so autocomplete works / use allowed values
+            var schema = AzureDevops.LoadSchema();
+            var src = context.AutoCompleteMatches.Any(a => a.Token.Column == column) ? context.AutoCompleteMatches.Where(a => a.Token.Column == column) : context.AutoCompleteMatches.Where(a => a.Token.Column == context.AutoCompleteMatches.Last().Token.Column);
+            List<string> list = src
+                .SelectMany(bestMatch => bestMatch.Definitions.SelectMany(def => AddSuggestion(schema, bestMatch, def, bestMatch.Token.Line <= row && bestMatch.Token.Column <= column && !(bestMatch.Token is ScalarToken) ? null : bestMatch.Token.Line < row ? new[] {DefinitionType.OneOf, DefinitionType.Mapping, DefinitionType.Sequence} : new[] { DefinitionType.OneOf, DefinitionType.Null, DefinitionType.Boolean, DefinitionType.Number, DefinitionType.String }))).ToList();
+            await Interop.AutoCompleteList(handle, JsonConvert.SerializeObject(list));
+        }
+        
     }
-
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static string YAMLToJson(string content) {

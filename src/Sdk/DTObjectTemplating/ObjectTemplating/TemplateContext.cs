@@ -4,11 +4,21 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Tokens;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
+    internal class AutoCompleteEntry {
+        public int Depth { get; set; }
+        public TemplateToken Token { get; set; }
+        public Definition[] Definitions { get; set; }
+        public string[] AllowedContext { get; set; }
+        public List<Token> Tokens { get; set; }
+        public int Index { get; set; } = -1;
+    }
+
     /// <summary>
     /// Context object that is flowed through while loading and evaluating object templates
     /// </summary>
@@ -17,6 +27,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
     {
         public ExpressionFlags Flags { get; set; }
         internal CancellationToken CancellationToken { get; set; }
+
+        public int? Column { get; set; }
+        public int? Row { get; set; }
+        internal List<AutoCompleteEntry> AutoCompleteMatches { get; set; }
 
         internal TemplateValidationErrors Errors
         {

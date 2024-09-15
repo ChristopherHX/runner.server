@@ -21,7 +21,7 @@ namespace Runner.Server.Azure.Devops {
 
     public class AzureDevops {
 
-        private static TemplateSchema LoadSchema() {
+        public static TemplateSchema LoadSchema() {
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(String);
             using (var stream = assembly.GetManifestResourceStream("azurepiplines.json"))
@@ -653,15 +653,16 @@ namespace Runner.Server.Azure.Devops {
             context.FileTable ??= new List<string>();
             context.FileTable.Add(errorTemplateFileName);
             var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
+            if(context.Column != 0 && context.Row != 0) {
+                templateContext.AutoCompleteMatches = context.AutoCompleteMatches ??= new List<AutoCompleteEntry>();
+                templateContext.Column = context.Column;
+                templateContext.Row = context.Row;
+            }
             var fileId = templateContext.GetFileId(errorTemplateFileName);
 
-            TemplateToken token;
-            using (var stringReader = new StringReader(fileContent))
-            {
-                // preserveString is needed for azure pipelines compatability of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
-                var yamlObjectReader = new YamlObjectReader(fileId, stringReader, preserveString: true, forceAzurePipelines: true);
-                token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
-            }
+            // preserveString is needed for azure pipelines compatibility of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
+            var yamlObjectReader = new YamlObjectReader(fileId, fileContent, preserveString: true, forceAzurePipelines: true);
+            TemplateToken token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
 
             if(checks)
             {

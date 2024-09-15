@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 import { basePaths, customImports } from "./config.js"
 import { AzurePipelinesDebugSession } from "./azure-pipelines-debug";
-import { integer } from "vscode-languageclient";
+import { integer, Position } from "vscode-languageclient";
 import jsYaml from "js-yaml";
 
 /**
@@ -151,6 +151,9 @@ function activate(context) {
 			},
 			error: async (handle, message) => {
 				await handle.error(message);
+			},
+			autocompletelist: async (handle, completions) => {
+				handle.autocompletelist = JSON.parse(completions);
 			}
 		});
 		logchannel.appendLine("Starting extension main to keep dotnet alive");
@@ -164,7 +167,7 @@ function activate(context) {
 	});
 
 	var defcollection = vscode.languages.createDiagnosticCollection();
-	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput, syntaxOnly, schema) => {
+	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput, syntaxOnly, schema, pos, autocompletelist) => {
 		collection ??= defcollection;
 		var textEditor = vscode.window.activeTextEditor;
 		if(!textEditor && !fspathname) {
@@ -377,10 +380,13 @@ function activate(context) {
 			}
 		}
 		var result = syntaxOnly
-		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema)
+		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema, pos ? pos.character + 1 : 0, pos ? pos.line + 1 : 0)
 						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true, schema)
 
-        if(state) {
+        if(pos) {
+			autocompletelist.autocompletelist = handle.autocompletelist
+		}
+		if(state) {
             state.referencedFiles = handle.referencedFiles;
 			if(!skipAskForInput) {
 				state.repositories = handle.repositories;
@@ -517,6 +523,26 @@ function activate(context) {
 		}
 		return schema;
 	}
+
+	vscode.languages.registerCompletionItemProvider({
+		language: "yaml"
+	}, {
+		provideCompletionItems: async (doc, pos, token, context) => {
+			var data = {autocompletelist: []};
+			await expandAzurePipeline(false, null, null, null, () => {
+			}, null, () => {
+			}, null, null, null, true, true, null, pos, data);
+			var ret = [];
+			if(data.autocompletelist) {
+				for(var l of data.autocompletelist) {
+					ret.push({ label: l });
+				}
+			}
+			//{start: Position.create(0, 0), end: pos}
+			// ret.push({ label: "parameters", range: new vscode.Range(new vscode.Position(0, 0), pos)});
+			return ret
+		}
+	})
 
 	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, async (file, collection, obj) => {
 		var getSchema = () => {

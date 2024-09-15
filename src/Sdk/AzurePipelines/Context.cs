@@ -1,4 +1,5 @@
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,10 @@ namespace Runner.Server.Azure.Devops
         public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
         public IRequiredParametersProvider RequiredParametersProvider { get; set; }
         public List<string> FileTable { get; set; } = new List<string>();
+        public int Column { get; internal set; }
+        public int Row { get; internal set; }
+        internal List<AutoCompleteEntry> AutoCompleteMatches { get; set; }
+
 
         public Context Clone() {
             return MemberwiseClone() as Context;

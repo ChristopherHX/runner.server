@@ -30,6 +30,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             m_force_azure_pipelines = forceAzurePipelines;
         }
 
+        internal YamlObjectReader(
+            Int32? fileId,
+            string input,
+            bool yamlAnchors = false,
+            bool yamlFold = false,
+            bool yamlMerge = false,
+            bool preserveString = false,
+            bool forceAzurePipelines = false) : this(fileId, new StringReader(input), yamlAnchors, yamlFold, yamlMerge, preserveString, forceAzurePipelines)
+        {
+            m_rawInput = input;
+        }
+
         private string GetScalarStringValue(Scalar scalar) {
             return m_yamlFold && scalar.Style == ScalarStyle.Folded ? scalar.Value.Replace("\n", " ") : scalar.Value;
         }
@@ -44,7 +56,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // String tag
                     if (String.Equals(scalar.Tag.Value, c_stringTag, StringComparison.Ordinal))
                     {
-                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+                        value = CreateStringToken(scalar);
                         MoveNext();
                         return true;
                     }
@@ -96,7 +108,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                     else
                     {
-                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+                        value = CreateStringToken(scalar);
                     }
 
                     MoveNext();
@@ -104,13 +116,22 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 // Otherwise assume string
-                value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+                value = CreateStringToken(scalar);
                 MoveNext();
                 return true;
             }
 
             value = default;
             return false;
+        }
+
+        private LiteralToken CreateStringToken(Scalar scalar)
+        {
+            var tkn = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+            if(!string.IsNullOrEmpty(m_rawInput)) {
+                tkn.RawData = m_rawInput.Substring(scalar.Start.Index, scalar.End.Index - scalar.Start.Index);
+            }
+            return tkn;
         }
 
         public Boolean AllowSequenceStart(out SequenceToken value)
@@ -606,5 +627,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private readonly bool m_preserve_string;
         private readonly bool m_force_azure_pipelines;
         private ParsingEvent m_current;
+        private string m_rawInput;
+
     }
 }
