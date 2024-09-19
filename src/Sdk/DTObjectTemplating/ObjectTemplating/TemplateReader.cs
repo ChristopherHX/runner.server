@@ -530,44 +530,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
         }
 
-        private static int GetIdxOfExpression(LiteralToken lit, int row, int column)
-        {
-          var lc = column - lit.Column;
-          var lr = row - lit.Line;
-          var rand = new Random();
-          string C = "CX";
-          while(lit.RawData.Contains(C)) {
-            C = rand.Next(255).ToString("X2");
-          }
-          var xraw = lit.RawData;
-          var idx = 0;
-          for(int i = 0; i < lr; i++) {
-            var n = xraw.IndexOf('\n', idx);
-            if(n == -1) {
-              return -1;
-            }
-            idx = n + 1;
-          }
-          idx += idx == 0 ? lc ?? 0 : column - 1;
-          if(idx >= xraw.Length) {
-            return -1;
-          }
-          xraw = xraw.Insert(idx, C);
-
-          var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
-          try {
-            while(scanner.MoveNext()) {
-              if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
-                var x = s.Value;
-                return x.IndexOf(C);
-              }
-            }
-          } catch {
-
-          }
-          return -1;
-        }
-
         private ScalarToken ParseScalar(
             LiteralToken token,
             DefinitionInfo definitionInfo)
@@ -786,11 +748,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
             return new BasicExpressionToken(m_fileId, token.Line, token.Column, $"format('{format}'{args})");
         }
 
-        private bool AutoCompleteExpression(AutoCompleteEntry completion, int offset, string value) {
+        private bool AutoCompleteExpression(AutoCompleteEntry completion, int offset, string value, int poffset = 0) {
             if(completion != null && m_context.AutoCompleteMatches != null) {
                 var idx = GetIdxOfExpression(completion.Token as LiteralToken, m_context.Row.Value, m_context.Column.Value);
-                var startIndex = 1 - completion.Index + offset;
-                if(idx != -1 && idx >= startIndex && (idx <= startIndex + value.Length)) {
+                var startIndex = -1 - completion.Index + offset;
+                if(idx != -1 && idx >= startIndex && (idx <= startIndex + value.Length + poffset)) {
                     LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value, m_context.Flags);
                     Token tkn = null;
                     List<Token> tkns = new List<Token>();
@@ -807,6 +769,44 @@ namespace GitHub.DistributedTask.ObjectTemplating
             return true;
         }
 
+        private static int GetIdxOfExpression(LiteralToken lit, int row, int column)
+        {
+          var lc = column - lit.Column;
+          var lr = row - lit.Line;
+          var rand = new Random();
+          string C = "CX";
+          while(lit.RawData.Contains(C)) {
+            C = rand.Next(255).ToString("X2");
+          }
+          var xraw = lit.RawData;
+          var idx = 0;
+          for(int i = 0; i < lr; i++) {
+            var n = xraw.IndexOf('\n', idx);
+            if(n == -1) {
+              return -1;
+            }
+            idx = n + 1;
+          }
+          idx += idx == 0 ? lc ?? 0 : column - 1;
+          if(idx > xraw.Length) {
+            return -1;
+          }
+          xraw = xraw.Insert(idx, C);
+
+          var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
+          try {
+            while(scanner.MoveNext()) {
+              if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                var x = s.Value;
+                return x.IndexOf(C);
+              }
+            }
+          } catch {
+
+          }
+          return -1;
+        }
+
         private ExpressionToken ParseExpression(
             AutoCompleteEntry completion,
             Int32? line,
@@ -815,12 +815,15 @@ namespace GitHub.DistributedTask.ObjectTemplating
             String[] allowedContext,
             out Exception ex)
         {
+            // TODO !!!!! If the expressions parameter is missing in directives provide auto completion
+            // It's buggy
+            // Empty expressions like ${{  }} are not auto completed?
             var trimmed = value.Trim();
 
             // Check if the value is empty
             if (String.IsNullOrEmpty(trimmed))
             {
-                AutoCompleteExpression(completion, 0, "");
+                AutoCompleteExpression(completion, 0, value);
                 ex = new ArgumentException(TemplateStrings.ExpectedExpression());
                 return null;
             }
@@ -837,7 +840,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags))
+            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 1 && !AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, ""))
             {
                 return new IfExpressionToken(m_fileId, line, column, parameters[0].Item2);
             }
@@ -845,7 +848,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags))
+            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 1 && !AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, ""))
             {
                 return new ElseIfExpressionToken(m_fileId, line, column, parameters[0].Item2);
             }
@@ -861,7 +864,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1].Item2 == "in" && AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, value) && ExpressionToken.IsValidExpression(parameters[2].Item2, allowedContext, out ex, m_context.Flags))
+            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1].Item2 == "in" && AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, value) && ExpressionToken.IsValidExpression(parameters[2].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 3 && !AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, ""))
             {
                 return new EachExpressionToken(m_fileId, line, column, parameters[0].Item2, parameters[2].Item2);
             }
@@ -948,7 +951,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 if (expectedParameters != parameters.Count)
                 {
                     ex = new ArgumentException(TemplateStrings.ExpectedNParametersFollowingDirective(expectedParameters, directive, parameters.Count));
-                    parameters = null;
+                    if(expectedParameters == parameters.Count + 1) {
+                        parameters.Add((parameters.Last().Item1 + parameters.Last().Item2.Length + 1, ""));
+                    } else {
+                        parameters = null;
+                    }
                     return false;
                 }
 

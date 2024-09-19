@@ -532,15 +532,22 @@ function activate(context) {
 			await expandAzurePipeline(false, null, null, null, () => {
 			}, null, () => {
 			}, null, null, null, true, true, null, pos, data);
-			var ret = [];
-			if(data.autocompletelist) {
-				for(var l of data.autocompletelist) {
-					ret.push({ label: l });
-				}
-			}
+			// var ret = [];
 			//{start: Position.create(0, 0), end: pos}
 			// ret.push({ label: "parameters", range: new vscode.Range(new vscode.Position(0, 0), pos)});
-			return ret
+			for(var item of data.autocompletelist) {
+				if(item.insertText && item.insertText.value) {
+					item.insertText = new vscode.SnippetString(item.insertText.value)
+				}
+				if(item.documentation) {
+					item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
+				}
+			}
+			if(data.autocompletelist.length === 0) {
+				data.autocompletelist.push({ label: "meta", range: new vscode.Range(pos, pos)});
+				data.autocompletelist.push({ label: "ok", range: new vscode.Range(pos, pos)});
+			}
+			return data.autocompletelist
 		}
 	})
 
