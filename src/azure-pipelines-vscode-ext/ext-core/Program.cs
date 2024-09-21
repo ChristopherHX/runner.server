@@ -199,11 +199,11 @@ public class MyClass {
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates to True if all parameters are True
-    Min parameters: 2. Max parameters: N
-    Casts parameters to Boolean for evaluation
-    Short-circuits after first False
-    Example: `and(eq(variables.letters, 'ABC'), eq(variables.numbers, 123))`
+Evaluates to True if all parameters are True
+Min parameters: 2. Max parameters: N
+Casts parameters to Boolean for evaluation
+Short-circuits after first False
+Example: `and(eq(variables.letters, 'ABC'), eq(variables.numbers, 123))`
 "
                         }
                     };
@@ -218,10 +218,10 @@ public class MyClass {
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates the parameters in order (left to right), and returns the first value that doesn't equal null or empty-string.
-    No value is returned if the parameter values all are null or empty strings.
-    Min parameters: 2. Max parameters: N
-    Example: `coalesce(variables.couldBeNull, variables.couldAlsoBeNull, 'literal so it always works')`
+Evaluates the parameters in order (left to right), and returns the first value that doesn't equal null or empty-string.
+No value is returned if the parameter values all are null or empty strings.
+Min parameters: 2. Max parameters: N
+Example: `coalesce(variables.couldBeNull, variables.couldAlsoBeNull, 'literal so it always works')`
 "
                         }
                     };
@@ -236,11 +236,11 @@ public class MyClass {
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates True if left parameter String contains right parameter
-    Min parameters: 2. Max parameters: 2
-    Casts parameters to String for evaluation
-    Performs ordinal ignore-case comparison
-    Example: `contains('ABCDE', 'BCD')` (returns True)
+Evaluates True if left parameter String contains right parameter
+Min parameters: 2. Max parameters: 2
+Casts parameters to String for evaluation
+Performs ordinal ignore-case comparison
+Example: `contains('ABCDE', 'BCD')` (returns True)
 "
                         }
                     };
@@ -255,11 +255,11 @@ public class MyClass {
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates True if the left parameter is an array, and any item equals the right parameter. Also evaluates True if the left parameter is an object, and the value of any property equals the right parameter.
-    Min parameters: 2. Max parameters: 2
-    If the left parameter is an array, convert each item to match the type of the right parameter. If the left parameter is an object, convert the value of each property to match the type of the right parameter. The equality comparison for each specific item evaluates False if the conversion fails.
-    Ordinal ignore-case comparison for Strings
-    Short-circuits after the first match
+Evaluates True if the left parameter is an array, and any item equals the right parameter. Also evaluates True if the left parameter is an object, and the value of any property equals the right parameter.
+Min parameters: 2. Max parameters: 2
+If the left parameter is an array, convert each item to match the type of the right parameter. If the left parameter is an object, convert the value of each property to match the type of the right parameter. The equality comparison for each specific item evaluates False if the conversion fails.
+Ordinal ignore-case comparison for Strings
+Short-circuits after the first match
 "
                         }
                     };
@@ -274,8 +274,8 @@ public class MyClass {
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Take a complex object and outputs it as JSON.
-    Min parameters: 1. Max parameters: 1.
+Take a complex object and outputs it as JSON.
+Min parameters: 1. Max parameters: 1.
 "
                         }
                     };
@@ -290,11 +290,11 @@ public class MyClass {
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates True if left parameter String ends with right parameter
-    Min parameters: 2. Max parameters: 2
-    Casts parameters to String for evaluation
-    Performs ordinal ignore-case comparison
-    Example: `endsWith('ABCDE', 'DE')` (returns True)
+Evaluates True if left parameter String ends with right parameter
+Min parameters: 2. Max parameters: 2
+Casts parameters to String for evaluation
+Performs ordinal ignore-case comparison
+Example: `endsWith('ABCDE', 'DE')` (returns True)
 "
                         }
                     };
@@ -367,7 +367,6 @@ Converts right parameters to match type of left parameter. Equality comparison e
 Ordinal ignore-case comparison for Strings
 Short-circuits after first match
 Example: in('B', 'A', 'B', 'C') (returns True)
-
 "
                         }
                     };
@@ -377,7 +376,7 @@ Example: in('B', 'A', 'B', 'C') (returns True)
                             Detail = "(sep, array)"
                         },
                         InsertText = new SnippedString {
-                            Value = "join($1, $1)"
+                            Value = "join($1, $2)"
                         },
                         Kind = 2,
                         Documentation = new MarkdownString {
@@ -599,11 +598,11 @@ Returns an array of substrings. The array includes empty strings when the delimi
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates True if left parameter string starts with right parameter
-    Min parameters: 2. Max parameters: 2
-    Casts parameters to String for evaluation
-    Performs ordinal ignore-case comparison
-    Example: startsWith('ABCDE', 'AB') (returns True)
+Evaluates True if left parameter string starts with right parameter
+Min parameters: 2. Max parameters: 2
+Casts parameters to String for evaluation
+Performs ordinal ignore-case comparison
+Example: startsWith('ABCDE', 'AB') (returns True)
 "
                         }
                     };
@@ -618,10 +617,10 @@ Returns an array of substrings. The array includes empty strings when the delimi
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Converts a string or variable value to all uppercase characters
-    Min parameters: 1. Max parameters 1
-    Returns the uppercase equivalent of a string
-    Example: upper('bah') returns BAH
+Converts a string or variable value to all uppercase characters
+Min parameters: 1. Max parameters 1
+Returns the uppercase equivalent of a string
+Example: upper('bah') returns BAH
 "
                         }
                     };
@@ -636,10 +635,10 @@ Returns an array of substrings. The array includes empty strings when the delimi
                         Kind = 2,
                         Documentation = new MarkdownString {
                             Value = @"
-    Evaluates True if exactly one parameter is True
-    Min parameters: 2. Max parameters: 2
-    Casts parameters to Boolean for evaluation
-    Example: xor(True, False) (returns True)
+Evaluates True if exactly one parameter is True
+Min parameters: 2. Max parameters: 2
+Casts parameters to Boolean for evaluation
+Example: xor(True, False) (returns True)
 "
                         }
                     };
