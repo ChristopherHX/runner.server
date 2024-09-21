@@ -93,6 +93,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 if (scalar is LiteralToken literal)
                 {
+                    var entry = m_context.AutoCompleteMatches?.FirstOrDefault(m => m.Token == scalar);
+                    if(entry != null) {
+                        entry.Definitions = entry.Definitions.Append(definition.Definition).ToArray();
+                    }
                     Validate(ref literal, definition);
                     return literal;
                 }
@@ -106,6 +110,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             if (m_unraveler.AllowSequenceStart(definition.Expand, out SequenceToken sequence))
             {
                 var sequenceDefinition = definition.Get<SequenceDefinition>().FirstOrDefault();
+                var entry = m_context.AutoCompleteMatches?.FirstOrDefault(m => m.Token.FileId == sequence.FileId && m.Token.Line == sequence.Line && m.Token.Column == sequence.Column && m.Token.Type == sequence.Type);
+                if(entry != null) {
+                    entry.Definitions = entry.Definitions.Append(definition.Definition).ToArray();
+                }
 
                 // Legal
                 if (sequenceDefinition != null)
@@ -139,6 +147,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             if (m_unraveler.AllowMappingStart(definition.Expand, out MappingToken mapping))
             {
                 var mappingDefinitions = definition.Get<MappingDefinition>().ToList();
+                var entry = m_context.AutoCompleteMatches?.FirstOrDefault(m => m.Token.FileId == mapping.FileId && m.Token.Line == mapping.Line && m.Token.Column == mapping.Column && m.Token.Type == mapping.Type);
+                if(entry != null) {
+                    entry.Definitions = entry.Definitions.Append(definition.Definition).ToArray();
+                }
 
                 // Legal
                 if (mappingDefinitions.Count > 0)
