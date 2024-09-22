@@ -25,16 +25,16 @@ namespace Runner.Server.Azure.Devops {
     
     [JsonObject("", NamingStrategyType = typeof(CamelCaseNamingStrategy), ItemNullValueHandling = NullValueHandling.Ignore)]
     public class Position {
-        long Character { get; set; }
-        long Line { get; set; }
+        public long Character { get; set; }
+        public long Line { get; set; }
     }
 
     [JsonObject("", NamingStrategyType = typeof(CamelCaseNamingStrategy), ItemNullValueHandling = NullValueHandling.Ignore)]
     public class Range {
-        Position Start { get; set; }
-        Position End { get; set; }
-        bool? IsEmpty { get; set; }
-        bool? IsSingleLine { get; set; }
+        public Position Start { get; set; }
+        public Position End { get; set; }
+        public bool? IsEmpty { get; set; }
+        public bool? IsSingleLine { get; set; }
     }
     
     
