@@ -646,7 +646,7 @@ Example: xor(True, False) (returns True)
             }
             yield break;
         }
-        if(def is MappingDefinition mapping && (bestMatch.Token is NullToken || bestMatch.Token is MappingToken))
+        if(def is MappingDefinition mapping && (bestMatch.Token is StringToken stkn && stkn.Value == "" || bestMatch.Token is MappingToken))
         {
             var candidates = mapping.Properties.Where(p => (bestMatch.Token as MappingToken)?.FirstOrDefault(e => e.Key?.ToString() == p.Key).Key == null);
             var hasFirstProperties = candidates.Any(c => c.Value.FirstProperty);
@@ -694,7 +694,7 @@ Example: xor(True, False) (returns True)
                 };
             }
         }
-        if(def is SequenceDefinition sequence && (bestMatch.Token is NullToken || bestMatch.Token is SequenceToken))
+        if(def is SequenceDefinition sequence && (bestMatch.Token is StringToken stkn2 && stkn2.Value == "" || bestMatch.Token is SequenceToken))
         {
             yield return new CompletionItem {
                 Label = new CompletionItemLabel {
