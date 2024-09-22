@@ -70,6 +70,17 @@ namespace GitHub.DistributedTask.ObjectTemplating
             return result;
         }
 
+        private bool Match(TemplateToken token) {
+            if(token.PreWhiteSpace != null) {
+                return m_context.Row > token.PreWhiteSpace.Line || m_context.Row == token.PreWhiteSpace.Line && m_context.Column >= token.PreWhiteSpace.Character;
+            }
+            return m_context.Row >= token.Line && m_context.Column >= token.Column;
+        }
+
+        private bool MatchPost(TemplateToken token) {
+            return m_context.Row < token.PostWhiteSpace.Line || m_context.Row == token.PostWhiteSpace.Line && m_context.Column <= token.PostWhiteSpace.Character;
+        }
+
         private TemplateToken ReadValue(DefinitionInfo definition)
         {
             m_memory.IncrementEvents();
@@ -86,7 +97,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             // Sequence
             if (m_objectReader.AllowSequenceStart(out SequenceToken sequence))
             {
-                if(m_context.AutoCompleteMatches != null && m_context.Row >= sequence.Line && m_context.Column >= sequence.Column) {
+                if(m_context.AutoCompleteMatches != null && Match(sequence)) {
                     m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
                     m_context.AutoCompleteMatches.Add(new AutoCompleteEntry {
                         Depth = m_memory.Depth,
@@ -106,7 +117,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     var itemDefinition = new DefinitionInfo(definition, sequenceDefinition.ItemType);
 
                     // Add each item
-                    while (!m_objectReader.AllowSequenceEnd())
+                    while (!m_objectReader.AllowSequenceEnd(sequence))
                     {
                         var item = ReadValue(itemDefinition);
                         sequence.Add(item);
@@ -132,7 +143,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             // Mapping
             if (m_objectReader.AllowMappingStart(out MappingToken mapping))
             {
-                if(m_context.AutoCompleteMatches != null && m_context.Row >= mapping.Line && m_context.Column >= mapping.Column) {
+                if(m_context.AutoCompleteMatches != null && Match(mapping)) {
                     m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
                     m_context.AutoCompleteMatches.Add(new AutoCompleteEntry {
                         Depth = m_memory.Depth,
@@ -334,7 +345,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     }
                 }
             }
-            ExpectMappingEnd();
+            ExpectMappingEnd(mapping);
         }
 
         private void HandleMappingWithAllLooseProperties(
@@ -402,14 +413,20 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 mapping.Add(nextKey, nextValue);
             }
 
-            ExpectMappingEnd();
+            ExpectMappingEnd(mapping);
         }
 
-        private void ExpectMappingEnd()
+        private void ExpectMappingEnd(MappingToken token)
         {
-            if (!m_objectReader.AllowMappingEnd())
+            if (!m_objectReader.AllowMappingEnd(token))
             {
                 throw new Exception("Expected mapping end"); // Should never happen
+            }
+            if(m_context.AutoCompleteMatches != null && token.PostWhiteSpace != null && !MatchPost(token)) {
+                var completion = m_context.AutoCompleteMatches.FirstOrDefault(m => m.Token == token);
+                if(completion != null) {
+                    m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= completion.Depth);
+                }
             }
         }
 
@@ -534,8 +551,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
             LiteralToken token,
             DefinitionInfo definitionInfo)
         {
-            AutoCompleteEntry completion = null;
-            if(m_context.AutoCompleteMatches != null && m_context.Row >= token.Line) {
+            AutoCompleteEntry completion = null;//m_context.Row >= token.Line 
+            if(m_context.AutoCompleteMatches != null && Match(token) && (token.PostWhiteSpace == null || MatchPost(token) /*(m_context.Row < token.PostWhiteSpace.Line && !(token.PostWhiteSpace.Line == m_context.Row && token.PostWhiteSpace.Character > m_context.Column))*/)) {
                 m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
                 m_context.AutoCompleteMatches.Add(completion = new AutoCompleteEntry {
                     Depth = m_memory.Depth,

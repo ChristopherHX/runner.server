@@ -112,6 +112,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 var sequenceDefinition = definition.Get<SequenceDefinition>().FirstOrDefault();
                 var entry = m_context.AutoCompleteMatches?.FirstOrDefault(m => m.Token.FileId == sequence.FileId && m.Token.Line == sequence.Line && m.Token.Column == sequence.Column && m.Token.Type == sequence.Type);
                 if(entry != null) {
+                    entry.Token = sequence;
                     entry.Definitions = entry.Definitions.Append(definition.Definition).ToArray();
                 }
 
@@ -149,6 +150,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 var mappingDefinitions = definition.Get<MappingDefinition>().ToList();
                 var entry = m_context.AutoCompleteMatches?.FirstOrDefault(m => m.Token.FileId == mapping.FileId && m.Token.Line == mapping.Line && m.Token.Column == mapping.Column && m.Token.Type == mapping.Type);
                 if(entry != null) {
+                    entry.Token = mapping;
                     entry.Definitions = entry.Definitions.Append(definition.Definition).ToArray();
                 }
 
@@ -259,6 +261,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Error
                 m_context.Error(nextKey, TemplateStrings.UnexpectedValue(nextKey.Value));
                 m_unraveler.SkipMappingValue();
+            }
+
+            if(m_context.AutoCompleteMatches != null) {
+                var aentry = m_context.AutoCompleteMatches.Where(a => a.Token == mapping).FirstOrDefault();
+                if(aentry != null) {
+                    aentry.Definitions = mappingDefinitions.Cast<Definition>().ToArray();
+                }
             }
 
             // Only one
