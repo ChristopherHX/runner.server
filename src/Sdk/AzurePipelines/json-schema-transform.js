@@ -328,6 +328,7 @@ targetSchema.definitions["task-task"] = targetSchema.definitions["nonEmptyString
 
 targetSchema.definitions["azp-any"]["one-of"].push("boolean", "null", "number")
 targetSchema.definitions["any_allowExpressions"]["one-of"].push("boolean", "null", "number")
+targetSchema.definitions["task"].mapping.properties["target"] = "stepTarget"
 
 
 console.log(JSON.stringify(targetSchema, null, 4))

@@ -885,6 +885,8 @@ namespace Runner.Server.Azure.Devops {
                             }
                             if (fdef != null && val != null)
                             {
+                                // var autoCompleteState = templateContext.AutoCompleteMatches;
+                                // templateContext.AutoCompleteMatches = new List<AutoCompleteEntry>();
                                 TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
                                 if(start != null) {
                                     foreach(var (tkn, sh) in GetPatterns(start.Value)
