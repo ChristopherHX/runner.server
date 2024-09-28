@@ -10,7 +10,7 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 namespace Runner.Server.Azure.Devops
 {
     public class AutoCompletetionHelper {
-    internal static IEnumerable<CompletionItem> AddSuggestion(TemplateSchema schema, AutoCompleteEntry bestMatch, Definition? def, DefinitionType[]? allowed, bool flowStyle)
+    internal static IEnumerable<CompletionItem> AddSuggestion(int column, int row, TemplateSchema schema, AutoCompleteEntry bestMatch, Definition? def, DefinitionType[]? allowed, bool flowStyle)
     {
         // if(allowed != null && !allowed.Contains(def.DefinitionType)) {
         //     yield break;
@@ -531,7 +531,7 @@ Example: xor(True, False) (returns True)
         }
         if(def is MappingDefinition mapping && (bestMatch.Token is StringToken stkn && stkn.Value == "" || bestMatch.Token is MappingToken))
         {
-            if(flowStyle && !(bestMatch.Token is MappingToken)) {
+            if((flowStyle || row == bestMatch.Token.Line) && !(bestMatch.Token is MappingToken)) {
                 yield return new CompletionItem {
                     Label = new CompletionItemLabel {
                         Label = "{}",
@@ -624,7 +624,7 @@ Example: xor(True, False) (returns True)
         }
         if(def is SequenceDefinition sequence && (bestMatch.Token is StringToken stkn2 && stkn2.Value == "" || bestMatch.Token is SequenceToken))
         {
-            if(flowStyle) {
+            if(flowStyle || row == bestMatch.Token.Line && !(bestMatch.Token is SequenceToken)) {
                 if(bestMatch.Token is SequenceToken) {
                     var item = schema.GetDefinition(sequence.ItemType);
                     if(schema.Get<MappingDefinition>(item).Any()) {
@@ -688,7 +688,7 @@ Example: xor(True, False) (returns True)
         if(def is OneOfDefinition oneOf) {
             foreach(var k in oneOf.OneOf) {
                 var d = schema.GetDefinition(k);
-                foreach(var u in AddSuggestion(schema, bestMatch, d, allowed, flowStyle)) {
+                foreach(var u in AddSuggestion(column, row, schema, bestMatch, d, allowed, flowStyle)) {
                     yield return u;
                 }
             }
@@ -699,7 +699,7 @@ Example: xor(True, False) (returns True)
     {
         var src = context.AutoCompleteMatches.Any(a => a.Token.Column == column) ? context.AutoCompleteMatches.Where(a => a.Token.Column == column) : context.AutoCompleteMatches.Where(a => a.Token.Column == context.AutoCompleteMatches.Last().Token.Column);
         List<CompletionItem> list = src
-            .SelectMany(bestMatch => bestMatch.Definitions.SelectMany(def => AddSuggestion(schema, bestMatch, def, bestMatch.Token.Line <= row && bestMatch.Token.Column <= column && !(bestMatch.Token is ScalarToken) ? null : bestMatch.Token.Line < row ? new[] { DefinitionType.OneOf, DefinitionType.Mapping, DefinitionType.Sequence } : new[] { DefinitionType.OneOf, DefinitionType.Null, DefinitionType.Boolean, DefinitionType.Number, DefinitionType.String }, context.AutoCompleteMatches.TakeWhile(m => m != bestMatch).Any(m => (m.Token.Type == TokenType.Sequence || m.Token.Type == TokenType.Mapping) && m.Token.PreWhiteSpace == null)))).DistinctBy(k => k.Label.Label).ToList();
+            .SelectMany(bestMatch => bestMatch.Definitions.SelectMany(def => AddSuggestion(column, row, schema, bestMatch, def, bestMatch.Token.Line <= row && bestMatch.Token.Column <= column && !(bestMatch.Token is ScalarToken) ? null : bestMatch.Token.Line < row ? new[] { DefinitionType.OneOf, DefinitionType.Mapping, DefinitionType.Sequence } : new[] { DefinitionType.OneOf, DefinitionType.Null, DefinitionType.Boolean, DefinitionType.Number, DefinitionType.String }, context.AutoCompleteMatches.TakeWhile(m => m != bestMatch).Any(m => (m.Token.Type == TokenType.Sequence || m.Token.Type == TokenType.Mapping) && m.Token.PreWhiteSpace == null)))).DistinctBy(k => k.Label.Label).ToList();
         return list;
     }
     }

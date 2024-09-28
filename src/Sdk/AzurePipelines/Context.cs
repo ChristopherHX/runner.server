@@ -33,6 +33,9 @@ namespace Runner.Server.Azure.Devops
             }
             var childContext = Clone();
             childContext.RequiredParametersProvider = null;
+            childContext.AutoCompleteMatches = null;
+            childContext.Column = 0;
+            childContext.Row = 0;
             foreach(var kv in template) {
                 switch(kv.Key.AssertString("key").Value) {
                     case "resources":

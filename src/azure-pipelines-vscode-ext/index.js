@@ -532,9 +532,6 @@ function activate(context) {
 			await expandAzurePipeline(false, null, null, null, () => {
 			}, null, () => {
 			}, null, null, null, true, true, null, pos, data);
-			// var ret = [];
-			//{start: Position.create(0, 0), end: pos}
-			// ret.push({ label: "parameters", range: new vscode.Range(new vscode.Position(0, 0), pos)});
 			for(var item of data.autocompletelist) {
 				if(item.insertText && item.insertText.value) {
 					item.insertText = new vscode.SnippetString(item.insertText.value)
@@ -543,11 +540,61 @@ function activate(context) {
 					item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
 				}
 			}
-			if(data.autocompletelist.length === 0) {
-				data.autocompletelist.push({ label: "meta", range: new vscode.Range(pos, pos)});
-				data.autocompletelist.push({ label: "ok", range: new vscode.Range(pos, pos)});
-			}
 			return data.autocompletelist
+		}
+	})
+
+
+	// // vscode.workspace.fs.createDirectory(context.globalStorageUri)
+	// vscode.workspace.onDidChangeConfiguration(conf => {
+	// 	conf.affectsConfiguration("azure-pipelines-vscode-ext")
+	// })
+
+	var cache = []
+	vscode.languages.registerCompletionItemProvider({
+		language: "azure-pipelines"
+	}, {
+		provideCompletionItems: async (doc, pos, token, context) => {
+			var cacheEntry = null;
+			if(pos.line < cache.length) {
+				if(cache[pos.line]) {
+					if(pos.character < cache[pos.line].length) {
+						cacheEntry = cache[pos.line][pos.character]
+						if(cacheEntry) {
+							return cacheEntry;
+						}
+					} else {
+						cache[pos.line].length = pos.character + 1;
+					}
+				} else {
+					cache[pos.line] = [];
+				}
+			} else {
+				cache.length = pos.line + 1;
+				cache[pos.line] = [];
+			}
+
+			(async() => {
+			
+				var data = {autocompletelist: []};
+				await expandAzurePipeline(false, null, null, null, () => {
+				}, null, () => {
+				}, null, null, null, true, true, null, pos, data);
+				var items = []
+				for(var item of data.autocompletelist) {
+					if(item.kind === 2 || item.kind === 5) {
+						if(item.insertText && item.insertText.value) {
+							item.insertText = new vscode.SnippetString(item.insertText.value)
+						}
+						if(item.documentation) {
+							item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
+						}
+						items.push(item)
+					}
+				}
+				cache[pos.line][pos.character] = items
+			})();
+			return { isIncomplete: true, items: []}
 		}
 	})
 
