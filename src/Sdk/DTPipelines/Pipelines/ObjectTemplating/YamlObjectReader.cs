@@ -92,8 +92,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             throw new NotSupportedException($"Unexpected tag '{scalar.Tag}'");
                     }
 
-                    FillPreWhitespace(scalar, value);
-                    FillPostWhitespace(scalar, value);
+                    if(!string.IsNullOrEmpty(m_rawInput)) {
+                        FillPreWhitespace(scalar, value);
+                        FillPostWhitespace(scalar, value);
+                    }
 
                     MoveNext();
                     return true;
@@ -119,7 +121,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     {
                         value = CreateStringToken(scalar);
                     }
-                    if(value.Type != TokenType.String) {
+                    if(!string.IsNullOrEmpty(m_rawInput) && value.Type != TokenType.String) {
                         FillPreWhitespace(scalar, value);
                         FillPostWhitespace(scalar, value);
                     }
@@ -146,6 +148,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 tkn.RawData = m_rawInput.Substring(scalar.Start.Index, scalar.End.Index - scalar.Start.Index);
                 if(scalar.Style != ScalarStyle.SingleQuoted && scalar.Style != ScalarStyle.DoubleQuoted) {
                     FillPreWhitespace(scalar, tkn);
+                    // TODO Yaml scalar keys break intellisense, this modifies preprocessing
+                    if(tkn.PreWhiteSpace != null && tkn.PreWhiteSpace.Line < tkn.Line) {
+                        tkn.PreWhiteSpace.Line = tkn.Line.Value;
+                        tkn.PreWhiteSpace.Character = 1;
+                    }
                     FillPostWhitespace(scalar, tkn);
                 } else {
                     tkn.PostWhiteSpace = new Position { Line = scalar.End.Line, Character = scalar.End.Column };
@@ -179,8 +186,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             int cpos = 0;
             if (lines > 0 && i >= 0)
             {
-                int lstart = m_rawInput.LastIndexOf('\n', i) + 1;
-                cpos = i - lstart;
+                int lstart = m_rawInput.LastIndexOf('\n', i);
+                cpos = i + 1 - lstart;
             }
             tkn.PreWhiteSpace = new Position() { Line = scalar.Start.Line - lines, Character = lines == 0 ? scalar.Start.Column - column : cpos };
         }

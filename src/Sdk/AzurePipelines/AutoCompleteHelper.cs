@@ -10,7 +10,7 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 namespace Runner.Server.Azure.Devops
 {
     public class AutoCompletetionHelper {
-    internal static IEnumerable<CompletionItem> AddSuggestion(int column, int row, TemplateSchema schema, AutoCompleteEntry bestMatch, Definition? def, DefinitionType[]? allowed, bool flowStyle)
+    internal static IEnumerable<CompletionItem> AddSuggestion(Context context, int column, int row, TemplateSchema schema, AutoCompleteEntry bestMatch, Definition? def, DefinitionType[]? allowed, bool flowStyle)
     {
         // if(allowed != null && !allowed.Contains(def.DefinitionType)) {
         //     yield break;
@@ -52,7 +52,9 @@ namespace Runner.Server.Azure.Devops
                         };
                     }
                 }
-                if(bestMatch.AllowedContext.Length > 0) {
+                var adoFunctions = (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedFunctions) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None
+                    || (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None;
+                if(bestMatch.AllowedContext.Length > 0 && adoFunctions) {
                     yield return new CompletionItem {
                         Label = new CompletionItemLabel {
                             Label = "True",
@@ -204,7 +206,7 @@ Example: `endsWith('ABCDE', 'DE')` (returns True)
                             Value = "format($1, $2)"
                         },
                         Documentation = new MarkdownString {
-                            Value = "Compares two objects for ge. _This operation is case insensitive_."
+                            Value = "Formats the string according to the fmt string placeholder `{0}` are get replaced by the additional parameters."
                         }
                     };
                     yield return new CompletionItem {
@@ -526,12 +528,103 @@ Example: xor(True, False) (returns True)
                         }
                     };
                 }
+
+                if(bestMatch.AllowedContext.Length > 0 && !adoFunctions) {
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "true",
+                        },
+                        Kind = 21,
+                        Documentation = new MarkdownString {
+                            Value = "Boolean Literal"
+                        }
+                    };
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "false",
+                        },
+                        Kind = 21,
+                        Documentation = new MarkdownString {
+                            Value = "Boolean Literal"
+                        }
+                    };
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "==",
+                        },
+                        Kind = 24,
+                        Documentation = new MarkdownString {
+                            Value = "Equals Operator"
+                        }
+                    };
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "!=",
+                        },
+                        Kind = 24,
+                        Documentation = new MarkdownString {
+                            Value = "Not Equals Operator"
+                        }
+                    };
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "startsWith",
+                            Detail = "(lhs, rhs)"
+                        },
+                        InsertText = new SnippedString {
+                            Value = "startsWith($1, $2)"
+                        },
+                        Kind = 2,
+                        Documentation = new MarkdownString {
+                            Value = @"
+Evaluates True if left parameter string starts with right parameter
+Min parameters: 2. Max parameters: 2
+Casts parameters to String for evaluation
+Performs ordinal ignore-case comparison
+Example: startsWith('ABCDE', 'AB') (returns True)
+"
+                        }
+                    };
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "endsWith",
+                            Detail = "(lhs, rhs)"
+                        },
+                        InsertText = new SnippedString {
+                            Value = "endsWith($1, $2)"
+                        },
+                        Kind = 2,
+                        Documentation = new MarkdownString {
+                            Value = @"
+Evaluates True if left parameter String ends with right parameter
+Min parameters: 2. Max parameters: 2
+Casts parameters to String for evaluation
+Performs ordinal ignore-case comparison
+Example: `endsWith('ABCDE', 'DE')` (returns True)
+"
+                        }
+                    };
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = "format",
+                            Detail = "(fmt...)"
+                        },
+                        Kind = 2,
+                        InsertText = new SnippedString {
+                            Value = "format($1, $2)"
+                        },
+                        Documentation = new MarkdownString {
+                            Value = "Formats the string according to the fmt string placeholder `{0}` are get replaced by the additional parameters."
+                        }
+                    };
+                }
             }
+
             yield break;
         }
-        if(def is MappingDefinition mapping && (bestMatch.Token is StringToken stkn && stkn.Value == "" || bestMatch.Token is MappingToken))
+        if(def is MappingDefinition mapping && (bestMatch.Token is StringToken stkn && stkn.Value == "" || bestMatch.Token is NullToken || bestMatch.Token is MappingToken))
         {
-            if((flowStyle || row == bestMatch.Token.Line) && !(bestMatch.Token is MappingToken)) {
+            if((flowStyle || row == bestMatch.Token.Line && context.AutoCompleteMatches.LastOrDefault(m => m != bestMatch)?.Token is MappingToken) && !(bestMatch.Token is MappingToken)) {
                 yield return new CompletionItem {
                     Label = new CompletionItemLabel {
                         Label = "{}",
@@ -557,6 +650,7 @@ Example: xor(True, False) (returns True)
                 };
             }
             if(bestMatch.AllowedContext?.Length > 0) {
+                var adoDirectives = (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None;
                 if(!flowStyle) {
                     yield return new CompletionItem {
                         Label = new CompletionItemLabel {
@@ -564,30 +658,32 @@ Example: xor(True, False) (returns True)
                         },
                         InsertText = new SnippedString { Value = "${{ insert }}:$0" }
                     };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ if _ }}",
-                        },
-                        InsertText = new SnippedString { Value = "${{ if $1 }}:$0" }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ elseif _ }}",
-                        },
-                        InsertText = new SnippedString { Value = "${{ elseif $1 }}:$0" }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ else }}",
-                        },
-                        InsertText = new SnippedString { Value = "${{ else }}:$0" }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ each _ in _ }}",
-                        },
-                        InsertText = new SnippedString { Value = "${{ each $1 in $2 }}:$0" }
-                    };
+                    if(adoDirectives) {
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ if _ }}",
+                            },
+                            InsertText = new SnippedString { Value = "${{ if $1 }}:$0" }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ elseif _ }}",
+                            },
+                            InsertText = new SnippedString { Value = "${{ elseif $1 }}:$0" }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ else }}",
+                            },
+                            InsertText = new SnippedString { Value = "${{ else }}:$0" }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ each _ in _ }}",
+                            },
+                            InsertText = new SnippedString { Value = "${{ each $1 in $2 }}:$0" }
+                        };
+                    }
                 } else {
                     yield return new CompletionItem {
                         Label = new CompletionItemLabel {
@@ -595,30 +691,32 @@ Example: xor(True, False) (returns True)
                         },
                         InsertText = new SnippedString { Value = "\"${{ insert }}\":$0" }
                     };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ if _ }}",
-                        },
-                        InsertText = new SnippedString { Value = "\"${{ if $1 }}\":$0" }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ elseif _ }}",
-                        },
-                        InsertText = new SnippedString { Value = "\"${{ elseif $1 }}\":$0" }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ else }}",
-                        },
-                        InsertText = new SnippedString { Value = "\"${{ else }}\":$0" }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "${{ each _ in _ }}",
-                        },
-                        InsertText = new SnippedString { Value = "\"${{ each $1 in $2 }}\":$0" }
-                    };
+                    if(adoDirectives) {
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ if _ }}",
+                            },
+                            InsertText = new SnippedString { Value = "\"${{ if $1 }}\":$0" }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ elseif _ }}",
+                            },
+                            InsertText = new SnippedString { Value = "\"${{ elseif $1 }}\":$0" }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ else }}",
+                            },
+                            InsertText = new SnippedString { Value = "\"${{ else }}\":$0" }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "${{ each _ in _ }}",
+                            },
+                            InsertText = new SnippedString { Value = "\"${{ each $1 in $2 }}\":$0" }
+                        };
+                    }
                 }
             }
         }
@@ -688,7 +786,7 @@ Example: xor(True, False) (returns True)
         if(def is OneOfDefinition oneOf) {
             foreach(var k in oneOf.OneOf) {
                 var d = schema.GetDefinition(k);
-                foreach(var u in AddSuggestion(column, row, schema, bestMatch, d, allowed, flowStyle)) {
+                foreach(var u in AddSuggestion(context, column, row, schema, bestMatch, d, allowed, flowStyle)) {
                     yield return u;
                 }
             }
@@ -699,7 +797,7 @@ Example: xor(True, False) (returns True)
     {
         var src = context.AutoCompleteMatches.Any(a => a.Token.Column == column) ? context.AutoCompleteMatches.Where(a => a.Token.Column == column) : context.AutoCompleteMatches.Where(a => a.Token.Column == context.AutoCompleteMatches.Last().Token.Column);
         List<CompletionItem> list = src
-            .SelectMany(bestMatch => bestMatch.Definitions.SelectMany(def => AddSuggestion(column, row, schema, bestMatch, def, bestMatch.Token.Line <= row && bestMatch.Token.Column <= column && !(bestMatch.Token is ScalarToken) ? null : bestMatch.Token.Line < row ? new[] { DefinitionType.OneOf, DefinitionType.Mapping, DefinitionType.Sequence } : new[] { DefinitionType.OneOf, DefinitionType.Null, DefinitionType.Boolean, DefinitionType.Number, DefinitionType.String }, context.AutoCompleteMatches.TakeWhile(m => m != bestMatch).Any(m => (m.Token.Type == TokenType.Sequence || m.Token.Type == TokenType.Mapping) && m.Token.PreWhiteSpace == null)))).DistinctBy(k => k.Label.Label).ToList();
+            .SelectMany(bestMatch => bestMatch.Definitions.SelectMany(def => AddSuggestion(context, column, row, schema, bestMatch, def, bestMatch.Token.Line <= row && bestMatch.Token.Column <= column && !(bestMatch.Token is ScalarToken) ? null : bestMatch.Token.Line < row ? new[] { DefinitionType.OneOf, DefinitionType.Mapping, DefinitionType.Sequence } : new[] { DefinitionType.OneOf, DefinitionType.Null, DefinitionType.Boolean, DefinitionType.Number, DefinitionType.String }, context.AutoCompleteMatches.TakeWhile(m => m != bestMatch).Append(bestMatch).Any(m => (m.Token.Type == TokenType.Sequence || m.Token.Type == TokenType.Mapping) && m.Token.PreWhiteSpace == null)))).DistinctBy(k => k.Label.Label).ToList();
         return list;
     }
     }

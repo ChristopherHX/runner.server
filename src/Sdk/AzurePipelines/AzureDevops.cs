@@ -633,6 +633,12 @@ namespace Runner.Server.Azure.Devops {
             if(completion != null && m_context.AutoCompleteMatches != null) {
                 var idx = GetIdxOfExpression(completion.Token as LiteralToken, m_context.Row.Value, m_context.Column.Value);
                 var startIndex = -1 - completion.Index + offset;
+                if(idx == -1 && completion.Token.PreWhiteSpace != null && (m_context.Row.Value > completion.Token.PreWhiteSpace.Line || m_context.Row.Value == completion.Token.PreWhiteSpace.Line && m_context.Column.Value >= completion.Token.PostWhiteSpace.Character)) {
+                    idx = startIndex;
+                }
+                if(idx == -1 && completion.Token.PostWhiteSpace != null && (m_context.Row.Value < completion.Token.PostWhiteSpace.Line || m_context.Row.Value == completion.Token.PostWhiteSpace.Line && m_context.Column.Value <= completion.Token.PostWhiteSpace.Character)) {
+                    idx = startIndex + value.Length + poffset;
+                }
                 if(idx != -1 && idx >= startIndex && (idx <= startIndex + value.Length + poffset)) {
                     LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value, m_context.Flags);
                     Token tkn = null;
@@ -669,7 +675,7 @@ namespace Runner.Server.Azure.Devops {
             idx = n + 1;
           }
           idx += idx == 0 ? lc ?? 0 : column - 1;
-          if(idx > xraw.Length) {
+          if(idx < 0 || idx > xraw.Length) {
             return -1;
           }
           xraw = xraw.Insert(idx, C);
