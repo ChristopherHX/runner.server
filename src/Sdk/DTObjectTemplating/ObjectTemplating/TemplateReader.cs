@@ -8,6 +8,7 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.Expressions2.Tokens;
 using System.IO;
+using Runner.Server.Azure.Devops;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -74,7 +75,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             if(token.PreWhiteSpace != null) {
                 return m_context.Row > token.PreWhiteSpace.Line || m_context.Row == token.PreWhiteSpace.Line && m_context.Column >= token.PreWhiteSpace.Character;
             }
-            return m_context.Row >= token.Line && m_context.Column >= token.Column;
+            return m_context.Row > token.Line || m_context.Row == token.Line && m_context.Column >= token.Column;
         }
 
         private bool MatchPost(TemplateToken token) {
@@ -583,15 +584,64 @@ namespace GitHub.DistributedTask.ObjectTemplating
             LiteralToken token,
             DefinitionInfo definitionInfo)
         {
-            AutoCompleteEntry completion = null;//m_context.Row >= token.Line 
+            AutoCompleteEntry completion = null;//m_context.Row >= token.Line
+            completion = new AutoCompleteEntry {
+                Depth = m_memory.Depth,
+                Token = token,
+                AllowedContext = definitionInfo.AllowedContext,
+                Definitions = new [] { definitionInfo.Definition }
+            };
             if(m_context.AutoCompleteMatches != null && Match(token) && (token.PostWhiteSpace == null || MatchPost(token) /*(m_context.Row < token.PostWhiteSpace.Line && !(token.PostWhiteSpace.Line == m_context.Row && token.PostWhiteSpace.Character > m_context.Column))*/)) {
                 m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
-                m_context.AutoCompleteMatches.Add(completion = new AutoCompleteEntry {
-                    Depth = m_memory.Depth,
-                    Token = token,
-                    AllowedContext = definitionInfo.AllowedContext,
-                    Definitions = new [] { definitionInfo.Definition }
-                });
+                m_context.AutoCompleteMatches.Add(completion);
+            } else {
+                completion.SemTokensOnly = true;
+            }
+            if(token is LiteralToken lit && lit.RawData != null) {
+                var rand = new Random();
+                string C = "CX";
+                while(lit.RawData.Contains(C)) {
+                    C = rand.Next(255).ToString("X2");
+                }
+                var praw = lit.ToString();
+                (int, int)[] mapping = new (int, int)[praw.Length + 1];
+                var rmapping = new Dictionary<(int, int), int>();
+                Array.Fill(mapping, (-1, -1));
+
+                int column = lit.Column.Value;
+                int line = lit.Line.Value;
+                int ridx = -1;
+                for(int idx = 0; idx < lit.RawData.Length; idx++) {
+                    if(lit.RawData[idx] == '\n') {
+                        line++;
+                        column = 1;
+                        continue;
+                    }
+                    var xraw = lit.RawData.Insert(idx, C);
+
+                    var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
+                    try {
+                        while(scanner.MoveNext()) {
+                            if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                                var x = s.Value;
+                                var m = x.IndexOf(C);
+                                if(m >= 0 && m < mapping.Length && ridx <= m) {
+                                    if(mapping[m] != (-1,-1)) {
+                                        rmapping.Remove(mapping[m]);
+                                    }
+                                    mapping[m] = (line, column);
+                                    rmapping[(line, column)] = m;
+                                    ridx = m;
+                                }
+                            }
+                        }
+                    } catch {
+
+                    }
+                    column++;
+                }
+                completion.Mapping = mapping;
+                completion.RMapping = rmapping;
             }
             var allowedContext = definitionInfo.AllowedContext;
             var isExpression = definitionInfo.Definition is StringDefinition sdef && sdef.IsExpression;
@@ -632,6 +682,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // An expression starts here:
                 if (i == startExpression)
                 {
+                    if(completion.Mapping?.Length > startExpression && token.Line != null && token.Column != null) {
+                        var (r, c) = completion.Mapping[startExpression];
+                        m_context.AddSemToken(r, c, 3, 5, 0);
+                    }
+
                     // Find the end of the expression - i.e. }}
                     startExpression = i;
                     var endExpression = -1;
@@ -650,32 +705,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         }
                     }
 
-                    // if(m_context.AutoCompleteMatches != null) {
-
-                    //     var idx = GetIdxOfExpression(token, m_context.Row.Value, m_context.Column.Value);
-                    //     var startIndex = startExpression + TemplateConstants.OpenExpression.Length;
-                    //     if(idx != -1 && idx >= startIndex && (endExpression == -1 || idx <= endExpression + 1 - TemplateConstants.CloseExpression.Length)) {
-                    //         LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(raw.Substring(
-                    //             startIndex,
-                    //             endExpression == -1 ? raw.Length - startIndex : endExpression + 1 - startIndex - TemplateConstants.CloseExpression.Length), m_context.Flags);
-                    //         Token tkn = null;
-                    //         List<Token> tkns = new List<Token>();
-                    //         while(lexicalAnalyzer.TryGetNextToken(ref tkn)) {
-                    //             tkns.Add(tkn);
-                    //             if(tkn.Index + startExpression + TemplateConstants.OpenExpression.Length > idx) {
-                    //                 break;
-                    //             }
-                    //         }
-                    //         m_context.AutoCompleteMatches.Add(new AutoCompleteEntry() {
-                    //             Depth = m_memory.Depth,
-                    //             AllowedContext = allowedContext,
-                    //             Definitions = new Definition[] { definitionInfo.Definition },
-                    //             Token = token,
-                    //             Tokens = tkns,
-                    //             Index = idx - (startExpression + TemplateConstants.OpenExpression.Length)
-                    //         });
-                    //     }
-                    // }
+                    bool hasEnd = false;
 
                     // Check if not closed
                     if (endExpression < startExpression)
@@ -685,7 +715,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             return token;
                         }
                         endExpression = raw.Length + TemplateConstants.CloseExpression.Length - 1;
+                    } else {
+                        hasEnd = true;
                     }
+
                     if(completion != null && completion.Index < 0) {
                         completion.Index = - (startExpression + TemplateConstants.OpenExpression.Length + 1);
                     }
@@ -695,6 +728,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         startExpression + TemplateConstants.OpenExpression.Length,
                         endExpression - startExpression + 1 - TemplateConstants.OpenExpression.Length - TemplateConstants.CloseExpression.Length);
                     var expression = ParseExpression(completion, token.Line, token.Column, rawExpression, allowedContext, out Exception ex);
+
+                    if(completion.Mapping?.Length >= endExpression - 1 && hasEnd && token.Line != null && token.Column != null) {
+                        var (r, c) = completion.Mapping[endExpression - 1];
+                        m_context.AddSemToken(r, c, 2, 5, 0);
+                    }
 
                     // Check for error
                     if (ex != null)
@@ -798,18 +836,53 @@ namespace GitHub.DistributedTask.ObjectTemplating
         }
 
         private bool AutoCompleteExpression(AutoCompleteEntry completion, int offset, string value, int poffset = 0) {
-            if(completion != null && m_context.AutoCompleteMatches != null) {
-                var idx = GetIdxOfExpression(completion.Token as LiteralToken, m_context.Row.Value, m_context.Column.Value);
+            if(completion != null)
+            {
+                LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value.Substring(offset), m_context.Flags);
+                Token tkn = null;
+                var startIndex = -1 - completion.Index + offset;
+                var lit = completion.Token as LiteralToken;
+                if(lit.RawData != null) {
+                    var mapping = completion.Mapping;
+                    while(lexicalAnalyzer.TryGetNextToken(ref tkn)) {
+                        var (r, c) = mapping[startIndex + tkn.Index];
+                        if(tkn.Kind == TokenKind.Function) {
+                            m_context.AddSemToken(r, c, tkn.RawValue.Length, 2, 2);
+                        } else if(tkn.Kind == TokenKind.NamedValue) {
+                            m_context.AddSemToken(r, c, tkn.RawValue.Length, 0, 1);
+                        } else if(tkn.Kind == TokenKind.PropertyName) {
+                            m_context.AddSemToken(r, c, tkn.RawValue.Length, 3, 0);
+                        } else if(tkn.Kind == TokenKind.Boolean || tkn.Kind == TokenKind.Null) {
+                            m_context.AddSemToken(r, c, tkn.RawValue.Length, 4, 2);
+                        } else if(tkn.Kind == TokenKind.Number || tkn.Kind == TokenKind.String && tkn.ParsedValue is VersionWrapper) {
+                            m_context.AddSemToken(r, c, tkn.RawValue.Length, 4, 4);
+                        } else if(tkn.Kind == TokenKind.StartGroup || tkn.Kind == TokenKind.StartIndex || tkn.Kind == TokenKind.StartParameters || tkn.Kind == TokenKind.EndGroup || tkn.Kind == TokenKind.EndParameters
+                            || tkn.Kind == TokenKind.EndIndex || tkn.Kind == TokenKind.Wildcard || tkn.Kind == TokenKind.Separator || tkn.Kind == TokenKind.LogicalOperator || tkn.Kind == TokenKind.Dereference) {
+                            m_context.AddSemToken(r, c, tkn.RawValue.Length, 5, 0);
+                        } else if(tkn.Kind == TokenKind.String) {
+                            var (er, ec) = mapping[startIndex + tkn.Index + tkn.RawValue.Length];
+                            // Only add single line string
+                            if(er == r && c < ec) {
+                                m_context.AddSemToken(r, c, ec - c /* May contain escape codes */, 6, 0);
+                            }
+                            // TODO multi line string by splitting them
+                        }
+                    }
+                }
+            }
+            if(completion != null && !completion.SemTokensOnly && m_context.AutoCompleteMatches != null) {
+                // var idx = GetIdxOfExpression(completion.Token as LiteralToken, m_context.Row.Value, m_context.Column.Value);
+                var idx = completion.RMapping.TryGetValue((m_context.Row.Value, m_context.Column.Value), out var i) ? i : -1;
                 var startIndex = -1 - completion.Index + offset;
                 if(idx != -1 && idx >= startIndex && (idx <= startIndex + value.Length + poffset)) {
-                    LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value, m_context.Flags);
+                    LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value.Substring(offset), m_context.Flags);
                     Token tkn = null;
                     List<Token> tkns = new List<Token>();
                     while(lexicalAnalyzer.TryGetNextToken(ref tkn)) {
-                        tkns.Add(tkn);
                         if(tkn.Index + startIndex > idx) {
                             break;
                         }
+                        tkns.Add(tkn);
                     }
                     completion.Tokens = tkns;
                     completion.Index = idx - startIndex;
@@ -889,7 +962,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 1 && !AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, ""))
+            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 1 && !AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value))
             {
                 return new IfExpressionToken(m_fileId, line, column, parameters[0].Item2);
             }
@@ -897,7 +970,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 1 && !AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, ""))
+            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex) && AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value) && ExpressionToken.IsValidExpression(parameters[0].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 1 && !AutoCompleteExpression(completion, trimmedNo + parameters[0].Item1, value))
             {
                 return new ElseIfExpressionToken(m_fileId, line, column, parameters[0].Item2);
             }
@@ -913,7 +986,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1].Item2 == "in" && AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, value) && ExpressionToken.IsValidExpression(parameters[2].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 3 && !AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, ""))
+            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1].Item2 == "in" && AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, value) && ExpressionToken.IsValidExpression(parameters[2].Item2, allowedContext, out ex, m_context.Flags) || parameters?.Count == 3 && !AutoCompleteExpression(completion, trimmedNo + parameters[2].Item1, value))
             {
                 return new EachExpressionToken(m_fileId, line, column, parameters[0].Item2, parameters[2].Item2);
             }
@@ -1001,7 +1074,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     ex = new ArgumentException(TemplateStrings.ExpectedNParametersFollowingDirective(expectedParameters, directive, parameters.Count));
                     if(expectedParameters == parameters.Count + 1) {
-                        parameters.Add((parameters.Last().Item1 + parameters.Last().Item2.Length + 1, ""));
+                        parameters.Add((parameters.LastOrDefault().Item1 + (parameters.LastOrDefault().Item2?.Length ?? 2) + 1, ""));
                     } else {
                         parameters = null;
                     }

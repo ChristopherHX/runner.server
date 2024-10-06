@@ -629,6 +629,89 @@ namespace Runner.Server.Azure.Devops {
             return string.Join('/', path.ToArray());
         }
 
+        private static ((int, int)[], Dictionary<(int, int), int>) CreateIdxMapping(TemplateToken token) {
+            if(token is LiteralToken lit && lit.RawData != null) {
+                var rand = new Random();
+                string C = "CX";
+                while(lit.RawData.Contains(C)) {
+                    C = rand.Next(255).ToString("X2");
+                }
+                var praw = lit.ToString();
+                (int, int)[] mapping = new (int, int)[praw.Length + 1];
+                var rmapping = new Dictionary<(int, int), int>();
+                Array.Fill(mapping, (-1, -1));
+
+                int column = lit.Column.Value;
+                int line = lit.Line.Value;
+                int ridx = -1;
+                for(int idx = 0; idx < lit.RawData.Length; idx++) {
+                    if(lit.RawData[idx] == '\n') {
+                        line++;
+                        column = 1;
+                        continue;
+                    }
+                    var xraw = lit.RawData.Insert(idx, C);
+
+                    var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
+                    try {
+                        while(scanner.MoveNext()) {
+                            if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                                var x = s.Value;
+                                var m = x.IndexOf(C);
+                                if(m >= 0 && m < mapping.Length && ridx <= m) {
+                                    if(mapping[m] != (-1,-1)) {
+                                        rmapping.Remove(mapping[m]);
+                                    }
+                                    mapping[m] = (line, column);
+                                    rmapping[(line, column)] = m;
+                                    ridx = m;
+                                }
+                            }
+                        }
+                    } catch {
+
+                    }
+                    column++;
+                }
+                return (mapping, rmapping);
+            }
+            return (null, null);
+        }
+
+        private static void SyntaxHighlightExpression(TemplateContext m_context, TemplateToken token, int offset, string value, int poffset = 0) {
+            var (mapping, rmapping) = CreateIdxMapping(token);
+            LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value.Substring(offset), m_context.Flags);
+            Token tkn = null;
+            var startIndex = offset;
+            var lit = token as LiteralToken;
+            if(lit.RawData != null) {
+                while(lexicalAnalyzer.TryGetNextToken(ref tkn)) {
+                    var (r, c) = mapping[startIndex + tkn.Index];
+                    if(tkn.Kind == TokenKind.Function) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 2, 2);
+                    } else if(tkn.Kind == TokenKind.NamedValue) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 0, 1);
+                    } else if(tkn.Kind == TokenKind.PropertyName) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 3, 0);
+                    } else if(tkn.Kind == TokenKind.Boolean || tkn.Kind == TokenKind.Null) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 4, 2);
+                    } else if(tkn.Kind == TokenKind.Number || tkn.Kind == TokenKind.String && tkn.ParsedValue is VersionWrapper) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 4, 4);
+                    } else if(tkn.Kind == TokenKind.StartGroup || tkn.Kind == TokenKind.StartIndex || tkn.Kind == TokenKind.StartParameters || tkn.Kind == TokenKind.EndGroup || tkn.Kind == TokenKind.EndParameters
+                        || tkn.Kind == TokenKind.EndIndex || tkn.Kind == TokenKind.Wildcard || tkn.Kind == TokenKind.Separator || tkn.Kind == TokenKind.LogicalOperator || tkn.Kind == TokenKind.Dereference) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 5, 0);
+                    } else if(tkn.Kind == TokenKind.String) {
+                        var (er, ec) = mapping[startIndex + tkn.Index + tkn.RawValue.Length];
+                        // Only add single line string
+                        if(er == r && c < ec) {
+                            m_context.AddSemToken(r, c, ec - c /* May contain escape codes */, 6, 0);
+                        }
+                        // TODO multi line string by splitting them
+                    }
+                }
+            }
+        }
+
         private static bool AutoCompleteExpression(TemplateContext m_context, AutoCompleteEntry completion, int offset, string value, int poffset = 0) {
             if(completion != null && m_context.AutoCompleteMatches != null) {
                 var idx = GetIdxOfExpression(completion.Token as LiteralToken, m_context.Row.Value, m_context.Column.Value);
@@ -730,6 +813,7 @@ namespace Runner.Server.Azure.Devops {
             var yamlObjectReader = new YamlObjectReader(fileId, fileContent, preserveString: true, forceAzurePipelines: true);
             TemplateToken token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
 
+            context.SemTokens = templateContext.SemTokens;
             if(checks)
             {
                 foreach (var stepCond in token.TraverseByPattern(new[] { "steps", "*", "condition" })
@@ -1180,6 +1264,9 @@ namespace Runner.Server.Azure.Devops {
                     match.AllowedContext = names.Append("counter(0,2)").ToArray();
                     AutoCompleteExpression(m_context, match, 2, pval);
                 }
+                // m_context.AddSemToken(rawVal.Line.Value, rawVal.Column.Value, 2, 5, 0);
+                SyntaxHighlightExpression(m_context, rawVal, 2, val);
+                // m_context.AddSemToken(rawVal.Line.Value, rawVal.Column.Value, 2, 5, 0);
                 var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
                 var node = parser.CreateTree(pval, new EmptyTraceWriter().ToExpressionTraceWriter(),
                     names.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
@@ -1228,6 +1315,8 @@ namespace Runner.Server.Azure.Devops {
                     }
                     AutoCompleteExpression(m_context, match, rawCondition.Type == TokenType.Null ? 1 : 0, val);
                 }
+                SyntaxHighlightExpression(m_context, rawCondition, 0, val);
+                
                 var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
                 var node = parser.CreateTree(val, new EmptyTraceWriter().ToExpressionTraceWriter(),
                     names.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),

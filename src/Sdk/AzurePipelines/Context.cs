@@ -21,7 +21,7 @@ namespace Runner.Server.Azure.Devops
         public int Column { get; internal set; }
         public int Row { get; internal set; }
         internal List<AutoCompleteEntry> AutoCompleteMatches { get; set; }
-
+        public List<int> SemTokens { get; internal set; }
 
         public Context Clone() {
             return MemberwiseClone() as Context;

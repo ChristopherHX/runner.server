@@ -36,7 +36,11 @@ namespace Runner.Server.Azure.Devops {
         public bool? IsEmpty { get; set; }
         public bool? IsSingleLine { get; set; }
     }
-    
+    [JsonObject("", NamingStrategyType = typeof(CamelCaseNamingStrategy), ItemNullValueHandling = NullValueHandling.Ignore)]
+    public class InsertReplaceRange {
+        public Range Inserting { get; set; }
+        public Range Replacing { get; set; }
+    }
     
     [JsonObject("", NamingStrategyType = typeof(CamelCaseNamingStrategy), ItemNullValueHandling = NullValueHandling.Ignore)]
     public class CompletionItem {
@@ -49,7 +53,7 @@ namespace Runner.Server.Azure.Devops {
         public string[] CommitCharacters { get; set; }
         public bool? KeepWhitespace { get; set; }
         public int? Kind { get; set; }
-        public Range Range { get; set; }
+        public InsertReplaceRange Range { get; set; }
         public MarkdownString Documentation { get; set; }
 
         [JsonIgnore]

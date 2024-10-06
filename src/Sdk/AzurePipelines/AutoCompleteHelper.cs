@@ -7,6 +7,8 @@ using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
+using Sdk.Actions;
+
 namespace Runner.Server.Azure.Devops
 {
     public class AutoCompletetionHelper {
@@ -26,30 +28,75 @@ namespace Runner.Server.Azure.Devops
                 GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Separator,
             };
             if(/*bestMatch.Tokens.Count == 0 || validTokens.Contains(bestMatch.Tokens.Last().Kind)*/ true) {
-                foreach(var k in bestMatch.AllowedContext) {
-                    if(k.Contains("(")) {
+
+                var desc = ActionsDescriptions.LoadDescriptions();
+                var i = bestMatch.Tokens.FindLastIndex(t => t.Index <= bestMatch.Index);
+                var last = bestMatch;
+                if(i >= 0 && last.Tokens[i].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference) {
+                    i++;
+                }
+                if(i >= 2 && (i >= last.Tokens.Count || last.Tokens[i].Index + last.Tokens[i].RawValue.Length >= bestMatch.Index) && last.Tokens[i - 2].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.NamedValue && last.Tokens[i - 1].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference && new [] { "github", "runner", "strategy" }.Contains(last.Tokens[i - 2].RawValue.ToLower())) {
+                    foreach(var k in desc[last.Tokens[i - 2].RawValue]) {
                         yield return new CompletionItem {
                             Label = new CompletionItemLabel {
-                                Label = k.Substring(0, k.IndexOf("(")),
-                            },
-                            InsertText = new SnippedString {
-                                Value = $"{k.Substring(0, k.IndexOf("("))}($1)"
-                            },
-                            Kind = 2,
-                            Documentation = new MarkdownString {
-                                Value = "**Additional func** Item"
-                            }
-                        };
-                    } else {
-                        yield return new CompletionItem {
-                            Label = new CompletionItemLabel {
-                                Label = k,
+                                Label = k.Key,
                             },
                             Kind = 5,
                             Documentation = new MarkdownString {
-                                Value = "**Context** Item"
-                            }
+                                Value = k.Value.Description
+                            },
+                            Range = i < last.Tokens.Count && last.Tokens[i].Index <= bestMatch.Index ? new InsertReplaceRange {
+                                Replacing = new Range {
+                                    Start = new Position {
+                                        Line = row - 1,
+                                        Character = column - (bestMatch.Index - last.Tokens[i].Index) - 1
+                                    },
+                                    End = new Position {
+                                        Line = row - 1,
+                                        Character = column - (bestMatch.Index - last.Tokens[i].Index) + last.Tokens[i].RawValue.Length - 1
+                                    }
+                                },
+                                Inserting = new Range {
+                                    Start = new Position {
+                                        Line = row - 1,
+                                        Character = column - (bestMatch.Index - last.Tokens[i].Index) - 1
+                                    },
+                                    End = new Position {
+                                        Line = row - 1,
+                                        Character = column - 1
+                                    }
+                                }
+                              } : null
                         };
+                    }
+                } 
+                else
+                {
+                    foreach(var k in bestMatch.AllowedContext) {
+                        if(k.Contains("(")) {
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = k.Substring(0, k.IndexOf("(")),
+                                },
+                                InsertText = new SnippedString {
+                                    Value = $"{k.Substring(0, k.IndexOf("("))}($1)"
+                                },
+                                Kind = 2,
+                                Documentation = new MarkdownString {
+                                    Value = desc["functions"].TryGetValue(k, out var d) ? d.Description : "**Additional func** Item"
+                                }
+                            };
+                        } else {
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = k,
+                                },
+                                Kind = 5,
+                                Documentation = new MarkdownString {
+                                    Value = desc["root"].TryGetValue(k, out var d) ? d.Description : "**Context** Item"
+                                }
+                            };
+                        }
                     }
                 }
                 var adoFunctions = (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedFunctions) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None
@@ -530,93 +577,200 @@ Example: xor(True, False) (returns True)
                 }
 
                 if(bestMatch.AllowedContext.Length > 0 && !adoFunctions) {
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "true",
-                        },
-                        Kind = 21,
-                        Documentation = new MarkdownString {
-                            Value = "Boolean Literal"
+                    var kind = bestMatch.Tokens?.LastOrDefault(t => t.Index < bestMatch.Index)?.Kind;
+                    switch(kind) {
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndGroup:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndIndex:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndParameters:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Null:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Number:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.NamedValue:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.PropertyName:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.String:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Boolean:
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "==",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "Equals Operator"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "!=",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "Not Equals Operator"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "||",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "logical or / coalescence from left to right"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "&&",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "logical and, returns and evaluates right parameter if left is truthy"
+                            }
+                        };
+                        if(kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.NamedValue || kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.PropertyName || kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndIndex || kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndGroup || kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndParameters ) {
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = ".",
+                                },
+                                Kind = 24,
+                                Documentation = new MarkdownString {
+                                    Value = "dereference returns null if property doesn't exist"
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "[...]",
+                                },
+                                InsertText = new SnippedString {
+                                    Value = "[$1]"
+                                },
+                                Kind = 2,
+                                Documentation = new MarkdownString {
+                                    Value = @"index access"
+                                }
+                            };
                         }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "false",
-                        },
-                        Kind = 21,
-                        Documentation = new MarkdownString {
-                            Value = "Boolean Literal"
-                        }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "==",
-                        },
-                        Kind = 24,
-                        Documentation = new MarkdownString {
-                            Value = "Equals Operator"
-                        }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "!=",
-                        },
-                        Kind = 24,
-                        Documentation = new MarkdownString {
-                            Value = "Not Equals Operator"
-                        }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "startsWith",
-                            Detail = "(lhs, rhs)"
-                        },
-                        InsertText = new SnippedString {
-                            Value = "startsWith($1, $2)"
-                        },
-                        Kind = 2,
-                        Documentation = new MarkdownString {
-                            Value = @"
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "join",
+                                Detail = "(array [, sep])"
+                            },
+                            InsertText = new SnippedString {
+                                Value = "join($1)"
+                            },
+                            Kind = 2,
+                            Documentation = new MarkdownString {
+                                Value = @"
+`join( array, optionalSeparator )`
+
+The value for `array` can be an array or a string. All values in `array` are concatenated into a string. If you provide `optionalSeparator`, it is inserted between the concatenated values. Otherwise, the default separator `,` is used. Casts values to a string.
+"
+                            }
+                        };
+                        break;
+                    }
+                    switch(kind) {
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndGroup:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndIndex:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.EndParameters:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Null:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Number:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.NamedValue:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.PropertyName:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.String:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Boolean:
+                        case GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference:
+                            break;
+                        default:
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "true",
+                                },
+                                Kind = 21,
+                                Documentation = new MarkdownString {
+                                    Value = "Boolean Literal"
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "false",
+                                },
+                                Kind = 21,
+                                Documentation = new MarkdownString {
+                                    Value = "Boolean Literal"
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "!",
+                                },
+                                Kind = 24,
+                                Documentation = new MarkdownString {
+                                    Value = "logical not"
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "(...)",
+                                },
+                                InsertText = new SnippedString {
+                                    Value = "($1)"
+                                },
+                                Kind = 2,
+                                Documentation = new MarkdownString {
+                                    Value = @"logical group"
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "startsWith",
+                                    Detail = "(lhs, rhs)"
+                                },
+                                InsertText = new SnippedString {
+                                    Value = "startsWith($1, $2)"
+                                },
+                                Kind = 2,
+                                Documentation = new MarkdownString {
+                                    Value = @"
 Evaluates True if left parameter string starts with right parameter
 Min parameters: 2. Max parameters: 2
 Casts parameters to String for evaluation
 Performs ordinal ignore-case comparison
 Example: startsWith('ABCDE', 'AB') (returns True)
-"
-                        }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "endsWith",
-                            Detail = "(lhs, rhs)"
-                        },
-                        InsertText = new SnippedString {
-                            Value = "endsWith($1, $2)"
-                        },
-                        Kind = 2,
-                        Documentation = new MarkdownString {
-                            Value = @"
+        "
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "endsWith",
+                                    Detail = "(lhs, rhs)"
+                                },
+                                InsertText = new SnippedString {
+                                    Value = "endsWith($1, $2)"
+                                },
+                                Kind = 2,
+                                Documentation = new MarkdownString {
+                                    Value = @"
 Evaluates True if left parameter String ends with right parameter
 Min parameters: 2. Max parameters: 2
 Casts parameters to String for evaluation
 Performs ordinal ignore-case comparison
 Example: `endsWith('ABCDE', 'DE')` (returns True)
-"
-                        }
-                    };
-                    yield return new CompletionItem {
-                        Label = new CompletionItemLabel {
-                            Label = "format",
-                            Detail = "(fmt...)"
-                        },
-                        Kind = 2,
-                        InsertText = new SnippedString {
-                            Value = "format($1, $2)"
-                        },
-                        Documentation = new MarkdownString {
-                            Value = "Formats the string according to the fmt string placeholder `{0}` are get replaced by the additional parameters."
-                        }
-                    };
+        "
+                                }
+                            };
+                            yield return new CompletionItem {
+                                Label = new CompletionItemLabel {
+                                    Label = "format",
+                                    Detail = "(fmt...)"
+                                },
+                                Kind = 2,
+                                InsertText = new SnippedString {
+                                    Value = "format($1, $2)"
+                                },
+                                Documentation = new MarkdownString {
+                                    Value = "Formats the string according to the fmt string placeholder `{0}` are get replaced by the additional parameters."
+                                }
+                            };
+                        break;
+                    }
                 }
             }
 
