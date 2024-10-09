@@ -330,7 +330,7 @@
 		]
 	},
 	"scripts": {
-		"build": "dotnet build ext-core -c Release -o build && npx webpack",
+		"build": "dotnet build ext-core -c Release -o build && npx webpack"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.73.0",
