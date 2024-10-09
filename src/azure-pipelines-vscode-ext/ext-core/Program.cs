@@ -16,7 +16,7 @@ while (true) {
     await Interop.Sleep(10 * 60 * 1000);
 }
 
-public class MyClass {
+public partial class MyClass {
     
     public class MyFileProvider : IFileProvider
     {
@@ -82,6 +82,7 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [JSExport]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent, string schema) {
         var context = new Runner.Server.Azure.Devops.Context {
             FileProvider = new MyFileProvider(handle),
@@ -128,6 +129,7 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [JSExport]
     public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName, int column, int row) {
         var context = new Context {
             FileProvider = new MyFileProvider(handle),
@@ -169,10 +171,14 @@ public class MyClass {
             List<CompletionItem> list = AutoCompletetionHelper.CollectCompletions(column, row, context, schema);
             await Interop.AutoCompleteList(handle, JsonConvert.SerializeObject(list));
         }
+        if(check && context.SemTokens?.Count > 0) {
+            await Interop.SemTokens(handle, [.. context.SemTokens]);
+        }
         
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [JSExport]
     public static string YAMLToJson(string content) {
         try {
             return AzurePipelinesUtils.YAMLToJson(content);

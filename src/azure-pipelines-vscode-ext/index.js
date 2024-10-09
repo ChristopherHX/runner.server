@@ -154,6 +154,11 @@ function activate(context) {
 			},
 			autocompletelist: async (handle, completions) => {
 				handle.autocompletelist = JSON.parse(completions);
+			},
+			semTokens: async (handle, completions) => {
+				if(handle.enableSemTokens){
+					handle.semTokens = completions;
+				}
 			}
 		});
 		logchannel.appendLine("Starting extension main to keep dotnet alive");
@@ -379,12 +384,17 @@ function activate(context) {
 				vscode.window.showWarningMessage("Please run this command on your root pipeline and not on a nested template detected as: " + schema);
 			}
 		}
+		handle.enableSemTokens = autocompletelist && ('enableSemTokens' in autocompletelist);
+
 		var result = syntaxOnly
 		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema, pos ? pos.character + 1 : 0, pos ? pos.line + 1 : 0)
 						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true, schema)
 
         if(pos) {
 			autocompletelist.autocompletelist = handle.autocompletelist
+		}
+		if(handle.enableSemTokens) {
+			autocompletelist.semTokens = handle.semTokens
 		}
 		if(state) {
             state.referencedFiles = handle.referencedFiles;
@@ -524,8 +534,20 @@ function activate(context) {
 		return schema;
 	}
 
-	vscode.languages.registerCompletionItemProvider({
+	var registerSemanticHighlighting = () => vscode.languages.registerDocumentSemanticTokensProvider({
 		language: "yaml"
+	}, {
+		provideDocumentSemanticTokens: async (doc, token) => {
+			var data = {enableSemTokens: true};
+			await expandAzurePipeline(false, null, null, null, () => {
+			}, null, () => {
+			}, null, null, null, true, true, null, null, data);
+			var semTokens = data.semTokens || new Uint32Array();
+			return new vscode.SemanticTokens(semTokens);
+		}
+	}, new vscode.SemanticTokensLegend(["variable","parameter","function","property","constant","punctuation","string"], ["readonly","defaultLibrary","numeric"]));
+	var registerAutoCompletionYaml = (lang) => vscode.languages.registerCompletionItemProvider({
+		language: lang ?? "yaml"
 	}, {
 		provideCompletionItems: async (doc, pos, token, context) => {
 			var data = {autocompletelist: []};
@@ -542,62 +564,41 @@ function activate(context) {
 			}
 			return data.autocompletelist
 		}
-	})
-
-
-	// // vscode.workspace.fs.createDirectory(context.globalStorageUri)
-	// vscode.workspace.onDidChangeConfiguration(conf => {
-	// 	conf.affectsConfiguration("azure-pipelines-vscode-ext")
-	// })
-
-	var cache = []
-	vscode.languages.registerCompletionItemProvider({
-		language: "azure-pipelines"
-	}, {
-		provideCompletionItems: async (doc, pos, token, context) => {
-			var cacheEntry = null;
-			if(pos.line < cache.length) {
-				if(cache[pos.line]) {
-					if(pos.character < cache[pos.line].length) {
-						cacheEntry = cache[pos.line][pos.character]
-						if(cacheEntry) {
-							return cacheEntry;
-						}
-					} else {
-						cache[pos.line].length = pos.character + 1;
-					}
-				} else {
-					cache[pos.line] = [];
-				}
-			} else {
-				cache.length = pos.line + 1;
-				cache[pos.line] = [];
-			}
-
-			(async() => {
-			
-				var data = {autocompletelist: []};
-				await expandAzurePipeline(false, null, null, null, () => {
-				}, null, () => {
-				}, null, null, null, true, true, null, pos, data);
-				var items = []
-				for(var item of data.autocompletelist) {
-					if(item.kind === 2 || item.kind === 5) {
-						if(item.insertText && item.insertText.value) {
-							item.insertText = new vscode.SnippetString(item.insertText.value)
-						}
-						if(item.documentation) {
-							item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
-						}
-						items.push(item)
-					}
-				}
-				cache[pos.line][pos.character] = items
-			})();
-			return { isIncomplete: true, items: []}
+	});
+	
+	var semHightl = null;
+	var autoCompleteYaml = null;
+	var autoCompleteAdo = null;
+	var semHightlSettingChanged = () => {
+		if(vscode.workspace.getConfiguration("azure-pipelines-vscode-ext").get("enable-semantic-highlighting")) {
+			semHightl = registerSemanticHighlighting();
+			context.subscriptions.push(semHightl);
+		} else {
+			semHightl?.dispose();
+		}
+	};
+	var autoCompleteSettingChanged = () => {
+		if(vscode.workspace.getConfiguration("azure-pipelines-vscode-ext").get("enable-auto-complete")) {
+			autoCompleteYaml = registerAutoCompletionYaml();
+			autoCompleteAdo = registerAutoCompletionYaml("azure-pipelines");
+			context.subscriptions.push(autoCompleteYaml);
+			context.subscriptions.push(autoCompleteAdo);
+		} else {
+			autoCompleteYaml?.dispose();
+			autoCompleteAdo?.dispose();
+		}
+	};
+	vscode.workspace.onDidChangeConfiguration(conf => {
+		if(conf.affectsConfiguration("azure-pipelines-vscode-ext.enable-semantic-highlighting")) {
+			semHightlSettingChanged();
+		}
+		if(conf.affectsConfiguration("azure-pipelines-vscode-ext.enable-auto-complete")) {
+			autoCompleteSettingChanged();
 		}
 	})
-
+	semHightlSettingChanged();
+	autoCompleteSettingChanged();
+	
 	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, async (file, collection, obj) => {
 		var getSchema = () => {
             try {
