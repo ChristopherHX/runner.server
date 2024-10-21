@@ -102,7 +102,7 @@ namespace GitHub.Runner.Worker
             string arguments = $"action \"{plugin}\"";
 
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-            var dotnet = Environment.ProcessPath ?? WhichUtil.Which("dotnet", true);
+            var dotnet = IOUtil.GetDotnet();
             arguments = $"\"{file}\" {arguments}";
             file = dotnet;
 #endif

@@ -473,7 +473,7 @@ namespace GitHub.Runner.Listener
                                 string workerFileName = Path.Combine(assemblyDirectory, $"{_workerProcessName}{ext}");
                                 string arguments = "spawnclient " + pipeHandleOut + " " + pipeHandleIn;
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                                var dotnet = Environment.ProcessPath ?? WhichUtil.Which("dotnet", true);
+                                var dotnet = IOUtil.GetDotnet();
                                 arguments = $"\"{workerFileName}\" {arguments}";
                                 workerFileName = dotnet;
 #endif
