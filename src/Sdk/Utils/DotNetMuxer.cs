@@ -5,6 +5,13 @@
 
 /// https://github.com/dotnet/aspnetcore/blob/main/src/Shared/CommandLineUtils/Utilities/DotNetMuxer.cs
 
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+
 namespace Sdk.Utils
 {
 /// <summary>
@@ -34,19 +41,6 @@ public static class DotNetMuxer
 
     private static string? TryFindMuxerPath()
     {
-        // If not running on Helix, use a custom .NET host, if specified.
-        // This allows test projects to use a .NET host with the custom-built
-        // ASP.NET Core shared framework.
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("helix")))
-        {
-            var dotNetHostOverride = typeof(DotNetMuxer).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-                .SingleOrDefault(a => a.Key == "DotNetHostOverride")?.Value;
-            if (dotNetHostOverride is not null)
-            {
-                return dotNetHostOverride;
-            }
-        }
-
         var expectedFileName = MuxerName;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
