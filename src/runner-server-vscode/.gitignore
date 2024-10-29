@@ -3,3 +3,4 @@ node_modules
 native
 *.js
 *.js.map
+!*.config.js
