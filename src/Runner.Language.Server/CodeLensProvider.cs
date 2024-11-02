@@ -339,24 +339,26 @@ public class CodeLensProvider : ICodeLensHandler
                         }
                     }
 
-                    Action<string, Dictionary<string, TemplateToken>> addAction = (suffix, item) => {
-                        var json = JsonConvert.SerializeObject(item.ToDictionary(kv => kv.Key, kv => kv.Value.ToContextData().ToJToken()));
+                    if(rawstrategy != null) {
+                        Action<string, Dictionary<string, TemplateToken>> addAction = (suffix, item) => {
+                            var json = JsonConvert.SerializeObject(item.ToDictionary(kv => kv.Key, kv => kv.Value.ToContextData().ToJToken()));
 
-                        codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"{jobs[i].Key}{suffix}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), $"{jobs[i].Key}({json})") },
-                            Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
-                                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1),
-                                new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1)
-                            )
-                        });
-                    };
+                            codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"{jobs[i].Key}{suffix}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), $"{jobs[i].Key}({json})") },
+                                Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1),
+                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1)
+                                )
+                            });
+                        };
 
-                    if(keys.Count != 0 || includematrix.Count == 0) {
-                        foreach (var item in flatmatrix) {
-                            addAction(GetDefaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                        if(keys.Count != 0 || includematrix.Count == 0) {
+                            foreach (var item in flatmatrix) {
+                                addAction(GetDefaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                            }
                         }
-                    }
-                    foreach (var item in includematrix) {
-                        addAction(GetDefaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                        foreach (var item in includematrix) {
+                            addAction(GetDefaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                        }
                     }
                 }
                 return new CodeLensContainer(codeLens);
