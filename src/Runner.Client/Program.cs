@@ -2540,10 +2540,6 @@ namespace Runner.Client
                         cmd.AddOption(opt);
                     }
                 }
-                if(ev == "workflow_dispatch" || ev == "azexpand" || ev == "azpipelines") {
-                    cmd.AddOption(workflowInputsOpt);
-                    cmd.AddOption(workflowInputFilesOpt);
-                }
             }
             var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address.");
             rootCommand.AddCommand(startserver);
