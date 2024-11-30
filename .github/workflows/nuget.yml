@@ -5,6 +5,10 @@ on:
     - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      PUBLISH_PREVIEW_TO_NUGET:
+        type: boolean
+        default: false
 jobs:
   package:
     runs-on: ubuntu-latest
@@ -46,7 +50,7 @@ jobs:
         name: nupkg
         path: src/Runner.Client/nupkg
     - name: Push to Nuget
-      if: false && env.GHARUN != ''
+      if: (vars.PUBLISH_PREVIEW_TO_NUGET == 'true' && github.event_name == 'push' || inputs.PUBLISH_PREVIEW_TO_NUGET) && env.GHARUN != ''
       run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
       shell: pwsh
       working-directory: ./src/Runner.Client/nupkg
