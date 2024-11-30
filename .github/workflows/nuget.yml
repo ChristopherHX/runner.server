@@ -46,12 +46,12 @@ jobs:
         name: nupkg
         path: src/Runner.Client/nupkg
     - name: Push to Nuget
-      if: false && env.Runner.Client != ''
-      run: dotnet nuget push ./*.nupkg --api-key $($ENV:Runner.Client) --source https://api.nuget.org/v3/index.json
+      if: false && env.GHARUN != ''
+      run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
       shell: pwsh
       working-directory: ./src/Runner.Client/nupkg
       env:
-        Runner.Client: ${{secrets.Runner.Client}}
+        GHARUN: ${{secrets.GHARUN}}
     - name: Push to GitHub Packages
       if: ${{ github.server_url == 'https://github.com' && github.event_name == 'push' && github.ref_name == 'main' }}
       run: |
@@ -221,7 +221,7 @@ jobs:
       run: |
         mkdir Runner.Client
         cd Runner.Client
-        unzip ../src/Runner.Client/nupkg/io.github.christopherhx.Runner.Client.${{needs.package.outputs.version}}.nupkg
+        unzip ../src/Runner.Client/nupkg/Runner.Client.${{needs.package.outputs.version}}.nupkg
         chmod -R +rw tools/
         dotnet tools/net6.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
         sleep 2
