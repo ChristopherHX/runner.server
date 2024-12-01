@@ -555,11 +555,20 @@ function activate(context) {
 				}
 			], {
 				provideDocumentSemanticTokens: async (doc, token) => {
+					var obj;
+					var getSchema = () => {
+						try {
+							obj ??= jsYaml.load(doc.getText());
+						} catch {
+							obj = {};
+						}
+						return extractSchema(obj);
+					}
 					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
 						var data = {enableSemTokens: true};
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
-						}, null, null, null, true, true, null, null, data);
+						}, null, null, null, true, true, getSchema(), null, data);
 						var semTokens = data.semTokens || new Uint32Array();
 						return new vscode.SemanticTokens(semTokens);
 					}
@@ -582,11 +591,20 @@ function activate(context) {
 				}
 			], {
 				provideCompletionItems: async (doc, pos, token, context) => {
+					var obj;
+					var getSchema = () => {
+						try {
+							obj ??= jsYaml.load(doc.getText());
+						} catch {
+							obj = {};
+						}
+						return extractSchema(obj);
+					}
 					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
 						var data = {autocompletelist: []};
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
-						}, null, null, null, true, true, null, pos, data);
+						}, null, null, null, true, true, getSchema(), pos, data);
 						for(var item of data.autocompletelist) {
 							if(item.insertText && item.insertText.value) {
 								item.insertText = new vscode.SnippetString(item.insertText.value)
@@ -616,11 +634,20 @@ function activate(context) {
 				}
 			], {
 				provideHover: async (doc, pos, token) => {
+					var obj;
+					var getSchema = () => {
+						try {
+							obj ??= jsYaml.load(doc.getText());
+						} catch {
+							obj = {};
+						}
+						return extractSchema(obj);
+					}
 					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
 						var data = {autocompletelist: []};
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
-						}, null, null, null, true, true, null, pos, data);
+						}, null, null, null, true, true, getSchema(), pos, data);
 						if(data.hover && data.hover.range && data.hover.content) {
 							return new vscode.Hover(new vscode.MarkdownString(data.hover.content, true), data.hover.range)
 						}
