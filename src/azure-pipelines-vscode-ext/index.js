@@ -555,12 +555,15 @@ function activate(context) {
 				}
 			], {
 				provideDocumentSemanticTokens: async (doc, token) => {
-					var data = {enableSemTokens: true};
-					await expandAzurePipeline(false, null, null, null, () => {
-					}, null, () => {
-					}, null, null, null, true, true, null, null, data);
-					var semTokens = data.semTokens || new Uint32Array();
-					return new vscode.SemanticTokens(semTokens);
+					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
+						var data = {enableSemTokens: true};
+						await expandAzurePipeline(false, null, null, null, () => {
+						}, doc.uri.toString(), () => {
+						}, null, null, null, true, true, null, null, data);
+						var semTokens = data.semTokens || new Uint32Array();
+						return new vscode.SemanticTokens(semTokens);
+					}
+					return null;
 				}
 			}, new vscode.SemanticTokensLegend(["variable","parameter","function","property","constant","punctuation","string"], ["readonly","defaultLibrary","numeric"]));
 			context.subscriptions.push(semHighlight);
@@ -579,19 +582,22 @@ function activate(context) {
 				}
 			], {
 				provideCompletionItems: async (doc, pos, token, context) => {
-					var data = {autocompletelist: []};
-					await expandAzurePipeline(false, null, null, null, () => {
-					}, null, () => {
-					}, null, null, null, true, true, null, pos, data);
-					for(var item of data.autocompletelist) {
-						if(item.insertText && item.insertText.value) {
-							item.insertText = new vscode.SnippetString(item.insertText.value)
+					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
+						var data = {autocompletelist: []};
+						await expandAzurePipeline(false, null, null, null, () => {
+						}, doc.uri.toString(), () => {
+						}, null, null, null, true, true, null, pos, data);
+						for(var item of data.autocompletelist) {
+							if(item.insertText && item.insertText.value) {
+								item.insertText = new vscode.SnippetString(item.insertText.value)
+							}
+							if(item.documentation) {
+								item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
+							}
 						}
-						if(item.documentation) {
-							item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
-						}
+						return data.autocompletelist
 					}
-					return data.autocompletelist
+					return null;
 				}
 			});
 			context.subscriptions.push(autoComplete);
@@ -610,12 +616,14 @@ function activate(context) {
 				}
 			], {
 				provideHover: async (doc, pos, token) => {
-					var data = {autocompletelist: []};
-					await expandAzurePipeline(false, null, null, null, () => {
-					}, null, () => {
-					}, null, null, null, true, true, null, pos, data);
-					if(data.hover && data.hover.range && data.hover.content) {
-						return new vscode.Hover(new vscode.MarkdownString(data.hover.content, true), data.hover.range)
+					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
+						var data = {autocompletelist: []};
+						await expandAzurePipeline(false, null, null, null, () => {
+						}, doc.uri.toString(), () => {
+						}, null, null, null, true, true, null, pos, data);
+						if(data.hover && data.hover.range && data.hover.content) {
+							return new vscode.Hover(new vscode.MarkdownString(data.hover.content, true), data.hover.range)
+						}
 					}
 					return null;
 				}
@@ -680,9 +688,9 @@ function activate(context) {
 		return true;
 	}
 
-	var checkIsPipeline = () => {
+	var checkIsPipelineByContent = (content) => {
 		try {
-			var obj = jsYaml.load(vscode.window.activeTextEditor.document.getText());
+			var obj = jsYaml.load(content);
 			return ((obj.trigger || obj.pr || obj.resources && (obj.resources.builds instanceof Array || obj.resources.containers instanceof Array || obj.resources.pipelines instanceof Array || obj.resources.repositories instanceof Array || obj.resources.webhooks instanceof Array || obj.resources.packages instanceof Array) || obj.schedules instanceof Array || obj.lockBehavior instanceof String || obj.variables instanceof Object || obj.variables instanceof Array || obj.parameters instanceof Object || obj.parameters instanceof Array) && (obj.stages instanceof Array || obj.jobs instanceof Array || obj.steps instanceof Array)
 				|| obj.extends && obj.extends.template	
 				|| obj.steps instanceof Array && obj.steps.find(x => x && (x.task || x.script !== undefined || x.bash !== undefined || x.pwsh !== undefined || x.powershell !== undefined || x.template !== undefined))
@@ -691,6 +699,15 @@ function activate(context) {
 				|| obj.variables instanceof Array && obj.variables.find(x => x && (x.name !== undefined && x.value !== undefined || x.group !== undefined || x.template !== undefined))
 				|| obj.variables && checkAllIsIn(obj, [ "parameters", "variables" ])
 			) ? obj : null;
+		} catch {
+
+		}
+		return null;
+	}
+
+	var checkIsPipeline = () => {
+		try {
+			return checkIsPipelineByContent(vscode.window.activeTextEditor.document.getText());
 		} catch {
 
 		}
