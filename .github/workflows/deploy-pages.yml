@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 8.0.x
+      - name: Setup YamlDotnetFork
+        run: |
+          git clone https://github.com/ChristopherHX/runner-server-lsp-YamlDotNet YamlDotNet
+          echo "YAML_DOTNET_FORK_PATH=$PWD/YamlDotNet" >> $GITHUB_ENV
       - name: Build ExpandAzurePipelines
         run: dotnet publish src/ExpandAzurePipelines -c Release --output out
       - uses: actions/setup-node@v3
@@ -39,10 +43,6 @@ jobs:
           node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
           node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
-      - name: Setup YamlDotnetFork
-        run: |
-          git clone https://github.com/ChristopherHX/runner-server-lsp-YamlDotNet YamlDotNet
-          echo "YAML_DOTNET_FORK_PATH=$PWD/YamlDotNet" >> $GITHUB_ENV
       - name: Build runner-server-vscode
         run: |
           npm install
