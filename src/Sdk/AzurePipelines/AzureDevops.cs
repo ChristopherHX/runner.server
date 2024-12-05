@@ -694,8 +694,8 @@ namespace Runner.Server.Azure.Devops {
                     column++;
                 }
                 return (mapping, rmapping);
-            }
 #endif
+            }
             return (null, null);
         }
 
