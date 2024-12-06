@@ -1187,7 +1187,7 @@ namespace Runner.Client
                 if(parameters.ListOptions) {
                     var options = new JArray();
                     foreach(var opt in rootCommand.Options) {
-                        options.Add(JObject.FromObject(new { name = "--" + opt.Name, aliases = opt.Aliases, required = opt.IsRequired, @default = (opt as IValueDescriptor).HasDefaultValue ? (opt as IValueDescriptor).GetDefaultValue() : null, description = opt.Description, @type = TypeHelper.GetTypeName(opt.ValueType), minValues = opt.Arity.MinimumNumberOfValues, maxValues = opt.Arity.MaximumNumberOfValues }));
+                        options.Add(JObject.FromObject(new { name = opt.Name, aliases = opt.Aliases, required = opt.IsRequired, @default = (opt as IValueDescriptor).HasDefaultValue ? (opt as IValueDescriptor).GetDefaultValue() : null, description = opt.Description, @type = TypeHelper.GetTypeName(opt.ValueType), minValues = opt.Arity.MinimumNumberOfValues, maxValues = opt.Arity.MaximumNumberOfValues }));
                     }
                     Console.WriteLine(options);
                     return 0;
