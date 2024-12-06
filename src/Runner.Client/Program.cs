@@ -1084,7 +1084,7 @@ namespace Runner.Client
                 description: "Redirect dependent repositories to the local filesystem. E.g `--local-repository org/name@ref=/path/to/repository`");
             var listOptionsOpt = new Option<bool>(
                 "--list-options",
-                description: "print a json structure of compatible options");
+                description: "Print a json structure of compatible options");
             var rootCommand = new RootCommand
             {
                 workflowOption,
