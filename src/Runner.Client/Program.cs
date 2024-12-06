@@ -26,6 +26,7 @@ using System.ComponentModel;
 using GitHub.Services.WebApi;
 using System.CommandLine.Builder;
 using System.CommandLine.Binding;
+using System.CommandLine.Parsing;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using GitHub.Runner.Common;
@@ -2561,7 +2562,7 @@ namespace Runner.Client
                 parameters.KeepContainer = bindingContext.ParseResult.GetValueForOption(keepContainerOpt);
                 parameters.Directory = bindingContext.ParseResult.GetValueForOption(DirectoryOpt);
                 parameters.Verbose = bindingContext.ParseResult.GetValueForOption(verboseOpt);
-                parameters.Parallel = bindingContext.ParseResult.GetValueForOption(parallelOpt);
+                parameters.Parallel = bindingContext.ParseResult.HasOption(parallelOpt) ? bindingContext.ParseResult.GetValueForOption<int>(parallelOpt) : null;
                 parameters.NoCopyGitDir = bindingContext.ParseResult.GetValueForOption(noCopyGitDirOpt);
                 parameters.KeepRunnerDirectory = bindingContext.ParseResult.GetValueForOption(keepRunnerDirectoryOpt);
                 parameters.RunnerDirectory = bindingContext.ParseResult.GetValueForOption(runnerDirectoryOpt);
