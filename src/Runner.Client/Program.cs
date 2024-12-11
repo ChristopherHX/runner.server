@@ -435,7 +435,7 @@ namespace Runner.Client
         {
             if (parameters.Json)
             {
-                Console.WriteLine(JsonConvert.SerializeObject(new { level, msg }));
+                Console.WriteLine(JsonConvert.SerializeObject(new { level, msg, time = System.DateTime.Now }));
             }
             else if(level == "error")
             {
