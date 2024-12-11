@@ -398,7 +398,7 @@ namespace Runner.Client
                     }
                 }
             } finally {
-                WriteLogMessage(parameters, "trace", "Stopped Runner");
+                WriteLogMessage(parameters, "info", "Stopped Runner");
                 if(!parameters.KeepContainer && !parameters.KeepRunnerDirectory) {
                     int delattempt = 1;
                     while(true) {
@@ -421,9 +421,9 @@ namespace Runner.Client
             }
             if(parameters.KeepContainer || parameters.NoReuse) {
                 if(!source.IsCancellationRequested) {
-                    WriteLogMessage(parameters, "trace", "Recreate Runner");
+                    WriteLogMessage(parameters, "info", "Recreate Runner");
                     if(await CreateRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested) {
-                        WriteLogMessage(parameters, "trace", "Failed to recreate Runner, exiting...");
+                        WriteLogMessage(parameters, "error", "Failed to recreate Runner, exiting...");
                         source.Cancel();
                     }
                 }
@@ -436,6 +436,10 @@ namespace Runner.Client
             if (parameters.Json)
             {
                 Console.WriteLine(JsonConvert.SerializeObject(new { level, msg }));
+            }
+            else if(level == "error")
+            {
+                Console.Error.WriteLine(msg);
             }
             else
             {
@@ -2518,7 +2522,7 @@ namespace Runner.Client
                                 }
                                 return hasErrors ? 1 : 0;
                             } catch (Exception except) {
-                                WriteLogMessage(parameters, "info", $"Exception: {except.Message}, {except.StackTrace}");
+                                WriteLogMessage(parameters, "error", $"Exception: {except.Message}, {except.StackTrace}");
                                 return 1;
                             } finally {
                                 cancelWorkflow = null;
