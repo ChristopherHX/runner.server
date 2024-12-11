@@ -1413,7 +1413,7 @@ namespace Runner.Client
                                                 serverEnv[kv.Key] = kv.Value;
                                             }
                                             if(parameters.Verbose) {
-                                                WriteLogMessage(parameters, "info", $"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
+                                                WriteLogMessage(parameters, "trace", $"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
                                             }
                                             var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
                                             WriteLogMessage(parameters, "info", "Stopped Server");
