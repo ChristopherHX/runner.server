@@ -3245,7 +3245,7 @@ namespace Runner.Client
                 throw new NotImplementedException();
             }
 
-            public void PickJob(AgentJobRequestMessage message, CancellationToken token, string[] labels)
+            public async void PickJob(AgentJobRequestMessage message, CancellationToken token, string[] labels)
             {
                 semaphore.Wait();
                 try {
@@ -3258,6 +3258,7 @@ namespace Runner.Client
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
                     dispatcher.Initialize(ctx);
                     dispatcher.Run(message, true);
+                    await dispatcher.WaitAsync(CancellationToken.None);
                 } finally {
                     semaphore.Release();
                 }
