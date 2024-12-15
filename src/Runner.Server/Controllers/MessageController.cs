@@ -5787,7 +5787,7 @@ namespace Runner.Server.Controllers
                                 var queueService = scope.ServiceProvider.GetService<IQueueService>();
 
                                 if(queueService != null) {
-                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl), CancellationToken.None, new string[0]);
+                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), CancellationToken.None, new string[0]);
                                 }else {
                                     Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
 
