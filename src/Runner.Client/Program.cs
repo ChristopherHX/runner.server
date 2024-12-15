@@ -3249,6 +3249,7 @@ namespace Runner.Client
             {
                 semaphore.Wait();
                 try {
+                    Directory.CreateDirectory(customConfigDir);
                     File.WriteAllText(Path.Join(customConfigDir, ".runner"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
                     var ctx = new HostContext("RUNNERCLIENT", customConfigDir: customConfigDir);
                     ctx.PutService<IRunnerServer>(this);
