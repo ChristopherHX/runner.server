@@ -34,6 +34,12 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Runner.Server.Azure.Devops;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Services.Common;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using GitHub.DistributedTask.Pipelines;
+using Runner.Server;
 
 namespace Runner.Client
 {
@@ -861,6 +867,24 @@ namespace Runner.Client
         
         static int Main(string[] args)
         {
+            // Runner.Server.Program.CreateHostBuilder(args)
+            // .ConfigureLogging(logger => {
+            //     // logger.AddFilter(level => level == LogLevel.Warning);
+            //     //logger.AddJsonConsole(jsonfmt => jsonfmt.IncludeScopes)
+            //     // logger.AddProvider(new ILoggerProvider {
+
+            //     // });
+            // })
+            // .ConfigureServices(services => {
+            //     //services.Add<IActionsRunServer>(null);
+            // })
+            // // .ConfigureContainer((host, container) => {
+
+            // // })
+            // .Build()
+            // .Run();
+
+            // return 0;
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
                 WindowsUtils.EnableVT();
             }
@@ -1330,24 +1354,6 @@ namespace Runner.Client
                                     parameters.Server = "http://localhost:0";
                                 }
                             }
-                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
-                            if(parameters.Verbose) {
-                                invoker.OutputDataReceived += _out;
-                                invoker.ErrorDataReceived += _out;
-                            }
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                            var dotnet = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-                            string ext = ".dll";
-#else
-                            string ext = IOUtil.ExeExtension;
-#endif
-                            var server = Path.Join(binpath, $"Runner.Server{ext}");
-                            var file = server;
-                            var arguments = "";
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                            file = dotnet;
-                            arguments = $"\"{server}\"";
-#endif
                             string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
                             JObject serverconfig = new JObject();
                             var connectionopts = new JObject();
@@ -1368,7 +1374,8 @@ namespace Runner.Client
                                         ReturnWithoutResolvingSha = false,
                                     }
                                 }.ToList(),
-                                DefaultWebUIView = "allworkflows"
+                                DefaultWebUIView = "allworkflows",
+                                QueueJobsWithoutRunner = true,
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
@@ -1415,7 +1422,30 @@ namespace Runner.Client
                                             if(parameters.Verbose) {
                                                 WriteLogMessage(parameters, "trace", $"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
                                             }
-                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
+                                            foreach (var kv in serverEnv)
+                                            {
+                                                System.Environment.SetEnvironmentVariable(kv.Key, kv.Value);                                                
+                                            }
+                                            Runner.Server.Program.CreateHostBuilder(args)
+                                                .ConfigureLogging(logger => {
+                                                    logger.AddFilter(level => false);
+                                                    //logger.AddJsonConsole(jsonfmt => jsonfmt.IncludeScopes)
+                                                    // logger.AddProvider(new ILoggerProvider {
+
+                                                    // });
+                                                })
+                                                .ConfigureServices(services => {
+                                                    services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory), ServiceLifetime.Singleton));
+                                                    //services.AddService<Runner.Server.IQueueService>(p => new QueueService(parameters.RunnerDirectory));
+                                                    //services.Add<Runner.Server.IQueueService>(new QueueService());
+                                                    //services.Add<IActionsRunServer>(null);
+                                                })
+                                                // .ConfigureContainer((host, container) => {
+
+                                                // })
+                                                .Build()
+                                            .Run();
+
                                             WriteLogMessage(parameters, "info", "Stopped Server");
                                             File.Delete(serverconfigfileName);
                                         }
@@ -3052,6 +3082,197 @@ namespace Runner.Client
                 {
                     CloseHandle(h);
                 }
+            }
+        }
+        private class WrapProcService : IProcessInvoker
+        {
+            public WrapProcService() {
+                org = new ProcessInvokerWrapper();
+                org.OutputDataReceived += (s,e) => OutputDataReceived?.Invoke(s, e);
+                org.ErrorDataReceived += (s,e) => ErrorDataReceived?.Invoke(s, e);
+            }
+
+            private IProcessInvoker org;
+            private IHostContext _context;
+
+            public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
+            public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
+
+            public void Dispose()
+            {
+                org.Dispose();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, bool killProcessOnCancel, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, bool killProcessOnCancel, Channel<string> redirectStandardIn, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, bool killProcessOnCancel, Channel<string> redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, bool killProcessOnCancel, Channel<string> redirectStandardIn, bool inheritConsoleHandler, bool keepStandardInOpen, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, bool killProcessOnCancel, Channel<string> redirectStandardIn, bool inheritConsoleHandler, bool keepStandardInOpen, bool highPriorityProcess, CancellationToken cancellationToken)
+            {
+                return org.ExecuteAsync(workingDirectory, fileName, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", _context.GetDirectory(WellKnownDirectory.ConfigRoot)} }, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+            }
+
+            public void Initialize(IHostContext context)
+            {
+                org.Initialize(context);
+                this._context = context;
+            }
+        }
+
+        private class QueueService : Runner.Server.IQueueService, IRunnerServer
+        {
+            private string customConfigDir;
+
+            public QueueService(string customConfigDir)
+            {
+                this.customConfigDir = customConfigDir;
+            }
+
+            public Task<TaskAgent> AddAgentAsync(int agentPoolId, TaskAgent agent)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task ConnectAsync(Uri serverUrl, VssCredentials credentials)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentSession> CreateAgentSessionAsync(int poolId, TaskAgentSession session, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentAsync(int agentPoolId, ulong agentId)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentAsync(ulong agentId)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentMessageAsync(int poolId, long messageId, Guid sessionId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentSessionAsync(int poolId, Guid sessionId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentMessage> GetAgentMessageAsync(int poolId, Guid sessionId, long? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<TaskAgent>> GetAgentsAsync(string agentName)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, bool includeToken, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, bool includeToken, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Initialize(IHostContext context)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void PickJob(AgentJobRequestMessage message, CancellationToken token, string[] labels)
+            {
+                var ctx = new HostContext("RUNNERCLIENT", customConfigDir: customConfigDir);
+                ctx.PutService<IRunnerServer>(this);
+                ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
+                //var org = ctx.GetService<IProcessInvoker>();
+                var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
+                dispatcher.Initialize(ctx);
+                dispatcher.Run(message, true);
+            }
+
+            public Task RefreshConnectionAsync(RunnerConnectionType connectionType, TimeSpan timeout)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, string orchestrationId, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new TaskAgentJobRequest());
+            }
+
+            public Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void SetConnectionTimeout(RunnerConnectionType connectionType, TimeSpan timeout)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace)
+            {
+                throw new NotImplementedException();
             }
         }
     }
