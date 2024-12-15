@@ -1297,11 +1297,15 @@ namespace Runner.Client
                 };
                 if(parameters.Parallel > 0) {
                     var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
-                    if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
-                        parameters.RunnerVersion = "3.243.1";
-                    }
-                    if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
-                        parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(parameters, azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
+                    if(azure) {
+                        if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
+                            parameters.RunnerVersion = "3.243.1";
+                        }
+                        if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
+                            parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(parameters, azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
+                        }
+                    } else {
+                        parameters.Parallel = 0;
                     }
                 }
                 List<Task> listener = new List<Task>();
@@ -3154,6 +3158,8 @@ namespace Runner.Client
         {
             private string customConfigDir;
 
+            private SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
             public QueueService(string customConfigDir)
             {
                 this.customConfigDir = customConfigDir;
@@ -3241,13 +3247,18 @@ namespace Runner.Client
 
             public void PickJob(AgentJobRequestMessage message, CancellationToken token, string[] labels)
             {
-                var ctx = new HostContext("RUNNERCLIENT", customConfigDir: customConfigDir);
-                ctx.PutService<IRunnerServer>(this);
-                ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
-                //var org = ctx.GetService<IProcessInvoker>();
-                var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
-                dispatcher.Initialize(ctx);
-                dispatcher.Run(message, true);
+                semaphore.Wait();
+                try {
+                    var ctx = new HostContext("RUNNERCLIENT", customConfigDir: customConfigDir);
+                    ctx.PutService<IRunnerServer>(this);
+                    ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
+                    //var org = ctx.GetService<IProcessInvoker>();
+                    var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
+                    dispatcher.Initialize(ctx);
+                    dispatcher.Run(message, true);
+                } finally {
+                    semaphore.Release();
+                }
             }
 
             public Task RefreshConnectionAsync(RunnerConnectionType connectionType, TimeSpan timeout)
