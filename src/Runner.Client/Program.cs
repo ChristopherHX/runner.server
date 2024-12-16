@@ -1439,7 +1439,7 @@ namespace Runner.Client
                                                     // });
                                                 })
                                                 .ConfigureServices(services => {
-                                                    services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory), ServiceLifetime.Singleton));
+                                                    services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel ?? 1), ServiceLifetime.Singleton));
                                                     //services.AddService<Runner.Server.IQueueService>(p => new QueueService(parameters.RunnerDirectory));
                                                     //services.Add<Runner.Server.IQueueService>(new QueueService());
                                                     //services.Add<IActionsRunServer>(null);
@@ -3158,11 +3158,12 @@ namespace Runner.Client
         {
             private string customConfigDir;
 
-            private SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+            private SemaphoreSlim semaphore;
 
-            public QueueService(string customConfigDir)
+            public QueueService(string customConfigDir, int parallel)
             {
                 this.customConfigDir = customConfigDir;
+                semaphore = new SemaphoreSlim(parallel, parallel);
             }
 
             public Task<TaskAgent> AddAgentAsync(int agentPoolId, TaskAgent agent)
@@ -3256,7 +3257,6 @@ namespace Runner.Client
                     var ctx = new HostContext("RUNNERCLIENT", customConfigDir: tmpdir);
                     ctx.PutService<IRunnerServer>(this);
                     ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
-                    //var org = ctx.GetService<IProcessInvoker>();
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
                     dispatcher.Initialize(ctx);
                     dispatcher.Run(message, true);
