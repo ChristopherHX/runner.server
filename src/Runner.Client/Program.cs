@@ -1377,7 +1377,7 @@ namespace Runner.Client
                                     }
                                 }.ToList(),
                                 DefaultWebUIView = "allworkflows",
-                                QueueJobsWithoutRunner = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase) && parameters.Parallel > 0,
+                                QueueJobsWithoutRunner = !string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase) && parameters.Parallel > 0,
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
@@ -1437,7 +1437,7 @@ namespace Runner.Client
                                                     // });
                                                 })
                                                 .ConfigureServices(services => {
-                                                    if(string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase) && parameters.Parallel > 0) {
+                                                    if(!string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase) && parameters.Parallel > 0) {
                                                         services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel.Value), ServiceLifetime.Singleton));
                                                     }
                                                     //services.AddService<Runner.Server.IQueueService>(p => new QueueService(parameters.RunnerDirectory));
