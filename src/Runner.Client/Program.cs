@@ -1304,8 +1304,6 @@ namespace Runner.Client
                         if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
                             parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(parameters, azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
                         }
-                    } else {
-                        parameters.Parallel = 0;
                     }
                 }
                 List<Task> listener = new List<Task>();
@@ -1379,7 +1377,7 @@ namespace Runner.Client
                                     }
                                 }.ToList(),
                                 DefaultWebUIView = "allworkflows",
-                                QueueJobsWithoutRunner = true,
+                                QueueJobsWithoutRunner = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase) && parameters.Parallel > 0,
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
@@ -1439,7 +1437,9 @@ namespace Runner.Client
                                                     // });
                                                 })
                                                 .ConfigureServices(services => {
-                                                    services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel ?? 1), ServiceLifetime.Singleton));
+                                                    if(string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase) && parameters.Parallel > 0) {
+                                                        services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel.Value), ServiceLifetime.Singleton));
+                                                    }
                                                     //services.AddService<Runner.Server.IQueueService>(p => new QueueService(parameters.RunnerDirectory));
                                                     //services.Add<Runner.Server.IQueueService>(new QueueService());
                                                     //services.Add<IActionsRunServer>(null);
@@ -1477,7 +1477,7 @@ namespace Runner.Client
                             }
                         }
 
-                        if(parameters.Parallel > 0) {
+                        if(parameters.Parallel > 0 && string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase)) {
                             WriteLogMessage(parameters, "info", $"Starting {parameters.Parallel} Runner{(parameters.Parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
                             for(int i = 0; i < parameters.Parallel; i++) {
@@ -3255,6 +3255,145 @@ namespace Runner.Client
                     Directory.CreateDirectory(tmpdir);
                     File.WriteAllText(Path.Join(tmpdir, ".runner"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
                     var ctx = new HostContext("RUNNERCLIENT", customConfigDir: tmpdir);
+                    ctx.PutService<IRunnerServer>(this);
+                    ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
+                    var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
+                    dispatcher.Initialize(ctx);
+                    dispatcher.Run(message, true);
+                    await dispatcher.WaitAsync(CancellationToken.None);
+                    Directory.Delete(tmpdir, true);
+                } finally {
+                    semaphore.Release();
+                }
+            }
+
+            public Task RefreshConnectionAsync(RunnerConnectionType connectionType, TimeSpan timeout)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, string orchestrationId, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new TaskAgentJobRequest());
+            }
+
+            public Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void SetConnectionTimeout(RunnerConnectionType connectionType, TimeSpan timeout)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        private class ADOQueueService : Runner.Server.IQueueService, IRunnerServer
+        {
+            private string customConfigDir;
+
+            private SemaphoreSlim semaphore;
+
+            public ADOQueueService(string customConfigDir, int parallel)
+            {
+                this.customConfigDir = customConfigDir;
+                semaphore = new SemaphoreSlim(parallel, parallel);
+            }
+
+            public Task<TaskAgent> AddAgentAsync(int agentPoolId, TaskAgent agent)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task ConnectAsync(Uri serverUrl, VssCredentials credentials)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentSession> CreateAgentSessionAsync(int poolId, TaskAgentSession session, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentAsync(int agentPoolId, ulong agentId)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentAsync(ulong agentId)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentMessageAsync(int poolId, long messageId, Guid sessionId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task DeleteAgentSessionAsync(int poolId, Guid sessionId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentMessage> GetAgentMessageAsync(int poolId, Guid sessionId, long? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<TaskAgent>> GetAgentsAsync(string agentName)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, bool includeToken, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, bool includeToken, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Initialize(IHostContext context)
+            {
+                throw new NotImplementedException();
+            }
+
+            public async void PickJob(AgentJobRequestMessage message, CancellationToken token, string[] labels)
+            {
+                semaphore.Wait();
+                try {
+                    var agentname = Path.GetRandomFileName();
+                    string tmpdir = Path.Combine(Path.GetFullPath(customConfigDir), agentname);
+                    Directory.CreateDirectory(tmpdir);
+                    File.WriteAllText(Path.Join(tmpdir, ".agent"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
+                    var ctx = new HostContext("ADORUNNERCLIENT", customConfigDir: tmpdir);
                     ctx.PutService<IRunnerServer>(this);
                     ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
