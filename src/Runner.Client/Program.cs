@@ -3261,7 +3261,11 @@ namespace Runner.Client
                     dispatcher.Initialize(ctx);
                     dispatcher.Run(message, true);
                     await dispatcher.WaitAsync(CancellationToken.None);
-                    Directory.Delete(tmpdir, true);
+                    try {
+                        Directory.Delete(tmpdir, true);
+                    } catch {
+                        
+                    }
                 } finally {
                     semaphore.Release();
                 }
