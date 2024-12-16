@@ -5788,7 +5788,7 @@ namespace Runner.Server.Controllers
 
                                 if(queueService != null) {
                                     queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), CancellationToken.None, new string[0]);
-                                }else {
+                                } else {
                                     Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
 
                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
@@ -6318,10 +6318,19 @@ namespace Runner.Server.Controllers
                         new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = result ?? TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                            using(var scope = _provider.CreateScope()) {
 
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
-                            queue.Writer.WriteAsync(job);
+                                var queueService = scope.ServiceProvider.GetService<IQueueService>();
+
+                                if(queueService != null) {
+                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), CancellationToken.None, new string[0]);
+                                } else {
+                                    Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                    queue.Writer.WriteAsync(job);
+                                }
+                            }
                         };
                         if(string.IsNullOrEmpty(group)) {
                             _queueJob();
