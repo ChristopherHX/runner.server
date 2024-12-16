@@ -1380,13 +1380,11 @@ namespace Runner.Client
                 };
                 if(parameters.Parallel > 0) {
                     var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
-                    if(azure) {
-                        if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
-                            parameters.RunnerVersion = "3.243.1";
-                        }
-                        if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
-                            parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(parameters, azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
-                        }
+                    if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
+                        parameters.RunnerVersion = "3.243.1";
+                    }
+                    if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
+                        parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(parameters, azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
                     }
                 }
                 List<Task> listener = new List<Task>();
