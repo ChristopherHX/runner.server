@@ -1525,6 +1525,7 @@ namespace Runner.Client
                                                             services.Add(new ServiceDescriptor(typeof(IQueueService), p => new ExternalQueueService(parameters), ServiceLifetime.Singleton));
                                                         }
                                                     }
+                                                    services.AddSingleton<IHostLifetime, NoopConsoleLifetime>();
                                                     //services.AddService<Runner.Server.IQueueService>(p => new QueueService(parameters.RunnerDirectory));
                                                     //services.Add<Runner.Server.IQueueService>(new QueueService());
                                                     //services.Add<IActionsRunServer>(null);
@@ -3232,8 +3233,35 @@ namespace Runner.Client
                 try {
                     var queue = _context.GetService<ExternalQueueService>();
                     int i = arguments.IndexOf("spawnclient");
-                    return org.ExecuteAsync(workingDirectory, Path.Join(_context.GetDirectory(WellKnownDirectory.ConfigRoot), "bin", $"{queue.Prefix}.Worker{queue.Suffix}"), i == -1 ? arguments : arguments.Substring(i), environment, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                    if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                    {
+                        var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                        fileName = Path.Join(_context.GetDirectory(WellKnownDirectory.ConfigRoot), "bin", $"{queue.Prefix}.Worker{queue.Suffix}");
+                        arguments = i == -1 ? arguments : arguments.Substring(i);
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                        arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{fileName}\" {arguments}";
+                        fileName = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
+#else
+                        arguments = $"spawn \"{fileName}\" {arguments}";
+                        fileName = Path.Join(binpath, $"Runner.Client{IOUtil.ExeExtension}");
+#endif
+                        return org.ExecuteAsync(workingDirectory, fileName, arguments, environment, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                    } else {
+                        return org.ExecuteAsync(workingDirectory, Path.Join(_context.GetDirectory(WellKnownDirectory.ConfigRoot), "bin", $"{queue.Prefix}.Worker{queue.Suffix}"), i == -1 ? arguments : arguments.Substring(i), environment, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                    }
                 } catch {}
+                if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                {
+                    var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                    arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{fileName}\" {arguments}";
+                    fileName = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
+#else
+                    arguments = $"spawn \"{fileName}\" {arguments}";
+                    fileName = Path.Join(binpath, $"Runner.Client{IOUtil.ExeExtension}");
+#endif
+                    return org.ExecuteAsync(workingDirectory, fileName, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", _context.GetDirectory(WellKnownDirectory.ConfigRoot)} }, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                }
                 return org.ExecuteAsync(workingDirectory, fileName, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", _context.GetDirectory(WellKnownDirectory.ConfigRoot)} }, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
             }
 
@@ -3350,7 +3378,7 @@ namespace Runner.Client
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
                     dispatcher.Initialize(ctx);
                     dispatcher.Run(message, true);
-                    await dispatcher.WaitAsync(CancellationToken.None);
+                    await dispatcher.WaitAsync(token);
                     await dispatcher.ShutdownAsync();
                     try {
                         Directory.Delete(tmpdir, true);
@@ -3499,7 +3527,7 @@ namespace Runner.Client
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
                     dispatcher.Initialize(ctx);
                     dispatcher.Run(message, true);
-                    await dispatcher.WaitAsync(CancellationToken.None);
+                    await dispatcher.WaitAsync(token);
                     await dispatcher.ShutdownAsync();
                     try {
                         Directory.Delete(tmpdir, true);
@@ -3534,6 +3562,19 @@ namespace Runner.Client
             public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace)
             {
                 throw new NotImplementedException();
+            }
+        }
+
+        private class NoopConsoleLifetime : IHostLifetime
+        {
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task WaitForStartAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
             }
         }
     }
