@@ -3249,9 +3249,11 @@ namespace Runner.Client
             {
                 semaphore.Wait();
                 try {
-                    Directory.CreateDirectory(customConfigDir);
-                    File.WriteAllText(Path.Join(customConfigDir, ".runner"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
-                    var ctx = new HostContext("RUNNERCLIENT", customConfigDir: customConfigDir);
+                    var agentname = Path.GetRandomFileName();
+                    string tmpdir = Path.Combine(Path.GetFullPath(customConfigDir), agentname);
+                    Directory.CreateDirectory(tmpdir);
+                    File.WriteAllText(Path.Join(tmpdir, ".runner"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
+                    var ctx = new HostContext("RUNNERCLIENT", customConfigDir: tmpdir);
                     ctx.PutService<IRunnerServer>(this);
                     ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
                     //var org = ctx.GetService<IProcessInvoker>();
@@ -3259,6 +3261,7 @@ namespace Runner.Client
                     dispatcher.Initialize(ctx);
                     dispatcher.Run(message, true);
                     await dispatcher.WaitAsync(CancellationToken.None);
+                    Directory.Delete(tmpdir, true);
                 } finally {
                     semaphore.Release();
                 }
