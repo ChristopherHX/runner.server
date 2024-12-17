@@ -1446,7 +1446,7 @@ namespace Runner.Client
                                     }
                                 }.ToList(),
                                 DefaultWebUIView = "allworkflows",
-                                QueueJobsWithoutRunner = parameters.LegacyRunner && parameters.Parallel > 0,
+                                QueueJobsWithoutRunner = parameters.Parallel > 0 && !parameters.LegacyRunner,
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
