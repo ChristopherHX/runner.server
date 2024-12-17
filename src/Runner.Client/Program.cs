@@ -1305,13 +1305,13 @@ namespace Runner.Client
                 if(Environment.GetEnvironmentVariable("RUNNER_CLIENT_LEGACY_RUNNER") == "1") {
                     parameters.LegacyRunner = true;
                 }
-                if(parameters.LegacyServer || parameters.StartRunner || (parameters.Server == null || parameters.StartServer) && parameters.Parallel == 0) {
-                    parameters.LegacyRunner = true;
-                }
 
                 var expandAzurePipeline = string.Equals(parameters.Event, "azexpand", StringComparison.OrdinalIgnoreCase);
                 if(parameters.Parallel == null && !parameters.StartServer && !parameters.List && !expandAzurePipeline) {
                     parameters.Parallel = 1;
+                }
+                if(parameters.LegacyServer || parameters.StartRunner || (parameters.Server == null || parameters.StartServer) && parameters.Parallel == 0) {
+                    parameters.LegacyRunner = true;
                 }
                 if(parameters.Actor == null) {
                     parameters.Actor = "runnerclient";
