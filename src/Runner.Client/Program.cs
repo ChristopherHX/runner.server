@@ -950,6 +950,32 @@ namespace Runner.Client
         
         static int Main(string[] args)
         {
+if(args.Length > 0 && args[0] == "spawn") {
+                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    try {
+                        if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
+                            Console.WriteLine($"Failed to change Process Group");
+                        }
+                    } catch {
+                        Console.WriteLine($"Failed to change Process Group exception");
+                    }
+                }
+                var proc = new System.Diagnostics.Process();
+                proc.StartInfo.FileName = args[1];
+                for(int i = 2; i < args.Length; i++) {
+                    proc.StartInfo.ArgumentList.Add(args[i]);
+                }
+                proc.StartInfo.RedirectStandardError = true;
+                proc.StartInfo.RedirectStandardInput = true;
+                proc.StartInfo.RedirectStandardOutput = true;
+                proc.Start();
+                var stdout = proc.StandardOutput.BaseStream.CopyToAsync(System.Console.OpenStandardOutput());
+                var stderr = proc.StandardError.BaseStream.CopyToAsync(System.Console.OpenStandardError());
+                var stdin = System.Console.OpenStandardInput().CopyToAsync(proc.StandardInput.BaseStream);
+                Task.WhenAll(stdout, stderr).Wait();
+                proc.WaitForExit();
+                return proc.ExitCode;
+            }
             // Runner.Server.Program.CreateHostBuilder(args)
             // .ConfigureLogging(logger => {
             //     // logger.AddFilter(level => level == LogLevel.Warning);
