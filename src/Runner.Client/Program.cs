@@ -950,7 +950,7 @@ namespace Runner.Client
         
         static int Main(string[] args)
         {
-if(args.Length > 0 && args[0] == "spawn") {
+            if(args.Length > 0 && args[0] == "spawn") {
                 if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                     try {
                         if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
@@ -1303,38 +1303,6 @@ if(args.Length > 0 && args[0] == "spawn") {
 
             rootCommand.Description = "Run your workflows locally.";
 
-            var spawn = new Command("spawn", "executes a process and changes it's process group") { IsHidden = true };
-            var spawnargs = new Argument<string[]>();
-            spawn.AddArgument(spawnargs);
-            Func<string[], Task<int>> spawnHandler = async (string[] args) => {
-                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                    try {
-                        if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
-                            Console.WriteLine($"Failed to change Process Group");
-                        }
-                    } catch {
-                        Console.WriteLine($"Failed to change Process Group exception");
-                    }
-                }
-                var proc = new System.Diagnostics.Process();
-                proc.StartInfo.FileName = args[0];
-                for(int i = 1; i < args.Length; i++) {
-                    proc.StartInfo.ArgumentList.Add(args[i]);
-                }
-                proc.StartInfo.RedirectStandardError = true;
-                proc.StartInfo.RedirectStandardInput = true;
-                proc.StartInfo.RedirectStandardOutput = true;
-                proc.Start();
-                var stdout = proc.StandardOutput.BaseStream.CopyToAsync(System.Console.OpenStandardOutput());
-                var stderr = proc.StandardError.BaseStream.CopyToAsync(System.Console.OpenStandardError());
-                var stdin = System.Console.OpenStandardInput().CopyToAsync(proc.StandardInput.BaseStream);
-                await Task.WhenAll(stdout, stderr);
-                proc.WaitForExit();
-                return proc.ExitCode;
-            };
-            spawn.SetHandler(spawnHandler, spawnargs);
-            rootCommand.Add(spawn);
-
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
             {
@@ -1537,11 +1505,13 @@ if(args.Length > 0 && args[0] == "spawn") {
                                             }
                                             Runner.Server.Program.CreateHostBuilder(args)
                                                 .ConfigureLogging(logger => {
-                                                    logger.AddFilter(level => false);
-                                                    //logger.AddJsonConsole(jsonfmt => jsonfmt.IncludeScopes)
-                                                    // logger.AddProvider(new ILoggerProvider {
-
-                                                    // });
+                                                    if(!parameters.Verbose) {
+                                                        logger.AddFilter(level => false);
+                                                    }
+                                                    if(parameters.Json) {
+                                                        logger.ClearProviders();
+                                                        logger.AddProvider(new JsonLoggerProvider());
+                                                    }
                                                 })
                                                 .ConfigureServices(services => {
                                                     if(parameters.Parallel > 0) {
@@ -1552,13 +1522,7 @@ if(args.Length > 0 && args[0] == "spawn") {
                                                         }
                                                     }
                                                     services.AddSingleton<IHostLifetime, NoopConsoleLifetime>();
-                                                    //services.AddService<Runner.Server.IQueueService>(p => new QueueService(parameters.RunnerDirectory));
-                                                    //services.Add<Runner.Server.IQueueService>(new QueueService());
-                                                    //services.Add<IActionsRunServer>(null);
                                                 })
-                                                // .ConfigureContainer((host, container) => {
-
-                                                // })
                                                 .Build()
                                             .Run();
 
@@ -1690,9 +1654,11 @@ if(args.Length > 0 && args[0] == "spawn") {
 
                                 interactiveCommand.Add(rerunCommand);
 
-                                var listCommand = new Command("list", "Lists jobs of the selected workflows");
-                                listCommand.Add(jobOpt);
-                                listCommand.Add(matrixOpt);
+                                var listCommand = new Command("list", "Lists jobs of the selected workflows")
+                                {
+                                    jobOpt,
+                                    matrixOpt
+                                };
                                 listCommand.SetHandler((job, matrix) => {
                                     parameters.Job = job;
                                     parameters.Matrix = matrix;
@@ -1720,12 +1686,14 @@ if(args.Length > 0 && args[0] == "spawn") {
                                 deleteCommand.Add(deleteArtifactsCommand);
                                 interactiveCommand.Add(deleteCommand);
 
-                                var updateCommand = new Command("update", "Update provided env and secrets");
-                                updateCommand.Add(workflowOption);
-                                updateCommand.Add(DirectoryOpt);
-                                updateCommand.Add(payloadOpt);
-                                updateCommand.Add(envOpt);
-                                updateCommand.Add(secretOpt);
+                                var updateCommand = new Command("update", "Update provided env and secrets")
+                                {
+                                    workflowOption,
+                                    DirectoryOpt,
+                                    payloadOpt,
+                                    envOpt,
+                                    secretOpt
+                                };
                                 var eventOpt = new Option<string>(
                                     "--event",
                                     description: "Change the event to trigger the workflow");
@@ -3400,6 +3368,7 @@ if(args.Length > 0 && args[0] == "spawn") {
                     File.WriteAllText(Path.Join(tmpdir, ".runner"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
                     var ctx = new HostContext("RUNNERCLIENT", customConfigDir: tmpdir);
                     ctx.PutService<IRunnerServer>(this);
+                    ctx.PutService<ITerminal>(new Terminal());
                     ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
                     dispatcher.Initialize(ctx);
@@ -3549,6 +3518,7 @@ if(args.Length > 0 && args[0] == "spawn") {
                     var ctx = new HostContext("EXTERNALRUNNERCLIENT", customConfigDir: tmpdir);
                     ctx.PutService<IRunnerServer>(this);
                     ctx.PutService<ExternalQueueService>(this);
+                    ctx.PutService<ITerminal>(new Terminal());
                     ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
                     dispatcher.Initialize(ctx);
