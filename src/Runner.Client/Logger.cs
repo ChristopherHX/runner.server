@@ -32,7 +32,7 @@ namespace Runner.Client
         }
     }
 
-    public sealed class Terminal : RunnerService, ITerminal
+    public sealed class Terminal : GitHub.Runner.Common.RunnerService, ITerminal
     {
         public bool Silent { get; set; }
 
