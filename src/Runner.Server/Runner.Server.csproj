@@ -7,6 +7,7 @@
     <NoWarn>NU1701;NU1603;NU1605;CS4014</NoWarn>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <GenerateEmbeddedFilesManifest Condition="$(PublishSingleFile)' == 'true'">true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(EFMigration)' != ''">
@@ -63,8 +64,16 @@
     <EmbeddedResource Include="localcheckout_template.yml">
       <LogicalName>Runner.Server.localcheckout_template.yml</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublishSingleFile)' != 'true'">
     <None Include="wwwroot\**" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" Link="wwwroot\%(RecursiveDir)\%(Filename)%(Extension)" />
     <None Include="appsettings*.json" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <EmbeddedResource Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>
