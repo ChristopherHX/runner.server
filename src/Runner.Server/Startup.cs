@@ -43,6 +43,7 @@ using Microsoft.Net.Http.Headers;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using GitHub.Services.WebApi;
 using Swashbuckle.AspNetCore.Newtonsoft;
+using Runner.Server.Controllers;
 
 namespace Runner.Server
 {
@@ -92,6 +93,8 @@ namespace Runner.Server
             services.AddControllers(options => {
                 // options.InputFormatters.Add(new LogFormatter());
             }).AddNewtonsoftJson();
+            services.AddScoped<MessageController>();
+            services.AddScoped<FinishJobController>();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Runner.Server", Version = "v1" });

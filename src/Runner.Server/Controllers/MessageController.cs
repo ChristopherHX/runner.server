@@ -49,6 +49,7 @@ using Quartz.Impl.Matchers;
 using Swashbuckle.AspNetCore.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Writers;
+using System.Runtime.InteropServices;
 
 namespace Runner.Server.Controllers
 {
@@ -1091,69 +1092,9 @@ namespace Runner.Server.Controllers
             var jobsctx = new DictionaryContextData();
 
             var workflowname = callingJob?.WorkflowName ?? fileRelativePath;
-            Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
-                var effective_event = callingJob?.Event ?? event_name;
-                if(!string.IsNullOrEmpty(hook?.repository?.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
-                    var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
-                    var targetUrl = "";
-                    var ownerAndRepo = repository_name.Split("/", 2);
-                    if(!string.IsNullOrEmpty(ServerUrl)) {
-                        var targetUrlBuilder = new UriBuilder(ServerUrl);
-                        // old url
-                        // targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
-                        targetUrlBuilder.Fragment  = $"/0/{ownerAndRepo[0]}/0/{ownerAndRepo[1]}/0/{runid}/0/{(next.Id != Guid.Empty ? next.Id : "")}";
-                        targetUrl = targetUrlBuilder.ToString();
-                    }
-                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                        try {
-                            JobStatus jobstatus = JobStatus.Pending;
-                            var description = status?.ToString() ?? "Pending";
-                            // Skipped jobs don't block required checks: so Skipped => Success https://github.com/github/docs/commit/66b433088115a579b7f1d774aa1ee852fc5ec2b
-                            if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues || status == TaskResult.Skipped) {
-                                jobstatus = JobStatus.Success;
-                            }
-                            if(status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled) {
-                                jobstatus = JobStatus.Failure;
-                            }
-                            var client = new HttpClient();
-                            client.DefaultRequestHeaders.Add("accept", "application/json");
-                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                            }
-                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{statusSha}"));
-                            (await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = jobstatus, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()))).EnsureSuccessStatusCode();
-                        } catch {
-
-                        }
-                    } else {
-                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
-                        if(ghAppToken != null) {
-                            try {
-                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                                {
-                                    Credentials = new Octokit.Credentials(ghAppToken)
-                                };
-                                Octokit.CheckConclusion? conclusion = null;
-                                if(status == TaskResult.Skipped) {
-                                    conclusion = Octokit.CheckConclusion.Skipped;
-                                } else if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
-                                    conclusion = Octokit.CheckConclusion.Success;
-                                } else if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
-                                    conclusion = Octokit.CheckConclusion.Failure;
-                                } else if(status == TaskResult.Canceled) {
-                                    conclusion = Octokit.CheckConclusion.Cancelled;
-                                }
-                                var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha) );
-                                var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
-                                next.CheckRunStarted = true;
-                            } finally {
-                                await DeleteGithubAppToken(ghAppToken);
-                            }
-                        }
-                        
-                    }
-                }
+            Func<MessageController, JobItem, TaskResult?, Task> updateJobStatus = async (self, next, status) =>
+            {
+                await UpdateJobStatus(hook, localcheckout, runid, callingJob, statusSha, next, status, event_name, repository_name, workflowname);
             };
             // It seems like the inputs context is never null as of December 2022
             PipelineContextData inputs = new DictionaryContextData();
@@ -2278,30 +2219,24 @@ namespace Runner.Server.Controllers
                                             jobitem.Childs = new List<JobItem>();
                                             jobitem.NoStatusCheck = true;
                                             var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(callingJob?.Id), name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
-                                            var clone = Clone();
-                                            Task.Run(async () => {
-                                                try {
-                                                    try {
-                                                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token).Token);
-                                                    } catch {
-
-                                                    }
-                                                    if(!finished.IsCancellationRequested) {
-                                                        jobitem.Cancel.Cancel();
-                                                        foreach(var ji in jobitem.Childs) {
-                                                            ji.Cancel.Cancel();
-                                                            Job job = _cache.Get<Job>(ji.Id);
-                                                            if(job != null) {
-                                                                // cancel normal job
-                                                                job.CancelRequest.Cancel();
-                                                                if(job.SessionId == Guid.Empty) {
-                                                                    new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                                                }
+                                            var serverUrl = ServerUrl;
+                                            Helper.RunTaskWithProvider(_provider, async p => {
+                                                var clone = p.GetRequiredService<MessageController>();
+                                                clone.ServerUrl = serverUrl;
+                                                await Helper.WaitAnyCancellationToken(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token);
+                                                if(!finished.IsCancellationRequested) {
+                                                    jobitem.Cancel.Cancel();
+                                                    foreach(var ji in jobitem.Childs) {
+                                                        ji.Cancel.Cancel();
+                                                        Job job = _cache.Get<Job>(ji.Id);
+                                                        if(job != null) {
+                                                            // cancel normal job
+                                                            job.CancelRequest.Cancel();
+                                                            if(job.SessionId == Guid.Empty) {
+                                                                new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                                             }
                                                         }
                                                     }
-                                                } finally {
-                                                    clone._context.Dispose();
                                                 }
                                             });
                                             AddJob(_job);
@@ -2439,7 +2374,7 @@ namespace Runner.Server.Controllers
                                                         templateContext.Errors.Check();
                                                     }
                                                     next.DisplayName = _jobdisplayname;
-                                                    next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
+                                                    next.ActionStatusQueue.Post(() => updateJobStatus(this, next, null));
                                                     return queueJob(matrixJobTraceWriter, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                                 } catch(Exception ex) {
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
@@ -2711,7 +2646,6 @@ namespace Runner.Server.Controllers
                             UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
                         }
-                        _context.Dispose();
                     };
                     FinishJobController.JobCompleted withoutlock = e => {
                         attempt.Status = Status.Running;
@@ -2727,7 +2661,7 @@ namespace Runner.Server.Controllers
                                 updateNeedsCtx(jobsctx, ji.name, ji, e);
                             }
                             ji.ActionStatusQueue.Post(() => {
-                                return updateJobStatus(ji, e.Result);
+                                return updateJobStatus(this, ji, e.Result);
                             });
                             ji.Status = e.Result;
                             ji.Completed = true;
@@ -2764,7 +2698,8 @@ namespace Runner.Server.Controllers
                         jobCompleted(e);
                     };
                     var channel = Channel.CreateUnbounded<JobCompletedEvent>();
-                    Task.Run(async () => {
+                    Helper.RunTaskWithProvider(_provider, async p => {
+                        var clone = p.GetRequiredService<MessageController>();
                         while(!finished.IsCancellationRequested) {
                             try {
                                 var ev = await channel.Reader.ReadAsync(finished.Token);
@@ -2798,84 +2733,78 @@ namespace Runner.Server.Controllers
                         }
                     }
                     asyncProcessing = true;
+                    var serverUrl = ServerUrl;
                     Action runWorkflow = () => {
-                        var clone = Clone();
-                        Task.Run(async () => {
-                            try {
-                                for(int i = 0; i < 2; i++) {
-                                    try {
-                                        if(i == 0) {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        } else {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        }
-                                    } catch {
-
-                                    }
-                                    if(finished.IsCancellationRequested) {
-                                        return;
-                                    }
-                                    if(workflowContext.ForceCancellationToken?.IsCancellationRequested == true) {
-                                        workflowTraceWriter.Info("Workflow Force Cancellation: Requested");
-                                        foreach(var job2 in jobs) {
-                                            if(job2.Status == null) {
-                                                workflowTraceWriter.Info($"Force cancelling {job2.DisplayName ?? job2.name}");
-                                                var ji = job2;
-                                                // cancel pseudo job e.g. workflow_call
-                                                ji.Cancel.Cancel();
-                                                Job job = _cache.Get<Job>(ji.Id);
-                                                if(job != null) {
-                                                    // cancel normal job
-                                                    job.CancelRequest.Cancel();
-                                                    // No check for sessionid, since we do force cancellation
-                                                    new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                                }
-                                                workflowTraceWriter.Info($"Force cancelled {job2.DisplayName ?? job2.name}");
-                                            }
-                                        }
-                                        workflowTraceWriter.Info("Workflow Force Cancellation: Done");
-                                        return;
-                                    } else if(workflowContext.CancellationToken.IsCancellationRequested) {
-                                        workflowTraceWriter.Info("Workflow Cancellation: Requested");
-                                        foreach(var cjob in jobs) {
-                                            if(cjob.Status == null) {
-                                                foreach(var job2 in cjob.Childs?.Prepend(cjob) ?? new [] { cjob }) {
-                                                    if(job2.EvaluateIf == null) {
-                                                        continue;
-                                                    }
-                                                    workflowTraceWriter.Info($"Reevaluate Condition of {job2.DisplayName ?? job2.name}");
-                                                    bool ifResult;
-                                                    try {
-                                                        ifResult = job2.EvaluateIf(workflowTraceWriter);
-                                                    } catch(Exception ex) {
-                                                        ifResult = false;
-                                                        workflowTraceWriter.Info($"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}");
-                                                    }
-                                                    if(!ifResult) {
-                                                        workflowTraceWriter.Info($"Cancelling {job2.DisplayName ?? job2.name}");
-                                                        var ji = job2;
-                                                        // cancel pseudo job e.g. workflow_call
-                                                        ji.Cancel.Cancel();
-                                                        Job job = _cache.Get<Job>(ji.Id);
-                                                        if(job != null) {
-                                                            // cancel normal job
-                                                            job.CancelRequest.Cancel();
-                                                            if(job.SessionId == Guid.Empty) {
-                                                                new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                                            }
-                                                        }
-                                                        workflowTraceWriter.Info($"Cancelled {job2.DisplayName ?? job2.name}");
-                                                    } else {
-                                                        workflowTraceWriter.Info($"Skip Cancellation of {job2.DisplayName ?? job2.name}");
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        workflowTraceWriter.Info("Workflow Cancellation: Done");
-                                    }
+                        Helper.RunTaskWithProvider(_provider, async p => {
+                            var clone = p.GetRequiredService<MessageController>();
+                            clone.ServerUrl = serverUrl;
+                            for(int i = 0; i < 2; i++) {
+                                if(i == 0) {
+                                    await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
+                                } else {
+                                    await Helper.WaitAnyCancellationToken(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                                 }
-                            } finally {
-                                clone._context.Dispose();
+                                if(finished.IsCancellationRequested) {
+                                    return;
+                                }
+                                if(workflowContext.ForceCancellationToken?.IsCancellationRequested == true) {
+                                    workflowTraceWriter.Info("Workflow Force Cancellation: Requested");
+                                    foreach(var job2 in jobs) {
+                                        if(job2.Status == null) {
+                                            workflowTraceWriter.Info($"Force cancelling {job2.DisplayName ?? job2.name}");
+                                            var ji = job2;
+                                            // cancel pseudo job e.g. workflow_call
+                                            ji.Cancel.Cancel();
+                                            Job job = _cache.Get<Job>(ji.Id);
+                                            if(job != null) {
+                                                // cancel normal job
+                                                job.CancelRequest.Cancel();
+                                                // No check for sessionid, since we do force cancellation
+                                                _provider.GetRequiredService<FinishJobController>().InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
+                                            }
+                                            workflowTraceWriter.Info($"Force cancelled {job2.DisplayName ?? job2.name}");
+                                        }
+                                    }
+                                    workflowTraceWriter.Info("Workflow Force Cancellation: Done");
+                                    return;
+                                } else if(workflowContext.CancellationToken.IsCancellationRequested) {
+                                    workflowTraceWriter.Info("Workflow Cancellation: Requested");
+                                    foreach(var cjob in jobs) {
+                                        if(cjob.Status == null) {
+                                            foreach(var job2 in cjob.Childs?.Prepend(cjob) ?? new [] { cjob }) {
+                                                if(job2.EvaluateIf == null) {
+                                                    continue;
+                                                }
+                                                workflowTraceWriter.Info($"Reevaluate Condition of {job2.DisplayName ?? job2.name}");
+                                                bool ifResult;
+                                                try {
+                                                    ifResult = job2.EvaluateIf(workflowTraceWriter);
+                                                } catch(Exception ex) {
+                                                    ifResult = false;
+                                                    workflowTraceWriter.Info($"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}");
+                                                }
+                                                if(!ifResult) {
+                                                    workflowTraceWriter.Info($"Cancelling {job2.DisplayName ?? job2.name}");
+                                                    var ji = job2;
+                                                    // cancel pseudo job e.g. workflow_call
+                                                    ji.Cancel.Cancel();
+                                                    Job job = _cache.Get<Job>(ji.Id);
+                                                    if(job != null) {
+                                                        // cancel normal job
+                                                        job.CancelRequest.Cancel();
+                                                        if(job.SessionId == Guid.Empty) {
+                                                            new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
+                                                        }
+                                                    }
+                                                    workflowTraceWriter.Info($"Cancelled {job2.DisplayName ?? job2.name}");
+                                                } else {
+                                                    workflowTraceWriter.Info($"Skip Cancellation of {job2.DisplayName ?? job2.name}");
+                                                }
+                                            }
+                                        }
+                                    }
+                                    workflowTraceWriter.Info("Workflow Cancellation: Done");
+                                }
                             }
                         });
                         FinishJobController.OnJobCompletedAfter += workflowcomplete;
@@ -2927,10 +2856,7 @@ namespace Runner.Server.Controllers
                                     } else {
                                         workflowTraceWriter.Info("{0}", $"Starting Workflow run by concurrency group: {group}");
                                         then();
-                                        try {
-                                            await Task.Delay(-1, finished.Token);
-                                        } catch {
-                                        }
+                                        await Helper.WaitAnyCancellationToken(finished.Token);
                                     }
                                     cgroup.FinishRunning(centry);
                                 };
@@ -2948,11 +2874,7 @@ namespace Runner.Server.Controllers
                         // Needed to avoid a deadlock between caller and reusable workflow
                         var prerunCancel = new CancellationTokenSource();
                         Task.Run(async () => {
-                            try {
-                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                            } catch {
-
-                            }
+                            await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                             if(!prerunCancel.Token.IsCancellationRequested && !finished.Token.IsCancellationRequested) {
                                 workflowTraceWriter.Info("{0}", $"Prerun cancellation");
                                 cancelPendingWorkflow();
@@ -2997,10 +2919,96 @@ namespace Runner.Server.Controllers
             } finally {
                 if(!asyncProcessing) {
                     finishWorkflow();
-                    _context.Dispose();
                 }
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
+        }
+
+        private async Task UpdateJobStatus(GiteaHook hook, bool localcheckout, long runid, CallingJob callingJob, string statusSha, JobItem next, TaskResult? status, string event_name, string repository_name, string workflowname)
+        {
+            var effective_event = callingJob?.Event ?? event_name;
+            if (!string.IsNullOrEmpty(hook?.repository?.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new[] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout)
+            {
+                var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
+                var targetUrl = "";
+                var ownerAndRepo = repository_name.Split("/", 2);
+                if (!string.IsNullOrEmpty(ServerUrl))
+                {
+                    var targetUrlBuilder = new UriBuilder(ServerUrl);
+                    // old url
+                    // targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
+                    targetUrlBuilder.Fragment = $"/0/{ownerAndRepo[0]}/0/{ownerAndRepo[1]}/0/{runid}/0/{(next.Id != Guid.Empty ? next.Id : "")}";
+                    targetUrl = targetUrlBuilder.ToString();
+                }
+                if (!string.IsNullOrEmpty(GITHUB_TOKEN))
+                {
+                    try
+                    {
+                        JobStatus jobstatus = JobStatus.Pending;
+                        var description = status?.ToString() ?? "Pending";
+                        // Skipped jobs don't block required checks: so Skipped => Success https://github.com/github/docs/commit/66b433088115a579b7f1d774aa1ee852fc5ec2b
+                        if (status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues || status == TaskResult.Skipped)
+                        {
+                            jobstatus = JobStatus.Success;
+                        }
+                        if (status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled)
+                        {
+                            jobstatus = JobStatus.Failure;
+                        }
+                        var client = new HttpClient();
+                        client.DefaultRequestHeaders.Add("accept", "application/json");
+                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                        if (!string.IsNullOrEmpty(GITHUB_TOKEN))
+                        {
+                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                        }
+                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{statusSha}"));
+                        (await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = jobstatus, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()))).EnsureSuccessStatusCode();
+                    }
+                    catch
+                    {
+
+                    }
+                }
+                else
+                {
+                    var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
+                    if (ghAppToken != null)
+                    {
+                        try
+                        {
+                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
+                            {
+                                Credentials = new Octokit.Credentials(ghAppToken)
+                            };
+                            Octokit.CheckConclusion? conclusion = null;
+                            if (status == TaskResult.Skipped)
+                            {
+                                conclusion = Octokit.CheckConclusion.Skipped;
+                            }
+                            else if (status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues)
+                            {
+                                conclusion = Octokit.CheckConclusion.Success;
+                            }
+                            else if (status == TaskResult.Failed || status == TaskResult.Abandoned)
+                            {
+                                conclusion = Octokit.CheckConclusion.Failure;
+                            }
+                            else if (status == TaskResult.Canceled)
+                            {
+                                conclusion = Octokit.CheckConclusion.Cancelled;
+                            }
+                            var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha));
+                            var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
+                            next.CheckRunStarted = true;
+                        }
+                        finally
+                        {
+                            await DeleteGithubAppToken(ghAppToken);
+                        }
+                    }
+                }
+            }
         }
 
         private static void UpdateWorkflowRun(WorkflowRunAttempt attempt, string repository_name)
@@ -3076,68 +3084,9 @@ namespace Runner.Server.Controllers
             var jobsctx = new DictionaryContextData();
 
             var workflowname = fileRelativePath;
-            Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
-                var effective_event = callingJob?.Event ?? event_name;
-                if(!string.IsNullOrEmpty(hook?.repository?.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
-                    var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
-                    var targetUrl = "";
-                    var ownerAndRepo = repository_name.Split("/", 2);
-                    if(!string.IsNullOrEmpty(ServerUrl)) {
-                        var targetUrlBuilder = new UriBuilder(ServerUrl);
-                        // old url
-                        // targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
-                        targetUrlBuilder.Fragment  = $"/0/{ownerAndRepo[0]}/0/{ownerAndRepo[1]}/0/{runid}/0/{(next.Id != Guid.Empty ? next.Id : "")}";
-                        targetUrl = targetUrlBuilder.ToString();
-                    }
-                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                        try {
-                            JobStatus jobstatus = JobStatus.Pending;
-                            var description = status?.ToString() ?? "Pending";
-                            // Skipped jobs don't block required checks: so Skipped => Success https://github.com/github/docs/commit/66b433088115a579b7f1d774aa1ee852fc5ec2b
-                            if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues || status == TaskResult.Skipped) {
-                                jobstatus = JobStatus.Success;
-                            }
-                            if(status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled) {
-                                jobstatus = JobStatus.Failure;
-                            }
-                            var client = new HttpClient();
-                            client.DefaultRequestHeaders.Add("accept", "application/json");
-                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                            }
-                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{statusSha}"));
-                            (await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = jobstatus, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()))).EnsureSuccessStatusCode();
-                        } catch {
-
-                        }
-                    } else {
-                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
-                        if(ghAppToken != null) {
-                            try {
-                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                                {
-                                    Credentials = new Octokit.Credentials(ghAppToken)
-                                };
-                                Octokit.CheckConclusion? conclusion = null;
-                                if(status == TaskResult.Skipped) {
-                                    conclusion = Octokit.CheckConclusion.Skipped;
-                                } else if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
-                                    conclusion = Octokit.CheckConclusion.Success;
-                                } else if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
-                                    conclusion = Octokit.CheckConclusion.Failure;
-                                } else if(status == TaskResult.Canceled) {
-                                    conclusion = Octokit.CheckConclusion.Cancelled;
-                                }
-                                var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha) );
-                                var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
-                                next.CheckRunStarted = true;
-                            } finally {
-                                await DeleteGithubAppToken(ghAppToken);
-                            }
-                        }
-                    }
-                }
+            Func<MessageController, JobItem, TaskResult?, Task> updateJobStatus = async (self, next, status) =>
+            {
+                await UpdateJobStatus(hook, localcheckout, runid, callingJob, statusSha, next, status, event_name, repository_name, workflowname);
             };
             Func<string, DictionaryContextData> createContext = jobname => {
                 var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
@@ -3985,31 +3934,25 @@ namespace Runner.Server.Controllers
                                     if(jobTotal > 1) {
                                         jobitem.Childs = new List<JobItem>();
                                         jobitem.NoStatusCheck = true;
+                                        var serverUrl = ServerUrl;
                                         var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(stage.Name), name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
-                                        var clone = Clone();
-                                        Task.Run(async () => {
-                                            try {
-                                                try {
-                                                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token).Token);
-                                                } catch {
-
-                                                }
-                                                if(!finished.IsCancellationRequested) {
-                                                    jobitem.Cancel.Cancel();
-                                                    foreach(var ji in jobitem.Childs) {
-                                                        ji.Cancel.Cancel();
-                                                        Job job = _cache.Get<Job>(ji.Id);
-                                                        if(job != null) {
-                                                            // cancel normal job
-                                                            job.CancelRequest.Cancel();
-                                                            if(job.SessionId == Guid.Empty) {
-                                                                new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                                            }
+                                        Helper.RunTaskWithProvider(_provider, async p => {
+                                            var clone = p.GetRequiredService<MessageController>();
+                                            clone.ServerUrl = serverUrl;
+                                            await Helper.WaitAnyCancellationToken(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token);
+                                            if(!finished.IsCancellationRequested) {
+                                                jobitem.Cancel.Cancel();
+                                                foreach(var ji in jobitem.Childs) {
+                                                    ji.Cancel.Cancel();
+                                                    Job job = _cache.Get<Job>(ji.Id);
+                                                    if(job != null) {
+                                                        // cancel normal job
+                                                        job.CancelRequest.Cancel();
+                                                        if(job.SessionId == Guid.Empty) {
+                                                            new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                                         }
                                                     }
                                                 }
-                                            } finally {
-                                                clone._context.Dispose();
                                             }
                                         });
                                         AddJob(_job);
@@ -4131,7 +4074,7 @@ namespace Runner.Server.Controllers
                                                 var _jobdisplayname = _prejobdisplayname;
                                                 next.DisplayName = _jobdisplayname;
                                                 next.NoStatusCheck = false;
-                                                next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
+                                                next.ActionStatusQueue.Post(() => updateJobStatus(this, next, null));
                                                 addMatrixVar("System.StageName", stage.Name);
                                                 addMatrixVar("System.StageDisplayName", stage.DisplayName);
                                                 addMatrixVar("System.PhaseName", job.Name);
@@ -4633,7 +4576,6 @@ namespace Runner.Server.Controllers
                             UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
                         }
-                        _context.Dispose();
                     };
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = e != null ? mjobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault() : null;
@@ -4646,7 +4588,7 @@ namespace Runner.Server.Controllers
                                 updateNeedsCtx(jobsctx, ji.name, ji, e);
                             }
                             ji.ActionStatusQueue.Post(() => {
-                                return updateJobStatus(ji, e.Result);
+                                return updateJobStatus(this, ji, e.Result);
                             });
                             ji.Status = e.Result;
                             ji.Completed = true;
@@ -4678,28 +4620,55 @@ namespace Runner.Server.Controllers
                         channel.Writer.WriteAsync(e);
                     };
                     asyncProcessing = true;
-                    Action runWorkflow = () => {
-                        var clone = Clone();
-                        Task.Run(async () => {
-                            try {
-                                for(int i = 0; i < 2; i++) {
-                                    try {
-                                        if(i == 0) {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        } else {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        }
-                                    } catch {
+                    var serverUrl = ServerUrl;
 
+                    Action runWorkflow = () => {
+                        Helper.RunTaskWithProvider(_provider, async p => {
+                            var clone = p.GetRequiredService<MessageController>();
+                            clone.ServerUrl = serverUrl;
+                            for(int i = 0; i < 2; i++) {
+                                if(i == 0) {
+                                    await Task.WhenAny(Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token));
+                                } else {
+                                    await Task.WhenAny(Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token));
+                                }
+                                if(finished.IsCancellationRequested) {
+                                    return;
+                                }
+                                if(workflowContext.ForceCancellationToken?.IsCancellationRequested == true) {
+                                    workflowTraceWriter.Info("Workflow Force Cancellation: Requested");
+                                    foreach(var job2 in mjobs) {
+                                        if(job2.Status == null) {
+                                            workflowTraceWriter.Info($"Force cancelling {job2.DisplayName ?? job2.name}");
+                                            var ji = job2;
+                                            // cancel pseudo job e.g. workflow_call
+                                            ji.Cancel.Cancel();
+                                            Job job = _cache.Get<Job>(ji.Id);
+                                            if(job != null) {
+                                                // cancel normal job
+                                                job.CancelRequest.Cancel();
+                                                // No check for sessionid, since we do force cancellation
+                                                new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
+                                            }
+                                            workflowTraceWriter.Info($"Force cancelled {job2.DisplayName ?? job2.name}");
+                                        }
                                     }
-                                    if(finished.IsCancellationRequested) {
-                                        return;
-                                    }
-                                    if(workflowContext.ForceCancellationToken?.IsCancellationRequested == true) {
-                                        workflowTraceWriter.Info("Workflow Force Cancellation: Requested");
-                                        foreach(var job2 in mjobs) {
-                                            if(job2.Status == null) {
-                                                workflowTraceWriter.Info($"Force cancelling {job2.DisplayName ?? job2.name}");
+                                    workflowTraceWriter.Info("Workflow Force Cancellation: Done");
+                                    return;
+                                } else if(workflowContext.CancellationToken.IsCancellationRequested) {
+                                    workflowTraceWriter.Info("Workflow Cancellation: Requested");
+                                    foreach(var job2 in mjobs) {
+                                        if(job2.Status == null && job2.EvaluateIf != null) {
+                                            workflowTraceWriter.Info($"Reevaluate Condition of {job2.DisplayName ?? job2.name}");
+                                            bool ifResult;
+                                            try {
+                                                ifResult = job2.EvaluateIf(workflowTraceWriter);
+                                            } catch(Exception ex) {
+                                                ifResult = false;
+                                                workflowTraceWriter.Info($"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}");
+                                            }
+                                            if(!ifResult) {
+                                                workflowTraceWriter.Info($"Cancelling {job2.DisplayName ?? job2.name}");
                                                 var ji = job2;
                                                 // cancel pseudo job e.g. workflow_call
                                                 ji.Cancel.Cancel();
@@ -4707,50 +4676,18 @@ namespace Runner.Server.Controllers
                                                 if(job != null) {
                                                     // cancel normal job
                                                     job.CancelRequest.Cancel();
-                                                    // No check for sessionid, since we do force cancellation
-                                                    new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                                }
-                                                workflowTraceWriter.Info($"Force cancelled {job2.DisplayName ?? job2.name}");
-                                            }
-                                        }
-                                        workflowTraceWriter.Info("Workflow Force Cancellation: Done");
-                                        return;
-                                    } else if(workflowContext.CancellationToken.IsCancellationRequested) {
-                                        workflowTraceWriter.Info("Workflow Cancellation: Requested");
-                                        foreach(var job2 in mjobs) {
-                                            if(job2.Status == null && job2.EvaluateIf != null) {
-                                                workflowTraceWriter.Info($"Reevaluate Condition of {job2.DisplayName ?? job2.name}");
-                                                bool ifResult;
-                                                try {
-                                                    ifResult = job2.EvaluateIf(workflowTraceWriter);
-                                                } catch(Exception ex) {
-                                                    ifResult = false;
-                                                    workflowTraceWriter.Info($"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}");
-                                                }
-                                                if(!ifResult) {
-                                                    workflowTraceWriter.Info($"Cancelling {job2.DisplayName ?? job2.name}");
-                                                    var ji = job2;
-                                                    // cancel pseudo job e.g. workflow_call
-                                                    ji.Cancel.Cancel();
-                                                    Job job = _cache.Get<Job>(ji.Id);
-                                                    if(job != null) {
-                                                        // cancel normal job
-                                                        job.CancelRequest.Cancel();
-                                                        if(job.SessionId == Guid.Empty) {
-                                                            new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                                        }
+                                                    if(job.SessionId == Guid.Empty) {
+                                                        new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                                     }
-                                                    workflowTraceWriter.Info($"Cancelled {job2.DisplayName ?? job2.name}");
-                                                } else {
-                                                    workflowTraceWriter.Info($"Skip Cancellation of {job2.DisplayName ?? job2.name}");
                                                 }
+                                                workflowTraceWriter.Info($"Cancelled {job2.DisplayName ?? job2.name}");
+                                            } else {
+                                                workflowTraceWriter.Info($"Skip Cancellation of {job2.DisplayName ?? job2.name}");
                                             }
                                         }
-                                        workflowTraceWriter.Info("Workflow Cancellation: Done");
                                     }
+                                    workflowTraceWriter.Info("Workflow Cancellation: Done");
                                 }
-                            } finally {
-                                clone._context.Dispose();
                             }
                         });
                         FinishJobController.OnJobCompletedAfter += workflowcomplete;
@@ -4796,10 +4733,7 @@ namespace Runner.Server.Controllers
                                     } else {
                                         workflowTraceWriter.Info("{0}", $"Starting Workflow run by concurrency group: {group}");
                                         then();
-                                        try {
-                                            await Task.Delay(-1, finished.Token);
-                                        } catch {
-                                        }
+                                        await Helper.WaitAnyCancellationToken(finished.Token);
                                     }
                                     cgroup.FinishRunning(centry);
                                 };
@@ -4817,11 +4751,7 @@ namespace Runner.Server.Controllers
                         // Needed to avoid a deadlock between caller and reusable workflow
                         var prerunCancel = new CancellationTokenSource();
                         Task.Run(async () => {
-                            try {
-                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                            } catch {
-
-                            }
+                            await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                             if(!prerunCancel.Token.IsCancellationRequested && !finished.Token.IsCancellationRequested) {
                                 workflowTraceWriter.Info("{0}", $"Prerun cancellation");
                                 cancelPendingWorkflow();
@@ -4866,7 +4796,6 @@ namespace Runner.Server.Controllers
             } finally {
                 if(!asyncProcessing) {
                     finishWorkflow();
-                    _context.Dispose();
                 }
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
@@ -5288,6 +5217,7 @@ namespace Runner.Server.Controllers
                     }
                     var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])?.ToJToken()?.ToString() };
                     AddJob(_job);
+                    var serverUrl = ServerUrl;
                     return cancel => {
                         if(cancel) {
                             matrixJobTraceWriter.Verbose("workflow_call cancelled successfully");
@@ -5296,12 +5226,12 @@ namespace Runner.Server.Controllers
                         }
                         // Fix workflow doesn't wait for cancelled called workflows to finish, add dummy sessionid
                         _job.SessionId = Guid.NewGuid();
-                        var clone = Clone();
-                        Task.Run(async () => {
+                        Helper.RunTaskWithProvider(_provider, async p => {
+                            var clone = p.GetRequiredService<MessageController>();
+                            clone.ServerUrl = serverUrl;
                             Action<string> failedtoInstantiateWorkflow = message => {
                                 matrixJobTraceWriter.Error("Failed to instantiate Workflow: {0}", message);
                                 new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                clone._context.Dispose();
                             };
                             if(reference == null) {
                                 failedtoInstantiateWorkflow($"Invalid reference format: {uses.Value}");
@@ -6535,7 +6465,7 @@ namespace Runner.Server.Controllers
                             // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
                             await Task.Delay(session.DoNotCancelBefore.Value - now, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token).Token);
                         }
-                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token, job.CancelRequest.Token).Token);
+                        await Helper.WaitAnyCancellationToken(jobRunningToken, ts.Token, job.CancelRequest.Token);
                     } catch (TaskCanceledException) {
                         // Connection Reset
                         if(ts.Token.IsCancellationRequested)
@@ -6563,12 +6493,13 @@ namespace Runner.Server.Controllers
                                     });
                                 }
                             } finally {
+                                var serverUrl = ServerUrl;
                                 // Catch possible desynchronized runner is stale forever
-                                var clone = Clone();
-                                Task.Run(async () => {
+                                Helper.RunTaskWithProvider(_provider, async p => {
+                                    var clone = p.GetRequiredService<MessageController>();
+                                    clone.ServerUrl = serverUrl;
                                     await Task.Delay(TimeSpan.FromMinutes(job.CancelTimeoutMinutes + 2));
                                     new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                    clone._context.Dispose();
                                 });
                             }
                         }
@@ -6584,7 +6515,7 @@ namespace Runner.Server.Controllers
                     }
                 } else {
                     try {
-                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token).Token);
+                        await Helper.WaitAnyCancellationToken(jobRunningToken, ts.Token);
                     } catch (TaskCanceledException) {
                         // Connection Reset
                         if(ts.Token.IsCancellationRequested)
@@ -6947,9 +6878,13 @@ namespace Runner.Server.Controllers
                                     await Console.Error.WriteLineAsync(ex.StackTrace);
                                 }
                             }
+                            var serverUrl = ServerUrl;
                             foreach(var workflow in workflows) {
-                                var clone = Clone();
-                                Task.Run(() => clone.ConvertYaml(workflow.Key, workflow.Value, hook.repository.full_name, GitServerUrl, hook, obj.Value, em.Key, workflows: workflows.ToArray(), Ref: Ref, Sha: Sha, StatusCheckSha: StatusCheckSha));
+                                Helper.RunTaskWithProvider(_provider, p => {
+                                    var clone = p.GetRequiredService<MessageController>();
+                                    clone.ServerUrl = serverUrl;
+                                    clone.ConvertYaml(workflow.Key, workflow.Value, hook.repository.full_name, GitServerUrl, hook, obj.Value, em.Key, workflows: workflows.ToArray(), Ref: Ref, Sha: Sha, StatusCheckSha: StatusCheckSha);
+                                });
                             }
                         }
                     }
@@ -7206,6 +7141,9 @@ namespace Runner.Server.Controllers
             // For debugging purposes of missing logs in Runner.Client
             bool sendLostLogEvents = varEnvironments.TryGetValue("", out var fflags) && fflags.TryGetValue("system.runner.server.sendlostevents", out var fflagvalue) ? string.Equals(fflagvalue, "true", StringComparison.OrdinalIgnoreCase) : false;
             return new PushStreamResult(async stream => {
+                using var scope = _provider.CreateScope();
+                var clone = scope.ServiceProvider.GetRequiredService<MessageController>();
+                clone.ServerUrl = ServerUrl;
                 var wait = requestAborted.WaitHandle;
                 ConcurrentDictionary<Guid, Job> jobCache = new ConcurrentDictionary<Guid, Job>();
                 await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
@@ -7293,8 +7231,8 @@ namespace Runner.Server.Controllers
                     lock(runid) {
                         if(workflow.Any()) {
                             foreach (var w in workflow) {
-                                HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
-                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
+                                HookResponse response = !azpipelines ? clone.ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
+                                                                     : clone.ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
                                 if(response.skipped || response.failed) {
                                     runid.Remove(response.run_id);
                                     if(response.failed) {
@@ -7318,7 +7256,7 @@ namespace Runner.Server.Controllers
                         MessageController.OnRepoDownload -= rd;
                         FinishJobController.OnJobCompleted -= completed;
                         MessageController.workflowevent -= onworkflow;
-                    }                    
+                    }
                 }
             }, "text/event-stream");
         }
@@ -7402,8 +7340,7 @@ namespace Runner.Server.Controllers
         }
 
         private void RerunWorkflow(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false, bool resetArtifacts = true) {
-            var clone = Clone();
-            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs, onLatestCommit, resetArtifacts));
+            Helper.RunTaskWithProvider(_provider, p => p.GetRequiredService<MessageController>().RerunWorkflow2(runid, finishedJobs, onLatestCommit, resetArtifacts));
         }
         private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false, bool resetArtifacts = true) {
             string latestWorkflow = null;
