@@ -4628,9 +4628,9 @@ namespace Runner.Server.Controllers
                             clone.ServerUrl = serverUrl;
                             for(int i = 0; i < 2; i++) {
                                 if(i == 0) {
-                                    await Task.WhenAny(Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token));
+                                    await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                                 } else {
-                                    await Task.WhenAny(Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token));
+                                    await Helper.WaitAnyCancellationToken(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                                 }
                                 if(finished.IsCancellationRequested) {
                                     return;
