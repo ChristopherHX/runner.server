@@ -33,10 +33,10 @@ jobs:
         $d = Get-Date
         $version6 = $("$(semver "$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" -i patch)".TrimStart("v") + ".6-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
         $version = $("$(semver "$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" -i patch)".TrimStart("v") + ".8-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
-        dotnet pack -c Release /p:Version=$version6 /p:RuntimeFrameworkVersion=6.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
-        dotnet pack -c Release /p:Version=$version6 /p:RuntimeFrameworkVersion=6.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
-        dotnet pack -c Release /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
-        dotnet pack -c Release /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version6 /p:RuntimeFrameworkVersion=6.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version6 /p:RuntimeFrameworkVersion=6.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
         echo "version=$version" > $env:GITHUB_OUTPUT
       shell: pwsh
       working-directory: ./src/Runner.Client
