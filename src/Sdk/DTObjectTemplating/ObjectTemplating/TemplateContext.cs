@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk.Functions.v1;
 using GitHub.DistributedTask.Expressions2.Tokens;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -39,6 +41,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
         public List<int> SemTokens { get; set; } = new List<int>();
         public int LastRow { get; set; } = 1;
         public int LastColumn { get; set; } = 1;
+
+        public Func<TemplateContext, MappingToken, DictionaryContextData, Task> EvaluateVariable { get; set; }
 
         public void AddSemToken(int row, int column, int len, int type, int mod) {
             if(row - LastRow < 0 || ((row - LastRow) != 0 ? column - 1: column - LastColumn) < 0) {

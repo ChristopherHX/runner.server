@@ -241,9 +241,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         TemplateToken nextValue;
                         var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
                         if(nextKeyScalar is EachExpressionToken eachexp) {
-                            var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
+                            var def = new DefinitionInfo(definition);
                             def.AllowedContext = definition.AllowedContext.Append(eachexp.Variable).ToArray();
-                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(definition.Parent).Any()) {
+                            if(m_schema.Get<SequenceDefinition>(definition.Parent).Any()) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(definition.ParentName);
                                 oneOf.OneOf.Add(definition.Name);

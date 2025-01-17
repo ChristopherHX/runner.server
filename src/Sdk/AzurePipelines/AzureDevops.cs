@@ -1484,31 +1484,62 @@ namespace Runner.Server.Azure.Devops {
                 dict[param.Key] = param.Value;
             }
 
-            if (rawStaticVariables != null)
-            {
-                // See "testworkflows/azpipelines/expressions-docs/Conditionally assign a variable.yml"
-                templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                if(strictParametersCheck) {
-                    templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                }
-                // rawStaticVariables = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rawStaticVariables, 0, fileId);
-                // templateContext.Errors.Check();
-
-                IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                pipelineroot[pipelineroot.Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), await ParseVariables(childContext, pvars, rawStaticVariables, templateContext));
-                foreach (var v in pvars)
-                {
-                    variablesData[v.Key] = new StringContextData(v.Value.Value);
-                }
-            }
-
-            //pipelineroot.Traverse().Any(t => t is ExpressionToken);
-            // lookahead vars
-            // TODO Generalize and stepwise patch the template structure
-            templateContext = await evalJobsWithExtraVars(context, templateContext, fileId, contextData, variablesData, dict, pipelineroot, null);
-            templateContext = await evalStagesWithExtraVars(context, templateContext, fileId, pipelineroot, contextData, variablesData, dict);
-
             templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            templateContext.EvaluateVariable = async (tcontext, mapping, vars) => {
+                string template = null;
+                TemplateToken parameters = null;
+                string name = null;
+                string value = null;
+                bool isReadonly = false;
+                string group = null;
+                var vdef = mapping;
+                foreach (var kv in vdef)
+                {
+                    var primaryKey = kv.Key.AssertString("variables").Value;
+                    switch (primaryKey)
+                    {
+                        case "template":
+                            template = kv.Value.AssertString("variables").Value;
+                            break;
+                        case "parameters":
+                            parameters = kv.Value;
+                            break;
+                        case "name":
+                            name = kv.Value.AssertLiteralString("variables");
+                            break;
+                        case "value":
+                            value = kv.Value.AssertLiteralString("variables");
+                            break;
+                        case "readonly":
+                            isReadonly = kv.Value.AssertAzurePipelinesBoolean("variables");
+                            break;
+                        case "group":
+                            group = kv.Value.AssertLiteralString("variables");
+                            break;
+                    }
+                }
+                if (group != null)
+                {
+
+                }
+                else if (template != null)
+                {
+                    var evalp = parameters;
+                    var file = await ReadTemplate(childContext, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
+                    IDictionary<string, VariableValue> rvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                    await ParseVariables(childContext.ChildContext(file, template), rvars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), tcontext);
+                    foreach(var kv in rvars) {
+                        if(kv.Value.IsGroup || kv.Value.IsGroupMember) {
+                            continue;
+                        }
+                        vars.Add(kv.Key, new StringContextData(kv.Value.Value));
+                    }
+                }
+                else
+                {
+                    vars.Add(name, new StringContextData(value));
+                }
+            };
             if(strictParametersCheck) {
                 templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
             }
@@ -1517,82 +1548,6 @@ namespace Runner.Server.Azure.Devops {
             templateContext.Errors.Check();
             context.TraceWriter?.Verbose("{0}", evaluatedResult.ToContextData().ToJToken().ToString());
             return evaluatedResult.AssertMapping("root");
-
-            async Task<TemplateContext> evalJobsWithExtraVars(Context context, TemplateContext templateContext, int fileId, DictionaryContextData contextData, DictionaryContextData variablesData, Dictionary<string, object> dict, GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject stage, DictionaryContextData vardata)
-            {
-                if (stage.TryGetValue("jobs", out var rjobs) && rjobs is SequenceToken jobs)
-                {
-                    foreach (var ji in jobs.ToArray().Select((t, i) => new { t, i }))
-                    {
-                        var rjob = ji.t;
-                        if (rjob is GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject job && job.TryGetValue("variables", out var rjvars) && rjvars is TemplateToken jvars)
-                        {
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            if(vardata != null) {
-                                templateContext.ExpressionValues["variables"] = vardata;
-                            }
-                            IDictionary<string, VariableValue> pjvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            jvars = await ParseVariables(childContext, pjvars, jvars, templateContext);
-                            var varjdata = (vardata ?? variablesData).Clone() as DictionaryContextData;
-                            foreach (var v in pjvars)
-                            {
-                                varjdata[v.Key] = new StringContextData(v.Value.Value);
-                            }
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            templateContext.ExpressionValues["variables"] = varjdata;
-                            (rjob as MappingToken)[(rjob as MappingToken).Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), jvars);
-                            rjob = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rjob, 0, fileId);
-                            templateContext.Errors.Check();
-                            jobs[ji.i] = rjob;
-                        }
-                    }
-                }
-
-                return templateContext;
-            }
-
-            async Task<TemplateContext> evalStagesWithExtraVars(Context context, TemplateContext templateContext, int fileId, MappingToken pipelineroot, DictionaryContextData contextData, DictionaryContextData variablesData, Dictionary<string, object> dict)
-            {
-                if ((pipelineroot as GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject).TryGetValue("stages", out var rstages) && rstages is SequenceToken stages)
-                {
-                    foreach (var si in stages.ToArray().Select((t, i) => new { t, i }))
-                    {
-                        var rstage = si.t;
-                        if (rstage is GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject stage && stage.TryGetValue("variables", out var rvars) && rvars is TemplateToken vars)
-                        {
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            vars = await ParseVariables(childContext, pvars, vars, templateContext);
-                            var vardata = variablesData.Clone() as DictionaryContextData;
-                            foreach (var v in pvars)
-                            {
-                                vardata[v.Key] = new StringContextData(v.Value.Value);
-                            }
-                            templateContext = await evalJobsWithExtraVars(context, templateContext, fileId, contextData, variablesData, dict, stage, vardata);
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            templateContext.ExpressionValues["variables"] = vardata;
-                            (rstage as MappingToken)[(rstage as MappingToken).Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), vars);
-                            rstage = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rstage, 0, fileId);
-                            templateContext.Errors.Check();
-                            stages[si.i] = rstage;
-                        }
-                    }
-                }
-
-                return templateContext;
-            }
         }
 
         public static TemplateToken ConvertAllScalarsToString(TemplateToken token) {

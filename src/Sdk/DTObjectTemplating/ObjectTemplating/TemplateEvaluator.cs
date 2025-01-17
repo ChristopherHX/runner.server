@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -125,6 +127,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     while (!m_unraveler.AllowSequenceEnd(definition.Expand))
                     {
                         var item = Evaluate(itemDefinition);
+
+                        if(sequenceDefinition.AzureVariableBlock && m_context.ExpressionValues["variables"] is DictionaryContextData vars) {
+                            var mblock = item.AssertMapping("var");
+                            m_context.EvaluateVariable?.Invoke(m_context, mblock, vars).GetAwaiter().GetResult();
+                        }
                         sequence.Add(item);
                     }
                 }
@@ -157,6 +164,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Legal
                 if (mappingDefinitions.Count > 0)
                 {
+                    bool hasAdoScope = mappingDefinitions.Any(m => m.AzureVariableBlockScope) && m_context.ExpressionValues.ContainsKey("variables");
+
+                    DictionaryContextData vars = null;
+                    if(hasAdoScope) {
+                        vars = (m_context.ExpressionValues["variables"] as DictionaryContextData).Clone() as DictionaryContextData;
+                    }
+
                     if (mappingDefinitions.Count > 1 ||
                         m_schema.HasProperties(mappingDefinitions[0]) ||
                         String.IsNullOrEmpty(mappingDefinitions[0].LooseKeyType))
@@ -168,6 +182,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         var keyDefinition = new DefinitionInfo(definition, mappingDefinitions[0].LooseKeyType);
                         var valueDefinition = new DefinitionInfo(definition, mappingDefinitions[0].LooseValueType);
                         HandleMappingWithAllLooseProperties(definition, keyDefinition, valueDefinition, mapping);
+                    }
+                    
+                    if(hasAdoScope) {
+                        m_context.ExpressionValues["variables"] = vars;
                     }
                 }
                 // Illegal
@@ -364,6 +382,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
                 // Add the pair
                 var nextValue = Evaluate(valueDefinition);
+ 
+                if(mappingDefinition.Get<MappingDefinition>().First().AzureVariableBlock && m_context.ExpressionValues["variables"] is DictionaryContextData vars) {
+                    vars.Add(nextKey.ToString(), new StringContextData(nextValue.ToString()));
+                }
                 mapping.Add(nextKey, nextValue);
             }
 

@@ -1651,7 +1651,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Int32 removeBytes = 0)
             {
                 // Adjust the state
-                i++;//IsStart = false;
+                i++;
 
                 // Create the nested state
                 var nestedState = CreateState(this, value, Context, removeBytes) as MappingState;
@@ -1663,7 +1663,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Int32 removeBytes = 0)
             {
                 // Adjust the state
-                i++;//IsStart = false;
+                i++;
 
                 // Create the nested state
                 var nestedState = CreateState(this, value, Context, removeBytes) as SequenceState;
