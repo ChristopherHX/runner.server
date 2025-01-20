@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -24,7 +25,20 @@ namespace GitHub.DistributedTask.ObjectTemplating
             m_unraveler = new TemplateUnraveler(context, template, removeBytes);
         }
 
+        // Only async in azure pipelines mode with a true async variable eval callback
+        // .GetAwaiter().GetResult() only throws in webassembly if true async
         internal static TemplateToken Evaluate(
+            TemplateContext context,
+            String type,
+            TemplateToken template,
+            Int32 removeBytes,
+            Int32? fileId,
+            Boolean omitHeader = false)
+        {
+            return EvaluateAsync(context, type, template, removeBytes, fileId, omitHeader).GetAwaiter().GetResult();
+        }
+
+        internal static async Task<TemplateToken> EvaluateAsync(
             TemplateContext context,
             String type,
             TemplateToken template,
@@ -60,7 +74,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
 
                 var definitionInfo = new DefinitionInfo(context.Schema, type, availableContext);
-                result = evaluator.Evaluate(definitionInfo);
+                result = await evaluator.Evaluate(definitionInfo);
 
                 if (result != null)
                 {
@@ -88,7 +102,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             return result;
         }
 
-        private TemplateToken Evaluate(DefinitionInfo definition)
+        private async Task<TemplateToken> Evaluate(DefinitionInfo definition)
         {
             // Scalar
             if (m_unraveler.AllowScalar(definition.Expand, out ScalarToken scalar))
@@ -126,11 +140,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Add each item
                     while (!m_unraveler.AllowSequenceEnd(definition.Expand))
                     {
-                        var item = Evaluate(itemDefinition);
+                        var item = await Evaluate(itemDefinition);
 
                         if(sequenceDefinition.AzureVariableBlock && m_context.ExpressionValues["variables"] is DictionaryContextData vars) {
                             var mblock = item.AssertMapping("var");
-                            m_context.EvaluateVariable?.Invoke(m_context, mblock, vars).GetAwaiter().GetResult();
+                            await m_context.EvaluateVariable?.Invoke(m_context, mblock, vars);
                         }
                         sequence.Add(item);
                     }
@@ -175,13 +189,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         m_schema.HasProperties(mappingDefinitions[0]) ||
                         String.IsNullOrEmpty(mappingDefinitions[0].LooseKeyType))
                     {
-                        HandleMappingWithWellKnownProperties(definition, mappingDefinitions, mapping);
+                        await HandleMappingWithWellKnownProperties(definition, mappingDefinitions, mapping);
                     }
                     else
                     {
                         var keyDefinition = new DefinitionInfo(definition, mappingDefinitions[0].LooseKeyType);
                         var valueDefinition = new DefinitionInfo(definition, mappingDefinitions[0].LooseValueType);
-                        HandleMappingWithAllLooseProperties(definition, keyDefinition, valueDefinition, mapping);
+                        await HandleMappingWithAllLooseProperties(definition, keyDefinition, valueDefinition, mapping);
                     }
                     
                     if(hasAdoScope) {
@@ -206,7 +220,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             throw new ArgumentException(TemplateStrings.ExpectedScalarSequenceOrMapping());
         }
 
-        private void HandleMappingWithWellKnownProperties(
+        private async Task HandleMappingWithWellKnownProperties(
             DefinitionInfo definition,
             List<MappingDefinition> mappingDefinitions,
             MappingToken mapping)
@@ -234,7 +248,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     hasExpressionKey = true;
                     var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
-                    mapping.Add(nextKeyScalar, Evaluate(anyDefinition));
+                    mapping.Add(nextKeyScalar, await Evaluate(anyDefinition));
                     continue;
                 }
 
@@ -256,7 +270,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 if (m_schema.TryMatchKey(mappingDefinitions, nextKey.Value, out String nextValueType, firstKey))
                 {
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
-                    var nextValue = Evaluate(nextValueDefinition);
+                    var nextValue = await Evaluate(nextValueDefinition);
                     mapping.Add(nextKey, nextValue);
                     continue;
                 }
@@ -271,7 +285,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     }
 
                     Validate(nextKey, looseKeyDefinition.Value);
-                    var nextValue = Evaluate(looseValueDefinition.Value);
+                    var nextValue = await Evaluate(looseValueDefinition.Value);
                     mapping.Add(nextKey, nextValue);
                     continue;
                 }
@@ -337,7 +351,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             m_unraveler.ReadMappingEnd();
         }
 
-        private void HandleMappingWithAllLooseProperties(
+        private async Task HandleMappingWithAllLooseProperties(
             DefinitionInfo mappingDefinition,
             DefinitionInfo keyDefinition,
             DefinitionInfo valueDefinition,
@@ -352,12 +366,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     if (nextKeyScalar is BasicExpressionToken)
                     {
-                        mapping.Add(nextKeyScalar, Evaluate(valueDefinition));
+                        mapping.Add(nextKeyScalar, await Evaluate(valueDefinition));
                     }
                     else
                     {
                         var anyDefinition = new DefinitionInfo(mappingDefinition, TemplateConstants.Any);
-                        mapping.Add(nextKeyScalar, Evaluate(anyDefinition));
+                        mapping.Add(nextKeyScalar, await Evaluate(anyDefinition));
                     }
 
                     continue;
@@ -381,7 +395,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Validate(nextKey, keyDefinition);
 
                 // Add the pair
-                var nextValue = Evaluate(valueDefinition);
+                var nextValue = await Evaluate(valueDefinition);
  
                 if(mappingDefinition.Get<MappingDefinition>().First().AzureVariableBlock && m_context.ExpressionValues["variables"] is DictionaryContextData vars) {
                     vars.Add(nextKey.ToString(), new StringContextData(nextValue.ToString()));

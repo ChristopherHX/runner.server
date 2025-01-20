@@ -73,7 +73,7 @@ namespace Runner.Server.Azure.Devops {
             if(rawvars is MappingToken mvars)
             {
                 var map = new MappingToken(rawvars.FileId, rawvars.Line, rawvars.Column);
-                foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mvars)) {
+                await foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mvars)) {
                     map.Add(x);
                 }
                 return map;
@@ -86,9 +86,9 @@ namespace Runner.Server.Azure.Devops {
                 }
                 return seq;
             }
-            return TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", rawvars, 0, rawvars.FileId);
+            return await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", rawvars, 0, rawvars.FileId);
 
-            static IEnumerable<KeyValuePair<ScalarToken, TemplateToken>> ProcessVariableMapping(IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, MappingToken mvars)
+            static async IAsyncEnumerable<KeyValuePair<ScalarToken, TemplateToken>> ProcessVariableMapping(IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, MappingToken mvars)
             {
                 for (int i = 0; i < mvars.Count; i++)
                 {
@@ -111,10 +111,10 @@ namespace Runner.Server.Azure.Devops {
                                 }
                             }
                         }
-                        var res = TemplateEvaluator.Evaluate(staticVarCtx, kv.Key is ExpressionToken ? "single-layer-workflow-mapping" : "workflow-value", evT, 0, kv.Key.FileId);
+                        var res = await TemplateEvaluator.EvaluateAsync(staticVarCtx, kv.Key is ExpressionToken ? "single-layer-workflow-mapping" : "workflow-value", evT, 0, kv.Key.FileId);
                         if (res is MappingToken r)
                         {
-                            foreach(var l in ProcessVariableMapping(vars, staticVarCtx, staticVars, r)) {
+                            await foreach(var l in ProcessVariableMapping(vars, staticVarCtx, staticVars, r)) {
                                 yield return l;
                             }
                         }
@@ -145,7 +145,7 @@ namespace Runner.Server.Azure.Devops {
                     if (staticVars != null && rawdef is ExpressionToken)
                     {
                         var s = new SequenceToken(rawdef.FileId, rawdef.Line, rawdef.Column) { rawdef };
-                        var res = TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", s, 0, rawdef.FileId);
+                        var res = await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", s, 0, rawdef.FileId);
                         if(res is SequenceToken st) {
                             await foreach(var t in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, st)) {
                                 yield return t;
@@ -166,7 +166,7 @@ namespace Runner.Server.Azure.Devops {
                                 break;
                             }
                         }
-                        var res = TemplateEvaluator.Evaluate(staticVarCtx, "single-layer-workflow-sequence", s, 0, rawdef.FileId);
+                        var res = await TemplateEvaluator.EvaluateAsync(staticVarCtx, "single-layer-workflow-sequence", s, 0, rawdef.FileId);
                         if(res is SequenceToken st) {
                             await foreach(var t in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, st)) {
                                 yield return t;
@@ -210,7 +210,7 @@ namespace Runner.Server.Azure.Devops {
                         if (skip)
                         {
                             var s = new SequenceToken(rawdef.FileId, rawdef.Line, rawdef.Column) { rawdef };
-                            var res = TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", s, 0, rawdef.FileId);
+                            var res = await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", s, 0, rawdef.FileId);
                             if(res is SequenceToken st) {
                                 await foreach(var t in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, st)) {
                                     yield return t;
@@ -240,7 +240,7 @@ namespace Runner.Server.Azure.Devops {
                     }
                     else if (template != null)
                     {
-                        var evalp = parameters != null && staticVarCtx != null ? TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : null;
+                        var evalp = parameters != null && staticVarCtx != null ? await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : null;
                         var file = await ReadTemplate(context, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                         var res = await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), staticVarCtx);
                         if (res is SequenceToken sq) {
@@ -248,7 +248,7 @@ namespace Runner.Server.Azure.Devops {
                                 yield return x;
                             }
                         } else if (res is MappingToken mq) {
-                            foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mq)) {
+                            await foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mq)) {
                                 var mt = new MappingToken(x.Key.FileId, x.Key.Line, x.Key.Column)
                                 {
                                     new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "name"), x.Key),
@@ -998,7 +998,7 @@ namespace Runner.Server.Azure.Devops {
                             {
                                 // var autoCompleteState = templateContext.AutoCompleteMatches;
                                 // templateContext.AutoCompleteMatches = new List<AutoCompleteEntry>();
-                                TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
+                                await TemplateEvaluator.EvaluateAsync(templateContext, fdef, val, 0, fileId);
                                 if(start != null) {
                                     foreach(var (tkn, sh) in GetPatterns(start.Value)
                                         .SelectMany(v => val.TraverseByPattern(cCtx.RawMapping, v.Item1).Select(t => (t, v.Item2))))
@@ -1136,7 +1136,7 @@ namespace Runner.Server.Azure.Devops {
                         }
                         if (fdef != null && val != null)
                         {
-                            TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
+                            await TemplateEvaluator.EvaluateAsync(templateContext, fdef, val, 0, fileId);
                             if(start != null) {
                                 foreach(var (tkn, sh) in GetPatterns(start.Value)
                                     .SelectMany(v => val.TraverseByPattern(cCtx.RawMapping, v.Item1).Select(t => (t, v.Item2))))
@@ -1544,7 +1544,7 @@ namespace Runner.Server.Azure.Devops {
                 templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
             }
 
-            var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
+            var evaluatedResult = await TemplateEvaluator.EvaluateAsync(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
             templateContext.Errors.Check();
             context.TraceWriter?.Verbose("{0}", evaluatedResult.ToContextData().ToJToken().ToString());
             return evaluatedResult.AssertMapping("root");
