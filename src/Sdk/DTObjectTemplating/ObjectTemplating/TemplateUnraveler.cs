@@ -895,6 +895,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             bool skip = false;
             bool metastate = false;
             Func<bool> shouldRun = () => {
+                using var _ = m_context.SkopedErrorLevel(false);
                 if(parentMappingState != null) {
                     if(parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip)) {
                         return skip;
