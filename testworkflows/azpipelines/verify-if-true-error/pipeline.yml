@@ -1,5 +1,5 @@
 # ExpectedException: TemplateValidationException
-# ExpectedMessage: IsNull is not expected
+# ExpectedMessage: Unrecognized named-value: 'parammeters'
 parameters:
 - name: resourceIds
   type: object
