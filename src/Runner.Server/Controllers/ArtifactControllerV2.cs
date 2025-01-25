@@ -77,7 +77,7 @@ namespace Runner.Server.Controllers
             if(string.IsNullOrEmpty(sig) || !VerifySignature(id, sig)) {
                 return NotFound();
             }
-                        if(comp == "block" || comp == "appendBlock" || comp == null) {
+            if(comp == "block" || comp == "appendBlock" || comp == null) {
                 var record = await _context.ArtifactRecords.FindAsync(id);
                 var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
                 Directory.CreateDirectory(_targetFilePath);
