@@ -152,8 +152,8 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
                     if ((c >= 'a' && c <= 'z') ||
                         (c >= 'A' && c <= 'Z') ||
                         (c >= '0' && c <= '9') ||
-                        !isLegacy && c == '_' ||
-                        c == '-')
+                        c == '_' ||
+                        !isLegacy && c == '-')
                     {
                         // OK
                     }
