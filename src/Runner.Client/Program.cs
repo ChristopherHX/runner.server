@@ -359,7 +359,7 @@ namespace Runner.Client
 #endif
                                     }
                                     await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, runToken.Token);
-                                    break; 
+                                    break;
                                 }
                             } catch {
                                 if(execAttempt++ <= 3) {
