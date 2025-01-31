@@ -359,7 +359,7 @@ namespace Runner.Client
 #endif
                                     }
                                     await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, runToken.Token);
-                                    break;
+                                    break; 
                                 }
                             } catch {
                                 if(execAttempt++ <= 3) {
@@ -2002,9 +2002,11 @@ namespace Runner.Client
                                             }
                                         }
                                     }
-                                    var githubToken = await GhCliAuth.GetToken(null, new TraceWriter(parameters), CancellationToken.None);
-                                    if(githubToken != null) {
-                                        wsecrets.Add($"github_token={githubToken}");
+                                    if(parameters.Event != "azpipelines") {
+                                        var githubToken = await GhCliAuth.GetToken(null, new TraceWriter(parameters), CancellationToken.None);
+                                        if(githubToken != null) {
+                                            wsecrets.Add($"github_token={githubToken}");
+                                        }
                                     }
                                     if(parameters.Secrets?.Length > 0) {
                                         for(int i = 0; i < parameters.Secrets.Length; i++ ) {
