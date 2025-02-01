@@ -18,6 +18,6 @@ jobs:
   - bash: echo $(test)
 - job: job3
   steps:
-  - ${{ if ne(variables['test'], 'val3') }}:
+  - ${{ if ne(variables['test'], 'val0') }}:
     - assert: failure
   - bash: echo $(test)
