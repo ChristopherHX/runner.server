@@ -92,7 +92,7 @@ function activate(context) {
 							var result = null;
 							while(true) {
 								try {
-									result = handle.askForInput ? (() => {
+									result = handle.askForInput ? await (() => {
 										let inputbox = vscode.window.createInputBox();
 										var ret = new Promise((resolve, reject) => {
 											inputbox.ignoreFocusOut = true;
