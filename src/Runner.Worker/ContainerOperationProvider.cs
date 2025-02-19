@@ -578,7 +578,7 @@ namespace GitHub.Runner.Worker
 
         private async Task AssertCompatibleOS(IExecutionContext executionContext)
         {
-            if (executionContext.Global.Variables.GetBoolean("system.runner.server.allow_dind") ?? false == false) {
+            if ((executionContext.Global.Variables.GetBoolean("system.runner.server.allow_dind") ?? false) == false) {
                 // Check whether we are inside a container.
                 // Our container feature requires to map working directory from host to the container.
                 // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
