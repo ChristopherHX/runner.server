@@ -440,6 +440,13 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
                         Trace.Info($"Action post node.js file: {nodeAction.Post ?? "N/A"}.");
                     }
+                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Go)
+                    {
+                        var nodeAction = definition.Data.Execution as GoActionExecutionData;
+                        Trace.Info($"Action pre go file: {nodeAction.Pre ?? "N/A"}.");
+                        Trace.Info($"Action go file: {nodeAction.Main}.");
+                        Trace.Info($"Action post go file: {nodeAction.Post ?? "N/A"}.");
+                    }
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Plugin)
                     {
                         var pluginAction = definition.Data.Execution as PluginActionExecutionData;

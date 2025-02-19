@@ -101,8 +101,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             var targetBaseName = target;
-            target = Path.Combine(ActionDirectory, target);
-            ArgUtil.File(target, nameof(target));
+            target = Path.Combine(ActionDirectory, target + ".out");
 
             // Resolve the working directory.
             string workingDirectory = ExecutionContext.GetGitHubContext("workspace");
@@ -110,12 +109,6 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
-
-            // Format the arguments passed to node.
-            // 1) Wrap the script file path in double quotes.
-            // 2) Escape double quotes within the script file path. Double-quote is a valid
-            // file name character on Linux.
-            string arguments = StepHost.ResolvePathForStepHost(ExecutionContext, StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
 
             // It appears that node.exe outputs UTF8 when not in TTY mode.
             Encoding outputEncoding = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? Encoding.UTF8 : null;
@@ -138,13 +131,15 @@ namespace GitHub.Runner.Worker.Handlers
                     standardInInput: null,
                     cancellationToken: ExecutionContext.CancellationToken);
 
+                ArgUtil.File(target, nameof(target));
+
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
                 Task<int> step = StepHost.ExecuteAsync(ExecutionContext,
                                                 workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
                                                 fileName: StepHost.ResolvePathForStepHost(ExecutionContext, target),
-                                                arguments: arguments,
+                                                arguments: string.Empty,
                                                 environment: Environment,
                                                 requireExitCodeZero: false,
                                                 outputEncoding: outputEncoding,
