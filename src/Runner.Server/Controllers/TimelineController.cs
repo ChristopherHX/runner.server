@@ -26,25 +26,11 @@ namespace Runner.Server.Controllers
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class TimelineController : VssControllerBase
     {
-        public static ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)> dict = new ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)>();
         private SqLiteDb _context;
 
         public TimelineController(SqLiteDb context, IConfiguration conf) : base(conf)
         {
             _context = context;
-        }
-
-        internal void SyncLiveLogsToDb(Guid timelineId) {
-            if(dict.TryRemove(timelineId, out var entry)) {
-                foreach(var rec in (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList()) {
-                    if(rec.Log == null && entry.Item2.TryGetValue(rec.Id, out var value)) {
-                        var log = new TaskLog() {  };
-                        _context.Logs.Add(new SqLiteDb.LogStorage() { Ref = log, Content = string.Join('\n', from line in value where line != null select line.Line) });
-                        rec.Log = log;
-                    }
-                }
-                _context.SaveChanges();
-            }
         }
 
         [HttpGet("{timelineId}")]
