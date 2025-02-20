@@ -6756,10 +6756,10 @@ namespace Runner.Server.Controllers
                         var timeline2 = _webConsoleLogService.GetTimeLine(timelineId2);
                         if(timeline2?.Value?.Any() == true && (_cache.TryGetValue(timeline2.Value[0].Id, out Job job) || initializingJobs.TryGetValue(timeline2.Value[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2 }, serializerSettings)));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2?.Value }, serializerSettings)));
                         } else if(sendLostLogEvents) {
                             // For debugging purposes of missing logs in Runner.Client
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2 }, serializerSettings)));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2?.Value }, serializerSettings)));
                         }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
