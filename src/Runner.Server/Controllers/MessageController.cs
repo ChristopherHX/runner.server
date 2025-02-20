@@ -6734,43 +6734,44 @@ namespace Runner.Server.Controllers
                     List<long> runid = new List<long>();
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
+                    var serializerSettings = new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}};
                     Func<Job, Task> updateJob = async jobInstance => {
                         if(jobCache.TryAdd(jobInstance.JobId, jobInstance)) {
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(jobInstance, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(jobInstance, serializerSettings)));
                         } else {
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job_update", JsonConvert.SerializeObject(jobInstance, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job_update", JsonConvert.SerializeObject(jobInstance, serializerSettings)));
                         }
                     };
                     WebConsoleLogService.LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
                         var timeline = _webConsoleLogService.GetTimeLine(timelineId2);
                         if (timeline?.Value?.Any() == true && (_cache.TryGetValue(timeline.Value[0].Id, out Job job) || initializingJobs.TryGetValue(timeline.Value[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, serializerSettings)));
                         } else if(sendLostLogEvents) {
                             // For debugging purposes of missing logs in Runner.Client
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, serializerSettings)));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
                         var timeline2 = _webConsoleLogService.GetTimeLine(timelineId2);
                         if(timeline2?.Value?.Any() == true && (_cache.TryGetValue(timeline2.Value[0].Id, out Job job) || initializingJobs.TryGetValue(timeline2.Value[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline2 }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2 }, serializerSettings)));
                         } else if(sendLostLogEvents) {
                             // For debugging purposes of missing logs in Runner.Client
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline2 }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2 }, serializerSettings)));
                         }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
                         if(runid.Contains(_runid)) {
-                            chwriter.WriteAsync(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules, repository, format, path }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            chwriter.WriteAsync(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules, repository, format, path }, serializerSettings)));
                         }
                     };
 
                     FinishJobController.JobCompleted completed = async (ev) => {
                         if((_cache.TryGetValue(ev.JobId, out Job job) || initializingJobs.TryGetValue(ev.JobId, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, serializerSettings)));
                         }
                     };
 
@@ -6779,7 +6780,7 @@ namespace Runner.Server.Controllers
                             if(runid.Remove(workflow_.runid)) {
                                 var empty = runid.Count == 0;
                                 Action delay = async () => {
-                                    await chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(workflow_, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                                    await chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(workflow_, serializerSettings)));
                                     if(empty) {
                                         // await Task.Delay(100);
                                         await chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
@@ -6821,7 +6822,7 @@ namespace Runner.Server.Controllers
                                 if(response.skipped || response.failed) {
                                     runid.Remove(response.run_id);
                                     if(response.failed) {
-                                        chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                                        chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, serializerSettings)));
                                     }
                                 }
                             }

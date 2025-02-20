@@ -10,10 +10,15 @@ using Runner.Server.Models;
 
 namespace Runner.Server.Services
 {
-    public class WebConsoleLogService(IServiceProvider provider)
+    public class WebConsoleLogService
     {
         private readonly ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)> _dict = new();
-        private readonly IServiceProvider _provider = provider;
+        private readonly IServiceProvider _provider;
+
+        public WebConsoleLogService(IServiceProvider provider)
+        {
+            _provider = provider;
+        }
 
         public delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
         public event LogFeedEvent LogFeed;
