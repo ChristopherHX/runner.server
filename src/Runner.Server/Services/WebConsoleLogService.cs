@@ -23,16 +23,10 @@ namespace Runner.Server.Services
         public delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
         public event LogFeedEvent LogFeed;
         
-        public (Guid, VssJsonCollectionWrapper<List<TimelineRecord>>) CreateNewRecord(Guid timelineId, TimelineRecord record) {
+        public (Guid, List<TimelineRecord>) CreateNewRecord(Guid timelineId, TimelineRecord record) {
             var list = new List<TimelineRecord> { record };
             _dict[timelineId] = (list, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>());
-            return (timelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(list));
-        }
-
-        public (Guid, VssJsonCollectionWrapper<List<TimelineRecord>>) CreateNewJob(Guid timelineId, Guid id, string prejobdisplayname) {
-            var list = new List<TimelineRecord> { new() { Id = id, Name = prejobdisplayname } };
-            _dict[timelineId] = (list, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>());
-            return (timelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(list));
+            return (timelineId, list);
         }
 
         public IEnumerable<TimelineRecordLogLine> GetLogLines(Guid timelineId, Guid recordId)
@@ -51,10 +45,10 @@ namespace Runner.Server.Services
             return null;
         }
 
-        public VssJsonCollectionWrapper<List<TimelineRecord>> GetTimeLine(Guid timelineId)
+        public List<TimelineRecord> GetTimeLine(Guid timelineId)
         {
             if(_dict.TryGetValue(timelineId, out var rec)) {
-                return new VssJsonCollectionWrapper<List<TimelineRecord>>(rec.Item1);
+                return rec.Item1;
             }
             return null;
         }

@@ -6744,7 +6744,7 @@ namespace Runner.Server.Controllers
                     };
                     WebConsoleLogService.LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
                         var timeline = _webConsoleLogService.GetTimeLine(timelineId2);
-                        if (timeline?.Value?.Any() == true && (_cache.TryGetValue(timeline.Value[0].Id, out Job job) || initializingJobs.TryGetValue(timeline.Value[0].Id, out job)) && runid.Contains(job.runid)) {
+                        if (timeline?.Any() == true && (_cache.TryGetValue(timeline[0].Id, out Job job) || initializingJobs.TryGetValue(timeline[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, serializerSettings)));
                         } else if(sendLostLogEvents) {
@@ -6754,12 +6754,12 @@ namespace Runner.Server.Controllers
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
                         var timeline2 = _webConsoleLogService.GetTimeLine(timelineId2);
-                        if(timeline2?.Value?.Any() == true && (_cache.TryGetValue(timeline2.Value[0].Id, out Job job) || initializingJobs.TryGetValue(timeline2.Value[0].Id, out job)) && runid.Contains(job.runid)) {
+                        if(timeline2?.Any() == true && (_cache.TryGetValue(timeline2[0].Id, out Job job) || initializingJobs.TryGetValue(timeline2[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2?.Value }, serializerSettings)));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2 }, serializerSettings)));
                         } else if(sendLostLogEvents) {
                             // For debugging purposes of missing logs in Runner.Client
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2?.Value }, serializerSettings)));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline = timeline2 }, serializerSettings)));
                         }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
@@ -7342,11 +7342,11 @@ namespace Runner.Server.Controllers
             new FinishJobController(_cache, _context, Configuration, _webConsoleLogService).InvokeJobCompleted(ev);
         }
 
-        private Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch, bool outOfSyncTimeLineUpdate = false) {
+        private Task<List<TimelineRecord>> UpdateTimeLine(Guid timelineId, List<TimelineRecord> patch, bool outOfSyncTimeLineUpdate = false) {
             return new TimelineController(_context, Configuration).UpdateTimeLine(timelineId, patch, outOfSyncTimeLineUpdate);
         }
 
-        private Task<IActionResult> UpdateTimeLine((Guid, VssJsonCollectionWrapper<List<TimelineRecord>>) pair, bool outOfSyncTimeLineUpdate = false) {
+        private Task<List<TimelineRecord>> UpdateTimeLine((Guid, List<TimelineRecord>) pair, bool outOfSyncTimeLineUpdate = false) {
             return new TimelineController(_context, Configuration).UpdateTimeLine(pair.Item1, pair.Item2, outOfSyncTimeLineUpdate);
         }
 

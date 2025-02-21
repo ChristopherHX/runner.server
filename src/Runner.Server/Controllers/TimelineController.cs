@@ -164,14 +164,14 @@ namespace Runner.Server.Controllers
         [SwaggerResponse(200, type: typeof(VssJsonCollectionWrapper<List<TimelineRecord>>))]
         public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, [FromBody, Vss] VssJsonCollectionWrapper<List<TimelineRecord>> patch)
         {
-            return await UpdateTimeLine(timelineId, patch, true);
+            return await Ok(new VssJsonCollectionWrapper<List<TimelineRecord>>(await UpdateTimeLine(timelineId, patch?.Value, true)));
         }
 
-        internal async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch, bool outOfSyncTimeLineUpdate = false)
+        internal async Task<List<TimelineRecord>> UpdateTimeLine(Guid timelineId, List<TimelineRecord> patch, bool outOfSyncTimeLineUpdate = false)
         {
             var old = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
             var records = old.ToList();
-            records.AddRange(patch.Value.Select((r, _) => {
+            records.AddRange(patch.Select((r, _) => {
                 r.TimelineId = timelineId;
                 if(r.Log != null) {
                     var logId = r.Log.Id;
@@ -212,7 +212,7 @@ namespace Runner.Server.Controllers
             
             await _context.AddRangeAsync(from rec in records where !old.Contains(rec) select rec);
             await _context.SaveChangesAsync();
-            return await Ok(patch);
+            return patch;
         }
     }
 }
