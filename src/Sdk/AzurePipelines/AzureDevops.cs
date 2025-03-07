@@ -1448,7 +1448,6 @@ namespace Runner.Server.Azure.Devops {
                     var file = await ReadTemplate(childContext, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                     IDictionary<string, VariableValue> rvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
                     var vartkn = (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First();
-                    // Problem multiple variable file reads
                     await ParseVariables(childContext.ChildContext(file, template), rvars, vartkn, tcontext);
                     foreach(var kv in rvars) {
                         if(kv.Value.IsGroup || kv.Value.IsGroupMember) {
