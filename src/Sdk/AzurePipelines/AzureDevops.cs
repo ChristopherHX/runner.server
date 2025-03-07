@@ -1447,18 +1447,29 @@ namespace Runner.Server.Azure.Devops {
                     var evalp = parameters;
                     var file = await ReadTemplate(childContext, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                     IDictionary<string, VariableValue> rvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    await ParseVariables(childContext.ChildContext(file, template), rvars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), tcontext);
+                    var vartkn = (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First();
+                    // Problem multiple variable file reads
+                    await ParseVariables(childContext.ChildContext(file, template), rvars, vartkn, tcontext);
                     foreach(var kv in rvars) {
                         if(kv.Value.IsGroup || kv.Value.IsGroupMember) {
                             continue;
                         }
                         vars[kv.Key] = new StringContextData(kv.Value.Value);
                     }
+                    if(vartkn is SequenceToken sequenceToken) {
+                        return sequenceToken;
+                    } else if(vartkn is MappingToken mappingToken) {
+                        return mappingToken.Select(kv => new MappingToken(null, null, null) {
+                            new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "name"), kv.Key),
+                            new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "value"), kv.Value)
+                        });
+                    }
                 }
                 else
                 {
                     vars[name] = new StringContextData(value);
                 }
+                return null;
             };
             if(strictParametersCheck) {
                 templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
