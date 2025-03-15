@@ -14,7 +14,7 @@ namespace Runner.Server.Azure.Devops
         [Theory]
         [ClassData(typeof(AzPipelineTestWorkflows))]
         public void ValidateYamlFormat(TestWorkflow workflow)
-        { 
+        {
             // arrange
             Context.SetWorkingDirectory(TestUtil.GetAzPipelineFolder(workflow.WorkingDirectory));
             foreach(var localRepo in workflow.LocalRepository)
