@@ -107,7 +107,7 @@ namespace Runner.Server.Azure.Devops
             {
                 if (!list.Any(x => x.Label?.Label == item))
                 { 
-                    throw new Exception($"Expected AutoCompletion '{item}' not found");
+                    throw new Exception($"Expected AutoCompletion '{item}' not found in " + string.Join(", ", list.Select(x => x.Label?.Label)));
                 }
             }
         }
