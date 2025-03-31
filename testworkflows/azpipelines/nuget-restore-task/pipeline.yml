@@ -10,3 +10,6 @@ stages:
       inputs:
         feedsToUse: config
         nugetConfigPath: nuget.config
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    - script: echo Skipped on non-Windows
+      condition: ne( variables['Agent.OS'], 'Windows_NT' )
