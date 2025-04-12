@@ -646,7 +646,7 @@ function activate(context) {
 					var task = tasks.find(t => t.name === name);
 					if(task) {
 						var { filename } = await locatePipeline(vsVars(task.definition.program), null, null);
-						let quiet = task.definition.preview ? "-q" : "";
+						let quiet = task.definition.preview ? " -q" : "";
 						await vscode.env.clipboard.writeText(`Runner.Client azexpand${quiet} -W ${cliQuote(filename)} ${task.definition.parameters ? Object.entries(task.definition.parameters).reduce((p, c) => `${p} --input ${cliQuote(`${c[0]}=${typeof c[1] === 'object' ? JSON.stringify(c[1]) : c[1]}`)}`, "") : ""}${task.definition.variables ? Object.entries(task.definition.variables).reduce((p, c) => `${p} --var ${cliQuote(`${c[0]}=${c[1]}'`)}`, "") : ""}${task.definition.repositories ? Object.entries(task.definition.repositories).reduce((p, c) => `${p} --local-repository ${cliQuote(`${c[0]}=${c[1]}`)}`, "") : ""}`);
 						await vscode.window.showInformationMessage("Copied to clipboard");
 						return;

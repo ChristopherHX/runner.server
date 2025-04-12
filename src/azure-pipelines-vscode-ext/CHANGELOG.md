@@ -1,3 +1,6 @@
+### v0.3.1
+- fix -q flag had no space between cli command and hypen
+
 ### v0.3.0 (Preview)
 - fix auto complete regression for block mappings
 - add auto completion tests for debugging purposes
