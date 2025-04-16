@@ -98,3 +98,6 @@ jobs:
         if: github.event_name == 'push'
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Run azure-pipelines-vscode-ext Tests
+        run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || ''}}npm test
+        working-directory: src/azure-pipelines-vscode-ext
