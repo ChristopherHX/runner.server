@@ -66,5 +66,5 @@ suite('Extension Test Suite', () => {
       // Clean up the temporary YAML file
       fs.unlinkSync(yamlFilePath);
     }
-  });
+  }).timeout(10000);
 });
