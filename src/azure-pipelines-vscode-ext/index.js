@@ -214,6 +214,11 @@ function activate(context) {
 				}
 			},
 			requestParameter: async (handle, name, type, values, def) => {
+				if(type === null) {
+            		// implementation detail to stop the task for removed parameters
+					handle.stopTask = true;
+					return;
+				}
 				if(!handle.askForInput) {
 					if(!def || name in handle.parameters) {
 						handle.stopTask = true;

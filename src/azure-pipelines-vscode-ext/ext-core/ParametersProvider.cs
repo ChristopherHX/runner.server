@@ -21,6 +21,10 @@ public class ParametersProvider : IParametersProvider {
 
     public Task ReportInvalidParameterValue(string name, string type, string message)
     {
+        if(type == null) {
+            // implementation detail to stop the task for removed parameters
+            return Interop.RequestParameter(handle, name, type, null, null).ContinueWith(t => {});
+        }
         return Interop.Message(handle, 2, $"Provided value of {name} is not a valid {type}: {message}");
     }
 }

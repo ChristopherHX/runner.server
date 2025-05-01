@@ -1364,6 +1364,10 @@ namespace Runner.Server.Azure.Devops {
                     foreach (var unexpectedParameter in cparameters.Where(kv => !parametersData.ContainsKey(kv.Key)))
                     {
                         templateContext.Error(unexpectedParameter.Value ?? parameters, $"Unexpected parameter '{unexpectedParameter.Key}'");
+                        if(context.ParametersProvider != null)
+                        {
+                            await context.ParametersProvider.ReportInvalidParameterValue(unexpectedParameter.Key, null, $"Unexpected parameter '{unexpectedParameter.Key}'");
+                        }
                     }
                 }
             }
