@@ -4,16 +4,18 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Tasks;
 using System.Linq;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using Newtonsoft.Json;
 
-public class RequiredParametersProvider : IRequiredParametersProvider {
+public class ParametersProvider : IParametersProvider {
     JSObject handle;
 
-    public RequiredParametersProvider(JSObject handle) {
+    public ParametersProvider(JSObject handle) {
         this.handle = handle;
     }
 
-    public async Task<TemplateToken> GetRequiredParameter(string name, string type, IEnumerable<string> enumerable) {
-        var result = await Interop.RequestRequiredParameter(handle, name, type, enumerable?.ToArray());
+    public async Task<TemplateToken> GetParameter(string name, string type, IEnumerable<string> enumerable, TemplateToken defaultValue) {
+        var result = await Interop.RequestParameter(handle, name, type, enumerable?.ToArray(), JsonConvert.SerializeObject(defaultValue?.ToContextData()?.ToJToken()));
         return AzurePipelinesUtils.ConvertStringToTemplateToken(result);
     }
 
