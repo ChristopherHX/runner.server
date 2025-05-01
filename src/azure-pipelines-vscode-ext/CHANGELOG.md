@@ -6,6 +6,7 @@
 - the task stops now
   - if you change the type of a parameter while the task is in watch mode and your own input is not applicable
   - if you add a required parameter
+- allow to copy the default validate and expand task as Cli Command
 
 ### v0.3.1 (Preview)
 - fix -q flag had no space between cli command and hypen
