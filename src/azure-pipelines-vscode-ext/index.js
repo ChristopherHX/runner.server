@@ -265,7 +265,7 @@ function activate(context) {
 							acceptYAML = true;
 							break;
 					}
-					let rawValue = def ? acceptYAML ? def : JSON.parse(def) : undefined;
+					let rawValue = def ? acceptYAML ? def : JSON.parse(def).toString() : undefined;
 					value = await vscode.window.showInputBox({
 						ignoreFocusOut: true,
 						placeHolder: rawValue || "value",
