@@ -64,17 +64,21 @@ jobs:
       - name: Publish Pre-Release VS Marketplace
         env:
           HAS_VSCE_TOKEN: ${{ secrets.VSCE_TOKEN && '1' || '' }}
-        if: env.HAS_VSCE_TOKEN
+        if: |
+          !contains(github.event_name, 'pull') && env.HAS_VSCE_TOKEN
         run: |
           echo "Publishing Pre-Release"
           node_modules/.bin/vsce publish --skip-duplicate -p ${{ secrets.VSCE_TOKEN }} -i azure-pipelines-vscode-ext${{ (github.event_name != 'workflow_dispatch' || inputs.pre-release) && '-pre-release' || '' }}.vsix
+        working-directory: src/azure-pipelines-vscode-ext
       - name: Publish Pre-Release Open VSX
         env:
           HAS_OVSX_TOKEN: ${{ secrets.OVSX_TOKEN && '1' || '' }}
-        if: env.HAS_OVSX_TOKEN
+        if: |
+          !contains(github.event_name, 'pull') && env.HAS_OVSX_TOKEN
         run: |
           echo "Publishing Pre-Release"
           npx --yes publish --skip-duplicate azure-pipelines-vscode-ext${{ (github.event_name != 'workflow_dispatch' || inputs.pre-release) && '-pre-release' || '' }}.vsix -p ${{ secrets.OVSX_TOKEN }}
+        working-directory: src/azure-pipelines-vscode-ext
       - name: Run azure-pipelines-vscode-ext Tests
         run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || ''}}npm test
         working-directory: src/azure-pipelines-vscode-ext      
