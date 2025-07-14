@@ -3,6 +3,14 @@ on:
     branches:
     - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      pre-release:
+        description: 'Create a pre-release'
+        required: true
+        default: true
+        type: boolean
+
 jobs:
   deploy:
     # Allow one concurrent deployment
@@ -41,8 +49,25 @@ jobs:
           dotnet workload install wasm-tools
           npm run build
           node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
+
+          # Generate unique version using existing major.minor
+          NEW_VERSION=$(node -p "
+            require('./package.json').version.replace(/\.\d+$/, '.${{ github.run_id }}')
+          ")
+
+          # Update package.json version
+          npm version $NEW_VERSION --no-git-tag-version
+
+          # Create vsix for artifact
           node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
+      - name: Publish Pre-Release VS Marketplace
+        env:
+          HAS_VSCE_TOKEN: ${{ secrets.VSCE_TOKEN && '1' || '' }}
+        if: env.HAS_VSCE_TOKEN
+        run: |
+          echo "Publishing Pre-Release"
+          node_modules/.bin/vsce publish --skip-duplicate -p ${{ secrets.VSCE_TOKEN }} -i azure-pipelines-vscode-ext${{ (github.event_name != 'workflow_dispatch' || inputs.pre-release) && '-pre-release' || '' }}.vsix
       - name: Run azure-pipelines-vscode-ext Tests
         run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || ''}}npm test
         working-directory: src/azure-pipelines-vscode-ext      
