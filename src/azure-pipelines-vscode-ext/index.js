@@ -1137,11 +1137,11 @@ function activate(context) {
 					if(self?.stopTask) {
 						task.warn("Parameters changed, please rerun the task when done");
 						let rerun = "Update and Rerun";
+						self.collection.clear();
 						if(await vscode.window.showWarningMessage("Pipeline Parameters changed", rerun) === rerun) {
 							self.stopTask = false;
 							askForInput = true;
 							waiting = true;
-							self.collection.clear();
 						}
 					}
 					if(!args.watch || self?.stopTask) {
