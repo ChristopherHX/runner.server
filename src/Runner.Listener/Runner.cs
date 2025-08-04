@@ -876,15 +876,15 @@ namespace GitHub.Runner.Listener
 
         private async Task CheckOAuthTokenClaimsAsync(CancellationToken token)
         {
-            string[] expectedClaims =
-            [
+            string[] expectedClaims = new string[]
+            {
                 "owner_id",
                 "runner_id",
                 "runner_group_id",
                 "scale_set_id",
                 "is_ephemeral",
                 "labels"
-            ];
+            };
 
             try
             {
@@ -949,12 +949,15 @@ namespace GitHub.Runner.Listener
                                 var v2Claims = v2Jwt.ExtractClaims();
 
                                 // Log extracted claims for debugging
-                                Trace.Verbose($"Baseline token expected claims: {string.Join(", ", baselineClaims
+                                var baselineClaimsString = string.Join(", ", baselineClaims
                                     .Where(c => expectedClaims.Contains(c.Type.ToLowerInvariant()))
-                                    .Select(c => $"{c.Type}:{c.Value}"))}");
-                                Trace.Verbose($"V2 token expected claims: {string.Join(", ", v2Claims
+                                    .Select(c => $"{c.Type}:{c.Value}"));
+                                Trace.Verbose($"Baseline token expected claims: {baselineClaimsString}");
+                                
+                                var v2ClaimsString = string.Join(", ", v2Claims
                                     .Where(c => expectedClaims.Contains(c.Type.ToLowerInvariant()))
-                                    .Select(c => $"{c.Type}:{c.Value}"))}");
+                                    .Select(c => $"{c.Type}:{c.Value}"));
+                                Trace.Verbose($"V2 token expected claims: {v2ClaimsString}");
 
                                 foreach (var claim in expectedClaims)
                                 {
@@ -965,8 +968,9 @@ namespace GitHub.Runner.Listener
                                         var v2Claim = v2Claims.FirstOrDefault(c => c.Type.ToLowerInvariant() == claim);
                                         if (v2Claim?.Value != baselineClaim.Value)
                                         {
+                                            var expectedClaimString = $"Expected claim {baselineClaim.Type}:{baselineClaim.Value} does not match {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}";
                                             Trace.Info($"Token Claim mismatch between two issuers. Expected: {baselineClaim.Type}:{baselineClaim.Value}. Actual: {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
-                                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Expected claim {baselineClaim.Type}:{baselineClaim.Value} does not match {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
+                                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), expectedClaimString);
                                             break;
                                         }
                                     }
