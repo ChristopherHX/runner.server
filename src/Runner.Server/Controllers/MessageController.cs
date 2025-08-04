@@ -750,7 +750,7 @@ namespace Runner.Server.Controllers
                     var fileContent = content ?? System.IO.File.ReadAllText(fileRelativePath);
                     using (var stringReader = new StringReader(fileContent))
                     {
-                        var yamlObjectReader = new YamlObjectReader(fileId, stringReader, workflowContext.HasFeature("system.runner.server.yaml.anchors"), workflowContext.HasFeature("system.runner.server.yaml.fold"), workflowContext.HasFeature("system.runner.server.yaml.merge"));
+                        var yamlObjectReader = new YamlObjectReader(fileId, stringReader, workflowContext.HasFeature("system.runner.server.yaml.anchors", true /* https://github.com/actions/runner/issues/1182#issuecomment-3150797791 now true */), workflowContext.HasFeature("system.runner.server.yaml.fold"), workflowContext.HasFeature("system.runner.server.yaml.merge"));
                         token = TemplateReader.Read(templateContext, workflowContext.HasFeature("system.runner.server.strictValidation") ? "workflow-root-strict" : "workflow-root", yamlObjectReader, fileId, out _);
                     }
 

@@ -1,0 +1,12 @@
+on: push
+jobs:
+  job-with-condition:
+    runs-on: &label
+      self-hosted
+    if: success() || success('joba', 'jobb') || failure() || failure('joba', 'jobb') || always() || cancelled()
+    steps: &steps
+    - run: exit 0
+  then:
+    runs-on: *label
+    steps:
+    - run: exit 0
