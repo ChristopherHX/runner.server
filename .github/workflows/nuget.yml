@@ -167,7 +167,7 @@ jobs:
         Runner.Client -C testworkflows/workflow_ref_and_job_workflow_ref
         Runner.Client -C testworkflows/reusable-workflows-secrets-inherit-with-required-secrets -s TEST=topsecret -s OPT=testsec
         Runner.Client -C testworkflows/inherit_vars --var ACTIONS_STEP_DEBUG=true
-        Runner.Client -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true --runner-version v2.311.0
+        Runner.Client -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true --runner-version v2.327.1
         Runner.Client -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true
         Runner.Client -C testworkflows/cache-save-restore-order-tests -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true
         Runner.Client --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
