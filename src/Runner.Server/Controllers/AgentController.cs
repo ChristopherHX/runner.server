@@ -99,6 +99,10 @@ namespace Runner.Server.Controllers
                 }
                 agent.TaskAgent.ProvisioningState = tagent.ProvisioningState;
                 agent.TaskAgent.Enabled = tagent.Enabled;
+                // Runner.Listener <= 2.323.0 cannot connect if RequireFipsCryptography is true and this has been changed to be true by default
+                // This Property is used to override the default value
+                // https://github.com/ChristopherHX/runner.server/pull/626
+                agent.Properties.Add("RequireFipsCryptography", "false");
                 _context.SaveChanges();
                 tagent = agent.TaskAgent;
             }

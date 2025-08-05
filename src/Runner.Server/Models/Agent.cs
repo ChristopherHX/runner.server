@@ -62,6 +62,10 @@ namespace Runner.Server.Models
                     _agent.Capabilities.Add(new Capability() { Name = kv.Key, Value = kv.Value });
                 }
             }
+            // Runner.Listener <= 2.323.0 cannot connect if RequireFipsCryptography is true and this has been changed to be true by default
+            // This Property is used to override the default value
+            // https://github.com/ChristopherHX/runner.server/pull/626
+            agent.Properties.Add("RequireFipsCryptography", "false");
             db.Agents.Add(_agent);
             return _agent;
         }
