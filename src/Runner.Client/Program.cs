@@ -367,7 +367,7 @@ namespace Runner.Client
                                 {
                                     WriteLogMessage(parameters, "error", "Failed to start actions runner after 3 attempts");
                                     int delattempt = 1;
-                                    while (true)
+                                    while (!parameters.KeepRunnerDirectory)
                                     {
                                         try
                                         {
@@ -399,7 +399,7 @@ namespace Runner.Client
                         } else {
                             WriteLogMessage(parameters, "error", "Failed to auto-configure actions runner after 3 attempts");
                             int delattempt = 1;
-                            while(true) {
+                            while(!parameters.KeepRunnerDirectory) {
                                 try {
                                     Directory.Delete(tmpdir, true);
                                     break;
@@ -660,7 +660,7 @@ namespace Runner.Client
                                     {
                                         WriteLogMessage(parameters, "error", "Failed to start actions runner after 3 attempts");
                                         int delattempt = 1;
-                                        while (true)
+                                        while (!parameters.KeepRunnerDirectory)
                                         {
                                             try
                                             {
@@ -697,7 +697,7 @@ namespace Runner.Client
                         {
                             WriteLogMessage(parameters, "error", "Failed to auto-configure actions runner after 3 attempts");
                             int delattempt = 1;
-                            while (true)
+                            while (!parameters.KeepRunnerDirectory)
                             {
                                 try
                                 {
