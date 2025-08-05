@@ -70,7 +70,8 @@ namespace YamlDotNet.Core
                 events.Add(cevent);
             }
 
-            if(yamlMerge) {
+            if (yamlMerge)
+            {
                 // Disable Merge Operator by default
                 foreach (var node in events)
                 {
@@ -95,7 +96,10 @@ namespace YamlDotNet.Core
                     }
                 }
             }
+            // Broken here already
+            DumpState();
             events.CleanMarked();
+            DumpState();
             foreach (var node in events)
             {
                 var m_current = node.Value;
@@ -120,9 +124,19 @@ namespace YamlDotNet.Core
                     // Verify not using achors
                     if (sequenceStart.Anchor != null)
                     {
-                        node.Value = new SequenceStart(null, sequenceStart.Tag, sequenceStart.IsImplicit, sequenceStart.Style, sequenceStart.Start, sequenceStart.End);   
+                        node.Value = new SequenceStart(null, sequenceStart.Tag, sequenceStart.IsImplicit, sequenceStart.Style, sequenceStart.Start, sequenceStart.End);
                     }
                 }
+            }
+            DumpState();
+        }
+
+        private void DumpState()
+        {
+            List<string> evs = new List<string>();
+            foreach (var reference in events)
+            {
+                evs.Add(reference.Value.ToString());
             }
         }
 
@@ -181,6 +195,7 @@ namespace YamlDotNet.Core
         private bool HandleAnchorAlias2(LinkedListNode<ParsingEvent> node, LinkedListNode<ParsingEvent> anchorNode, AnchorAlias anchorAlias)
         {
             var mergedEvents = GetEvents(anchorAlias.Value).ToArray();
+            // Broken here already
 
             events.AddAfter(node, mergedEvents);
             events.MarkDeleted(anchorNode);
@@ -225,17 +240,18 @@ namespace YamlDotNet.Core
         {
             var cloner = new ParsingEventCloner();
             var nesting = 0;
-            bool prev = true;
+            bool shouldStop = false;
 
             return events.FromAnchor(anchor)
                 .Select(e => e.Value)
                 .TakeWhile(e => {
-                    var now = (nesting += e.NestingIncrease) >= 1;
-                    if(!now && prev) {
-                        prev = false;
-                        return true;
+                    if (shouldStop)
+                    {
+                        return false;
                     }
-                    return now;
+                    // We want to stop after the closing pair
+                    shouldStop |= (nesting += e.NestingIncrease) <= 0;
+                    return true;
                 })
                 .Select(e => cloner.Clone(e));
         }
