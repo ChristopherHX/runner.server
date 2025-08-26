@@ -182,6 +182,16 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         HandleMappingWithAllLooseProperties(definition, keyDefinition, valueDefinition, mapping);
                     }
                 }
+                // Allow using if and each in stringlist
+                else if ((m_context.Flags & ExpressionFlags.ExtendedDirectives) != ExpressionFlags.None)
+                {
+                    HandleMappingWithWellKnownProperties(definition, new List<MappingDefinition> { new MappingDefinition() }, mapping);
+                    // Deny empty mapping
+                    if (mapping.Count == 0)
+                    {
+                        m_context.Error(mapping, TemplateStrings.UnexpectedMappingStart());
+                    }
+                }
                 // Illegal
                 else
                 {
