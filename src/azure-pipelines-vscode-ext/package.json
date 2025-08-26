@@ -158,6 +158,12 @@
 						"default": false,
 						"scope": "window",
 						"description": "Create task log files in VSCode Output Section to inspect the whole task log"
+					},
+					"azure-pipelines-vscode-ext.enable-ask-optional-parameters": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "When enabled, prompts the user to enter values for optional parameters during pipeline validation or expansion."
 					}
 				}
 			}

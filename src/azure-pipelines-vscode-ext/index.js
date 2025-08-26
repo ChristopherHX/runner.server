@@ -217,6 +217,8 @@ function activate(context) {
 				let isRequired = def === null || def === undefined || def === "null";
 				if(isRequired) {
 					def = null;
+				} else if(!handle.enableAskOptionalParameters) {
+					return;
 				}
 				if(type === null) {
 					if(handle.askForInput && handle?.customConfig?.parameters && name in handle.customConfig.parameters) {
@@ -420,7 +422,7 @@ function activate(context) {
 				return;
 			}
 			return await error(pex.Message);
-		}), referencedFiles: [], refToUri: {}, task: task, askForInput: !skipAskForInput };
+		}), referencedFiles: [], refToUri: {}, task: task, askForInput: !skipAskForInput, enableAskOptionalParameters: vscode.workspace.getConfiguration("azure-pipelines-vscode-ext").get("enable-ask-optional-parameters")};
 		if(!syntaxOnly && !schema) {
 			var uri = handle.base.with({ path: joinPath(handle.base.path, filename) });
 			var scontent = null;
