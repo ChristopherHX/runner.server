@@ -476,7 +476,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         m_current.Remove();
                         if(eachExpressionState.IsEnd) {
                             m_current = m_current.Parent; // Skip to the expression end
-                            m_context.ExpressionValues.Remove(eachExpressionState.Value.Variable);
                         } else {
                             m_current = eachExpressionState.MoveNext(m_context);
                         }
@@ -619,6 +618,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Expression end
                     else if (eachExpressionState.IsEnd)
                     {
+                        m_context.ExpressionValues.Remove(eachExpressionState.Value.Variable);
                         EndExpression();
                     }
                     // Not allowed

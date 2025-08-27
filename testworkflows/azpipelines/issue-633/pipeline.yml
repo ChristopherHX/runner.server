@@ -1,0 +1,34 @@
+parameters:
+- name: buildConfigurations
+  type: object
+  default:
+  - platform: win32
+    configuration: Debug
+    
+jobs:
+- job: Initialization
+  steps:
+  - script: echo 'init'
+- job: Buildwin32_Debug
+  steps:
+  - script: echo 'build'
+- job: x
+  variables:
+    ${{ each buildConfiguration in parameters.buildConfigurations}}:
+      Config_${{ buildConfiguration.platform }}_${{ buildConfiguration.configuration }}: ${{ buildConfiguration.platform }}_${{ buildConfiguration.configuration }}
+  dependsOn:
+  - Initialization
+  - ${{ each buildConfiguration in parameters.buildConfigurations }}:
+    - Build${{ buildConfiguration.platform }}_${{ buildConfiguration.configuration }}
+  steps:
+  - script: echo 'help'
+- job: y
+  dependsOn:
+  - Initialization
+  - ${{ each buildConfiguration in parameters.buildConfigurations }}:
+    - Build${{ buildConfiguration.platform }}_${{ buildConfiguration.configuration }}
+  steps:
+  - script: echo 'help'
+  variables:
+    ${{ each buildConfiguration in parameters.buildConfigurations}}:
+      Config_${{ buildConfiguration.platform }}_${{ buildConfiguration.configuration }}: ${{ buildConfiguration.platform }}_${{ buildConfiguration.configuration }}
