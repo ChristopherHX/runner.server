@@ -242,21 +242,27 @@ function activate(context) {
 				var acceptYAML = false;
 				var prefix = !isRequired ? "" : "required "; 
 				if(values && values.length) {
+					const canPickMany = type.endsWith("List");
 					var pdef = def ? JSON.parse(def) : undefined;
+					const defConvertResult = value => def && value === def ? undefined : value;
+					var convertResult = defConvertResult;
 					if(pdef != undefined) {
-						values = values.filter(v => v !== pdef.toString());
-						values.unshift(pdef.toString());
+						if(canPickMany && pdef.includes) {
+							values = values.map(v => ({ label: v, picked: pdef.includes(v) }));
+							convertResult = v => v.length == values.filter(s => s.picked).length && v.every(s => s.picked) ? undefined : v.map(v => v.label);
+						} else {
+							const sdef = pdef.toString();
+							values = values.filter(v => v !== sdef);
+							values.unshift(sdef);
+						}
 					}
-					value = await vscode.window.showQuickPick(values, {
-						canPickMany: type.endsWith("List"),
+					value = convertResult(await vscode.window.showQuickPick(values, {
+						canPickMany: canPickMany,
 						placeHolder: pdef || "value",
 						prompt: name,
 						ignoreFocusOut: true,
 						title: `Select the ${prefix}Parameter '${name}' of Type '${type}'`
-					});
-					if(def && value === def) {
-						value = undefined;
-					}
+					}));
 				} else {
 					switch(type) {
 						case "stringList":
