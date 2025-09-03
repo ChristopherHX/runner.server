@@ -1,3 +1,11 @@
+### v0.3.3
+- default values are no longer requested to match v0.2.x
+  - enable the new setting if you want to change default parameters
+- support stringList with default values and multiple choice with preselected items
+- fix yaml processing bugs of each mapping insertion
+- fix yaml processing bugs of each in dependsOn due to schema checks
+- many changes of the preview releases
+
 ### v0.3.2 (Preview)
 - remove additional space caused by export task as Cli Command
 - fix saving a single untitled pipeline file from browser broke syntax checker due to invalid uri joining
