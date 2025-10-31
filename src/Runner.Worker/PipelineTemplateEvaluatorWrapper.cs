@@ -61,17 +61,23 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    // Note: The new evaluator doesn't have an exact equivalent method yet
-                    // When it does, compare results here and add telemetry if different:
-                    // if (legacyResult != newResult)
-                    // {
-                    //     var telemetry = new JobTelemetry { Type = "TemplateEvaluatorMismatch", Message = "EvaluateStepContinueOnError" };
-                    //     _context.Global.JobTelemetry.Add(telemetry);
-                    // }
+                    _context.Debug("Comparing new template evaluator: EvaluateStepContinueOnError");
+                    var convertedToken = ConvertToken(token);
+                    var convertedData = ConvertData(contextData);
+                    var convertedFunctions = ConvertFunctions(expressionFunctions);
+                    var newResult = _newEvaluator.EvaluateStepContinueOnError(convertedToken, convertedData, convertedFunctions);
+                    if (legacyResult != newResult)
+                    {
+                        _context.Debug($"Mismatch: EvaluateStepContinueOnError differs (legacy={legacyResult}, new={newResult})");
+                        var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = "TemplateEvaluatorMismatch: EvaluateStepContinueOnError" };
+                        _context.Global.JobTelemetry.Add(telemetry);
+                    }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Silently ignore comparison errors
+                    _context.Debug($"Template evaluator comparison failed: {ex.Message}");
+                    var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"TemplateEvaluatorComparisonError: EvaluateStepContinueOnError: {ex.Message}" };
+                    _context.Global.JobTelemetry.Add(telemetry);
                 }
             }
 
@@ -83,7 +89,33 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return _legacyEvaluator.EvaluateStepDisplayName(token, contextData, expressionFunctions);
+            var legacyResult = _legacyEvaluator.EvaluateStepDisplayName(token, contextData, expressionFunctions);
+
+            if (_compare)
+            {
+                try
+                {
+                    _context.Debug("Comparing new template evaluator: EvaluateStepDisplayName");
+                    var convertedToken = ConvertToken(token);
+                    var convertedData = ConvertData(contextData);
+                    var convertedFunctions = ConvertFunctions(expressionFunctions);
+                    var newResult = _newEvaluator.EvaluateStepName(convertedToken, convertedData, convertedFunctions);
+                    if (!string.Equals(legacyResult, newResult, StringComparison.Ordinal))
+                    {
+                        _context.Debug($"Mismatch: EvaluateStepDisplayName differs (legacy='{legacyResult}', new='{newResult}')");
+                        var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = "TemplateEvaluatorMismatch: EvaluateStepDisplayName" };
+                        _context.Global.JobTelemetry.Add(telemetry);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _context.Debug($"Template evaluator comparison failed: {ex.Message}");
+                    var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"TemplateEvaluatorComparisonError: EvaluateStepDisplayName: {ex.Message}" };
+                    _context.Global.JobTelemetry.Add(telemetry);
+                }
+            }
+
+            return legacyResult;
         }
 
         public Dictionary<String, String> EvaluateStepEnvironment(

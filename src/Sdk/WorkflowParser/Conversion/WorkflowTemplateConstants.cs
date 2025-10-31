@@ -6,6 +6,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
     {
         public const String Always = "always";
         public const String BooleanNeedsContext = "boolean-needs-context";
+        public const String BooleanStepsContext = "boolean-steps-context";
         public const String BooleanStrategyContext = "boolean-strategy-context";
         public const String CancelInProgress = "cancel-in-progress";
         public const String CancelTimeoutMinutes = "cancel-timeout-minutes";

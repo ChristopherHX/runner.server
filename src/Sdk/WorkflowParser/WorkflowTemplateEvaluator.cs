@@ -515,6 +515,33 @@ namespace GitHub.Actions.WorkflowParser
             return result ?? false;
         }
 
+        public Boolean EvaluateStepContinueOnError(
+            TemplateToken token,
+            DictionaryExpressionData expressionData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            var result = default(Boolean?);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(expressionData, expressionFunctions);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, WorkflowTemplateConstants.BooleanStepsContext, token, 0, null);
+                    context.Errors.Check();
+                    result = WorkflowTemplateConverter.ConvertToStepContinueOnError(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? false;
+        }
+
         public String EvaluateStepName(
             TemplateToken token,
             DictionaryExpressionData expressionData,
