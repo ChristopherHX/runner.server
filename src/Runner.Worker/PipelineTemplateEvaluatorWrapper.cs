@@ -213,27 +213,22 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    // TODO: Need to convert parameter types from DT types to Actions types:
-                    // - TemplateToken: GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateToken → GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens.TemplateToken
-                    // - DictionaryContextData: GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData → GitHub.Actions.Expressions.Data.DictionaryExpressionData
-                    // - IFunctionInfo: GitHub.DistributedTask.Expressions2.IFunctionInfo → GitHub.Actions.Expressions.IFunctionInfo
-                    // - Result type: GitHub.DistributedTask.Pipelines.JobContainer → GitHub.Actions.WorkflowParser.JobContainer
-                    //
-                    // var newResult = _newEvaluator.EvaluateJobServiceContainers(convertedToken, convertedContextData, convertedFunctions);
-                    // 
-                    // // Compare results - use JSON serialization for deep comparison
-                    // var legacyJson = StringUtil.ConvertToJson(legacyResult);
-                    // var newJson = StringUtil.ConvertToJson(newResult);
-                    // 
-                    // if (legacyJson != newJson)
-                    // {
-                    //     var telemetry = new JobTelemetry { Type = "TemplateEvaluatorMismatch", Message = "EvaluateJobServiceContainers" };
-                    //     _context.Global.JobTelemetry.Add(telemetry);
-                    // }
+                    _context.Debug("Comparing new template evaluator: EvaluateJobServiceContainers");
+                    var convertedToken = ConvertToken(token);
+                    var convertedData = ConvertData(contextData);
+                    var convertedFunctions = ConvertFunctions(expressionFunctions);
+                    var newResult = _newEvaluator.EvaluateJobServiceContainers(convertedToken, convertedData, convertedFunctions);
+                    if (!CompareJobServiceContainers(legacyResult, newResult))
+                    {
+                        var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = "TemplateEvaluatorMismatch: EvaluateJobServiceContainers" };
+                        _context.Global.JobTelemetry.Add(telemetry);
+                    }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Silently ignore comparison errors
+                    _context.Debug($"Template evaluator comparison failed: {ex.Message}");
+                    var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"TemplateEvaluatorComparisonError: EvaluateJobServiceContainers: {ex.Message}" };
+                    _context.Global.JobTelemetry.Add(telemetry);
                 }
             }
 
@@ -460,5 +455,48 @@ namespace GitHub.Runner.Worker
 
             return true;
         }
+
+        private bool CompareJobServiceContainers(
+            IList<KeyValuePair<String, GitHub.DistributedTask.Pipelines.JobContainer>> legacyResult,
+            IList<KeyValuePair<String, GitHub.Actions.WorkflowParser.JobContainer>> newResult)
+        {
+            if (legacyResult == null && newResult == null)
+            {
+                return true;
+            }
+
+            if (legacyResult == null || newResult == null)
+            {
+                _context.Debug($"Mismatch: one result is null (legacy={legacyResult == null}, new={newResult == null})");
+                return false;
+            }
+
+            if (legacyResult.Count != newResult.Count)
+            {
+                _context.Debug($"Mismatch: ServiceContainers.Count differs (legacy={legacyResult.Count}, new={newResult.Count})");
+                return false;
+            }
+
+            for (int i = 0; i < legacyResult.Count; i++)
+            {
+                var legacyKvp = legacyResult[i];
+                var newKvp = newResult[i];
+
+                if (!string.Equals(legacyKvp.Key, newKvp.Key, StringComparison.Ordinal))
+                {
+                    _context.Debug($"Mismatch: ServiceContainers[{i}].Key differs (legacy='{legacyKvp.Key}', new='{newKvp.Key}')");
+                    return false;
+                }
+
+                if (!CompareJobContainer(legacyKvp.Value, newKvp.Value))
+                {
+                    _context.Debug($"Mismatch: ServiceContainers['{legacyKvp.Key}']");
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }
+
