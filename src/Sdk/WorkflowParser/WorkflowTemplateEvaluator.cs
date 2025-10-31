@@ -569,6 +569,34 @@ namespace GitHub.Actions.WorkflowParser
             return result;
         }
 
+        public Boolean EvaluateStepIf(
+            TemplateToken token,
+            DictionaryExpressionData expressionData,
+            IList<IFunctionInfo> expressionFunctions,
+            IEnumerable<KeyValuePair<String, Object>> expressionState)
+        {
+            var result = default(Boolean?);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(expressionData, expressionFunctions, expressionState);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, WorkflowTemplateConstants.StepIfResult, token, 0, null);
+                    context.Errors.Check();
+                    result = WorkflowTemplateConverter.ConvertToIfResult(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? throw new InvalidOperationException("Step if cannot be null");
+        }
+
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
             DictionaryExpressionData expressionData,

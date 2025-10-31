@@ -158,7 +158,33 @@ namespace GitHub.Runner.Worker
             IList<IFunctionInfo> expressionFunctions,
             IEnumerable<KeyValuePair<String, Object>> expressionState)
         {
-            return _legacyEvaluator.EvaluateStepIf(token, contextData, expressionFunctions, expressionState);
+            var legacyResult = _legacyEvaluator.EvaluateStepIf(token, contextData, expressionFunctions, expressionState);
+
+            if (_compare)
+            {
+                try
+                {
+                    _context.Debug("Comparing new template evaluator: EvaluateStepIf");
+                    var convertedToken = ConvertToken(token);
+                    var convertedData = ConvertData(contextData);
+                    var convertedFunctions = ConvertFunctions(expressionFunctions);
+                    var newResult = _newEvaluator.EvaluateStepIf(convertedToken, convertedData, convertedFunctions, expressionState);
+                    if (legacyResult != newResult)
+                    {
+                        _context.Debug($"Mismatch: EvaluateStepIf differs (legacy={legacyResult}, new={newResult})");
+                        var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = "TemplateEvaluatorMismatch: EvaluateStepIf" };
+                        _context.Global.JobTelemetry.Add(telemetry);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _context.Debug($"Template evaluator comparison failed: {ex.Message}");
+                    var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"TemplateEvaluatorComparisonError: EvaluateStepIf: {ex.Message}" };
+                    _context.Global.JobTelemetry.Add(telemetry);
+                }
+            }
+
+            return legacyResult;
         }
 
         public Dictionary<String, String> EvaluateStepInputs(

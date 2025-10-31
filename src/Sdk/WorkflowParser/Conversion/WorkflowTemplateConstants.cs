@@ -81,6 +81,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         public const String Slash = "/";
         public const String Snapshot = "snapshot";
         public const String StepEnv = "step-env";
+        public const String StepIfResult = "step-if-result";
         public const String Steps = "steps";
         public const String Strategy = "strategy";
         public const String StringNeedsContext = "string-needs-context";
