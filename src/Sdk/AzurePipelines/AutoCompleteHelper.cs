@@ -380,6 +380,18 @@ namespace Runner.Server.Azure.Devops
                     Range = range
                 };
             }
+
+            if(bestMatch.Suggestions != null) {
+                foreach(var s in bestMatch.Suggestions) {
+                    yield return new CompletionItem {
+                        Label = new CompletionItemLabel {
+                            Label = s,
+                        },
+                        InsertText = new SnippedString { Value = s + ":$0" },
+                        Range = range
+                    };
+                }
+            }
             if(bestMatch.AllowedContext?.Length > 0) {
                 var adoDirectives = (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None;
                 if(!flowStyle) {
@@ -531,7 +543,10 @@ namespace Runner.Server.Azure.Devops
 
     public static List<CompletionItem> CollectCompletions(int column, int row, Context context, TemplateSchema schema)
     {
+        context.TraceWriter.Error("CollectCompletions at {0},{1}", column, row);
+        context.TraceWriter.Error("AutoCompleteMatches: {0}", string.Join(" | ", context.AutoCompleteMatches.Select(m => $"{m.Token.Line},{m.Token.Column}:{m.Token.Type}")));
         var src = context.AutoCompleteMatches.Any(a => a.Token.Column == column) ? context.AutoCompleteMatches.Where(a => a.Token.Column == column) : context.AutoCompleteMatches.Where(a => a.Token.Column == context.AutoCompleteMatches.Last().Token.Column);
+        context.TraceWriter.Error("Choosen: {0}", string.Join(" | ", src.Select(m => $"{m.Token.Line},{m.Token.Column}:{m.Token.Type}/{string.Join(",", m.Definitions.Select(d => schema.Definitions.FirstOrDefault(def => def.Value == d).Key?.ToString() ?? d.Description ?? d.DefinitionType.ToString()).ToArray())}")));
         List<CompletionItem> list = src
             .SelectMany(bestMatch => bestMatch.Definitions.SelectMany(def => AddSuggestion(context, column, row, schema, bestMatch, def, bestMatch.Token.Line <= row && bestMatch.Token.Column <= column && !(bestMatch.Token is ScalarToken) ? null : bestMatch.Token.Line < row ? new[] { DefinitionType.OneOf, DefinitionType.Mapping, DefinitionType.Sequence } : new[] { DefinitionType.OneOf, DefinitionType.Null, DefinitionType.Boolean, DefinitionType.Number, DefinitionType.String }, context.AutoCompleteMatches.TakeWhile(m => m != bestMatch).Append(bestMatch).Any(m => (m.Token.Type == TokenType.Sequence || m.Token.Type == TokenType.Mapping) && m.Token.PreWhiteSpace == null)))).DistinctBy(k => k.Label.Label).ToList();
         return list;

@@ -24,6 +24,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         public (int, int)[] Mapping { get; set; }
         public Dictionary<(int, int), int> RMapping { get; internal set; }
         public string Description { get; internal set; }
+        public List<string> Suggestions { get; set; }
     }
 
     /// <summary>
