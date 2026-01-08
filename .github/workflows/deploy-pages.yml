@@ -48,6 +48,7 @@ jobs:
           !cancelled()
         run: |
           npm install
+          dotnet new globaljson --sdk-version 8.0.0 --roll-forward latestMinor --force
           dotnet workload install wasm-tools
           npm run build
           node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
@@ -98,6 +99,7 @@ jobs:
           !cancelled()
         run: |
           npm install
+          dotnet new globaljson --sdk-version 8.0.0 --roll-forward latestMinor --force
           dotnet workload install wasm-tools
           npm run build
           node_modules/.bin/vsce pack -o runner-server-web-vscode.vsix
