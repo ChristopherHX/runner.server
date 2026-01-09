@@ -30,6 +30,7 @@ jobs:
     - name: Pack
       id: build
       run: |
+        dotnet new globaljson --sdk-version 8.0.0 --roll-forward latestMinor --force
         $d = Get-Date
         $version6 = $("$(semver "$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" -i patch)".TrimStart("v") + ".6-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
         $version = $("$(semver "$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" -i patch)".TrimStart("v") + ".8-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
