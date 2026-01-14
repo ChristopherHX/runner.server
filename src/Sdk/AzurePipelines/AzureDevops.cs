@@ -671,8 +671,7 @@ namespace Runner.Server.Azure.Devops {
           return -1;
         }
 
-        
-        public static async Task<(string, TemplateToken)> ParseTemplate(Context context, string filenameAndRef, string schemaName = null, bool checks = true)
+        public static (string finalRepository, string finalFileName) ResolveTemplatePath(Context context, string filenameAndRef)
         {
             var afilenameAndRef = filenameAndRef.Split("@", 2);
             var filename = afilenameAndRef[0];
@@ -683,6 +682,12 @@ namespace Runner.Server.Azure.Devops {
             {
                 throw new Exception($"Couldn't find template location {filenameAndRef}");
             }
+            return (finalRepository, finalFileName);
+        }
+
+        public static async Task<(string, TemplateToken)> ParseTemplate(Context context, string filenameAndRef, string schemaName = null, bool checks = true)
+        {
+            var (finalRepository, finalFileName) = ResolveTemplatePath(context, filenameAndRef);
 
             var fileContent = await context.FileProvider.ReadFile(finalRepository, finalFileName);
             if (fileContent == null)
@@ -807,18 +812,37 @@ namespace Runner.Server.Azure.Devops {
             static async Task processTemplates(TemplateContext templateContext, int fileId, Context cCtx, TemplateToken extends, string schema)
             {
                 var template = extends.TraverseByPattern(cCtx.RawMapping, new[] { "template" }).FirstOrDefault();
-                var parameters = extends.TraverseByPattern(cCtx.RawMapping, new[] { "parameters" }).FirstOrDefault() as MappingToken;
-
-                if (template is StringToken stringToken && parameters != null)
+                var rparameters = extends.TraverseByPattern(cCtx.RawMapping, new[] { "parameters" }).FirstOrDefault();
+                var parameters = rparameters as MappingToken;
+                if (template is StringToken stringToken)
                 {
+                    templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}Found template reference {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
+                    try
+                    {
+                    if (template.Line != null && template.Line == templateContext.Row && template.Column != null && template.Column <= templateContext.Column && (template.Column + template.ToString().Length) >= templateContext.Column)
+                    {
+                        var (finalRepository, finalFileName) = ResolveTemplatePath(cCtx, template.ToString());
+                        templateContext.TraceWriter.Error("{0}", $"Found template reference {template.Line}:{template.Column} {template} pointing to {(finalRepository != null ? $"repository '{finalRepository}' " : "")}file '{finalFileName}'");
+                        cCtx.Definition.FileName = finalFileName;
+                        cCtx.Definition.Repository = finalRepository;
+                        cCtx.Definition.Template = template;
+                    }
+                    templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}parse template reference {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
                     var (name, subtmpl) = await ParseTemplate(cCtx, stringToken.ToString(), schema, false);
+                    templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}parse template reference done {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
                     if (subtmpl.TraverseByPattern(cCtx.RawMapping, new[] { "parameters" }).FirstOrDefault() is SequenceToken)
                     {
                         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        var required = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        var has = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         foreach (var paramdef in subtmpl.TraverseByPattern(cCtx.RawMapping, new[] { "parameters", "*" }))
                         {
                             var namedef = paramdef.TraverseByPattern(cCtx.RawMapping, new[] { "name" }).FirstOrDefault()?.ToString();
                             var typedef = paramdef.TraverseByPattern(cCtx.RawMapping, new[] { "type" }).FirstOrDefault()?.ToString() ?? "string";
+                            var defaultVal = paramdef.TraverseByPattern(cCtx.RawMapping, new[] { "default" }).FirstOrDefault();
+                            if(defaultVal == null) {
+                                required.Add(namedef);
+                            }
                             dict[namedef] = typedef;
                             var val = parameters.TraverseByPattern(cCtx.RawMapping, new[] { namedef }).FirstOrDefault();
                             string fdef = null;
@@ -870,10 +894,11 @@ namespace Runner.Server.Azure.Devops {
                                     fdef = "stringList";
                                 break;
                             }
+                            try {
+                            templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")} {fdef}");
+
                             if (fdef != null && val != null)
                             {
-                                // var autoCompleteState = templateContext.AutoCompleteMatches;
-                                // templateContext.AutoCompleteMatches = new List<AutoCompleteEntry>();
                                 await TemplateEvaluator.EvaluateAsync(templateContext, fdef, val, 0, fileId);
                                 if(start != null) {
                                     foreach(var (tkn, sh) in GetPatterns(start.Value)
@@ -936,20 +961,57 @@ namespace Runner.Server.Azure.Devops {
                                         await processTemplates(templateContext, fileId, cCtx, tkn, sh);
                                     }
                                 }
+                            } 
+                            } catch (Exception ex)
+                            {
+                            templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check failed {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")} {fdef} {ex.Message} {ex.StackTrace}");
+                                    
+                            } finally {
+                            templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check done {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")} {fdef}");
                             }
                         }
 
-                        for (int i = 0; i < parameters.Count; i++)
-                        {
-                            if (!(parameters[i].Key is ExpressionToken))
+                        templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check unexpected {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
+
+                        if(parameters != null) {
+                            for (int i = 0; i < parameters.Count; i++)
                             {
-                                var skey = parameters[i].Key.ToString();
-                                if (!dict.ContainsKey(skey))
+                                if (!(parameters[i].Key is ExpressionToken))
                                 {
-                                    templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(parameters[i].Key)}Unexpected parameter '{skey}'");
+                                    var skey = parameters[i].Key.ToString();
+                                    if (!dict.ContainsKey(skey))
+                                    {
+                                        templateContext.TraceWriter.Error("{0}", $"Unexpected parameter(s): {skey}");
+                                        templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(parameters[i].Key)}Unexpected parameter '{skey}'");
+                                    }
+                                    has.Add(skey);
                                 }
                             }
                         }
+                        templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check required {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
+
+                        if(required.Except(has).Any()) {
+                            foreach(var missing in required.Except(has)) {
+                                templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}A value for the '{missing}' parameter must be provided.");
+                                templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}A value for the '{missing}' parameter must be provided.");
+                            }
+                        }
+                        templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check autocomplete {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
+
+                        if(rparameters != null && templateContext.AutoCompleteMatches != null) {
+                            var autoComplete = templateContext.AutoCompleteMatches.Find(entry => entry.Token == rparameters);
+                            if(autoComplete != null) {
+                                // Required first, TODO highlight required ones + add extra display text
+                                autoComplete.Suggestions = required.Except(has).Concat(dict.Keys.Except(has).Except(required)).ToList();
+                                templateContext.TraceWriter.Error("{0}", $"AutoComplete suggestions for parameter list: {string.Join(", ", autoComplete.Suggestions)}");
+                            } else {
+                                templateContext.TraceWriter.Error("{0}", $"No AutoComplete entry found for parameter list to suggest missing parameters");
+                            }
+                        }
+                    }
+                    } catch (Exception ex)
+                    {
+                        templateContext.TraceWriter.Error("{0}", $"Error processing template {template} : {ex.StackTrace}");
                     }
                 }
             }
@@ -1333,7 +1395,7 @@ namespace Runner.Server.Azure.Devops {
                             continue;
                         } catch (Exception ex) when(context.ParametersProvider != null) {
                             var stype = type.AssertLiteralString("parameters.*.type");
-                            await context.ParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for for the '{name}' parameter: {ex.Message}");
+                            await context.ParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for the '{name}' parameter: {ex.Message}");
                         }
                     }
                     value = null;
@@ -1347,7 +1409,7 @@ namespace Runner.Server.Azure.Devops {
                                 }
                                 break;
                             } catch(Exception ex) {
-                                await context.ParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for for the '{name}' parameter: {ex.Message}");
+                                await context.ParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for the '{name}' parameter: {ex.Message}");
                             }
                         };
                     }

@@ -142,9 +142,30 @@ public partial class MyClass {
             Row = row,
             RawMapping = rawMapping
         };
+        context.TraceWriter.Error("{0}", $"Parsing pipeline for hover/autocomplete/definition at {row}:{column}");
         var check = column == 0 && row == 0;
         try {
             var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName, schemaName, true);
+
+            var items = template.Traverse().GetEnumerator();
+            while(items.MoveNext())
+            {
+                var tkn = items.Current;
+                if(tkn is StringToken str && str.Value == "template")
+                {
+                    Interop.Log(handle, 5, $"Found template link at {str.Line}:{str.Column}");
+                    if(items.MoveNext())
+                    {
+                        var nextTkn = items.Current;
+                        if(nextTkn is StringToken str2)
+                        {
+                            Interop.Log(handle, 5, $"link: {str2.Value} at {str2.Line}:{str2.Column}");
+                        }
+                    } else {
+                        Interop.Log(handle, 5, $"No next token after template at {str.Line}:{str.Column}");
+                    }
+                }
+            }
             Interop.Log(handle, 0, "Done: " + template.ToString());
         } catch(TemplateValidationException ex) when(check) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
@@ -178,7 +199,10 @@ public partial class MyClass {
         if(check && context.SemTokens?.Count > 0) {
             await Interop.SemTokens(handle, [.. context.SemTokens]);
         }
-        
+        if(context.Definition.Template != null) {
+            await Interop.Definition(handle, JsonConvert.SerializeObject(context.Definition));
+        }
+        context.TraceWriter.Error("{0}", $"Done parsing pipeline for hover/autocomplete/definition at {row}:{column}");
     }
 
     private static (Runner.Server.Azure.Devops.Range, string) GetHoverResult(Context context, int row, int column) {

@@ -318,6 +318,12 @@ function activate(context) {
 					handle.semTokens = completions;
 				}
 			},
+			definition: async (handle, json) => {
+				handle.definition = JSON.parse(json);
+				const repositoryAndRef = handle.definition.repository;
+				const filename = handle.definition.FileName;
+				handle.definition.targetUri = handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`];
+			},
 			hoverResult: async (handle, range, content) => {
 				handle.hover = { range: JSON.parse(range), content };
 			}
@@ -460,6 +466,7 @@ function activate(context) {
         if(pos) {
 			autocompletelist.autocompletelist = handle.autocompletelist
 			autocompletelist.hover = handle.hover
+			autocompletelist.definition = handle.definition
 		}
 		if(handle.enableSemTokens) {
 			autocompletelist.semTokens = handle.semTokens
@@ -783,6 +790,7 @@ function activate(context) {
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
 						}, null, null, null, true, true, getSchema(), pos, data);
+						let i = 0;
 						for(var item of data.autocompletelist) {
 							if(item.insertText && item.insertText.value) {
 								item.insertText = new vscode.SnippetString(item.insertText.value)
@@ -798,6 +806,7 @@ function activate(context) {
 							if(item.documentation) {
 								item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
 							}
+							item.sortText = String(i++).padStart(3, "0");
 						}
 						return data.autocompletelist
 					}
@@ -891,6 +900,39 @@ function activate(context) {
 			await checkSyntaxAzurePipelineCommand(getSchema());
 		}
  	}));
+
+	vscode.languages.registerDefinitionProvider([
+		{
+			language: "yaml"
+		},
+		{
+			language: "azure-pipelines"
+		}
+	], {
+		provideDefinition: async (doc, pos, token) => {
+			var obj;
+			var getSchema = () => {
+				try {
+					obj ??= jsYaml.load(doc.getText());
+				} catch {
+					obj = {};
+				}
+				return extractSchema(obj);
+			}
+			if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
+				var data = {autocompletelist: [], disableErrors: true};
+				await expandAzurePipeline(false, null, null, null, () => {
+				}, doc.uri.toString(), () => {
+				}, null, null, null, true, true, getSchema(), pos, data);
+				if(data.definition) {
+					// return new vscode.Location(vscode.Uri.joinPath(vscode.workspace.getWorkspaceFolder(doc.uri).uri, data.definition.FileName), new vscode.Position(0,0));
+					var startpos = new vscode.Position(data.definition.Template.line - 1, data.definition.Template.col - 1);
+					return [{targetUri: data.definition.targetUri, targetRange: new vscode.Range(0, 0, 0, 0), originSelectionRange: new vscode.Range(startpos, startpos.translate(0, data.definition.Template.lit.length)) }];
+				}
+				// return new vscode.Location(doc.uri, new vscode.Position(0,0));
+			}
+		}
+	});
 
 	var checkAllIsIn = (obj, allowed) => {
 		for(var k in obj) {

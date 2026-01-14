@@ -111,7 +111,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     var entry = m_context.AutoCompleteMatches?.FirstOrDefault(m => m.Token == scalar);
                     if(entry != null) {
-                        entry.Definitions = entry.Definitions.Append(definition.Definition).ToArray();
+                        entry.Definitions = new [] { definition.Definition }; //entry.Definitions.Append(definition.Definition).ToArray();
                     }
                     Validate(ref literal, definition);
                     return literal;

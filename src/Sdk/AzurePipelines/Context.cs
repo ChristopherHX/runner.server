@@ -6,6 +6,13 @@ using System.Collections.Generic;
 
 namespace Runner.Server.Azure.Devops
 {
+    public class GotoDefinition
+    {
+        public TemplateToken Template { get; set; }
+        public string Repository { get; set; }
+        public string FileName { get; set; }
+    }
+
     public class Context {
         public ExpressionFlags Flags { get; set; }
         public IFileProvider FileProvider { get; set; }
@@ -22,6 +29,8 @@ namespace Runner.Server.Azure.Devops
         public int Row { get; internal set; }
         internal List<AutoCompleteEntry> AutoCompleteMatches { get; set; }
         public List<int> SemTokens { get; internal set; }
+
+        public GotoDefinition Definition { get; set; } = new GotoDefinition();
 
         public bool RawMapping { get; set; }
 
