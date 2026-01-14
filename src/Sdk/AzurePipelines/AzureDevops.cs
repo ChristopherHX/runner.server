@@ -991,8 +991,10 @@ namespace Runner.Server.Azure.Devops {
                         templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check required {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
 
                         if(required.Except(has).Any()) {
-                            templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}Missing required parameter(s): {string.Join(", ", required.Except(has))}");
-                            templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}Missing required parameter(s): {string.Join(", ", required.Except(has))}");
+                            foreach(var missing in required.Except(has)) {
+                                templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}A value for the '{missing}' parameter must be provided.");
+                                templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}A value for the '{missing}' parameter must be provided.");
+                            }
                         }
                         templateContext.TraceWriter.Error("{0}", $"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rparameters ?? template)}check autocomplete {template.Line}:{template.Column} {template} with parameters {(parameters != null ? "mapping" : "null")}");
 
