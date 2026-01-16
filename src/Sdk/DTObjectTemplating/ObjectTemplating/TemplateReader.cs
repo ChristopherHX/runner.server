@@ -315,7 +315,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
                     var last = m_context.AutoCompleteMatches?.LastOrDefault();
                     if(last != null && last.Token == nextKeyScalar) {
-                        last.Description = nextValueDefinition.Definition.Description;
+                        last.Description ??= nextValueDefinition.Definition.Description;
                     }
                     
                     var nextValue = ReadValue(nextValueDefinition);
@@ -415,7 +415,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 var nextKeyScalar = ParseScalar(rawLiteral, keyDef);
                 var last = m_context.AutoCompleteMatches?.LastOrDefault();
                 if(last != null && last.Token == nextKeyScalar) {
-                    last.Description = valueDefinition.Definition.Description;
+                    last.Description ??= valueDefinition.Definition.Description;
                 }
 
                 // Expression

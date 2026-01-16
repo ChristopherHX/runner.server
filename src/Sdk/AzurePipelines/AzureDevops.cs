@@ -1007,6 +1007,25 @@ namespace Runner.Server.Azure.Devops {
                             } else {
                                 templateContext.TraceWriter.Error("{0}", $"No AutoComplete entry found for parameter list to suggest missing parameters");
                             }
+                            // Show Parameter types in Hover
+                            if(parameters != null)
+                            {
+                                for(int i = templateContext.AutoCompleteMatches.Count - 1; i >= 0; i--)
+                                {
+                                    var entry = templateContext.AutoCompleteMatches[i];
+                                    var pEntry = parameters.FirstOrDefault(kv => kv.Key == entry.Token);
+                                    if(pEntry.Key == null)
+                                    {
+                                        continue;
+                                    }
+                                    if(!dict.ContainsKey(pEntry.Key.ToString()))
+                                    {
+                                        continue;
+                                    }
+                                    entry.Description = $"Type: {dict[pEntry.Key.ToString()]}";
+                                    templateContext.TraceWriter.Error("{0}", entry.Description);
+                                }
+                            }
                         }
                     }
                     } catch (Exception ex)
