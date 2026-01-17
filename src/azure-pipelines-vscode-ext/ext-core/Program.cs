@@ -223,7 +223,7 @@ public partial class MyClass {
                     || desc["root"].TryGetValue(tkn.RawValue, out d)
                     || desc["functions"].TryGetValue(tkn.RawValue, out d) ? d.Description : tkn.RawValue);
         }
-        return (new Runner.Server.Azure.Devops.Range { Start = last.Token.PreWhiteSpace != null ? new Position { Line = (int)last.Token.PreWhiteSpace.Line - 1, Character = (int)last.Token.PreWhiteSpace.Character - 1 } : new Position { Line = last.Token.Line.Value - 1, Character = last.Token.Column.Value - 1 }, End = new Position { Line = (int)last.Token.PostWhiteSpace.Line - 1, Character = (int)last.Token.PostWhiteSpace.Character - 1 } }, last.Definitions.FirstOrDefault()?.Description ?? "???");
+        return (new Runner.Server.Azure.Devops.Range { Start = last.Token.PreWhiteSpace != null ? new Position { Line = (int)last.Token.PreWhiteSpace.Line - 1, Character = (int)last.Token.PreWhiteSpace.Character - 1 } : new Position { Line = last.Token.Line.Value - 1, Character = last.Token.Column.Value - 1 }, End = new Position { Line = (int)last.Token.PostWhiteSpace.Line - 1, Character = (int)last.Token.PostWhiteSpace.Character - 1 } }, last?.Description ?? last.Definitions.FirstOrDefault()?.Description ?? "???");
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
