@@ -49,6 +49,27 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Schema
                 {
                     definition.RemoveAt(i);
                 }
+                else if (String.Equals(definitionKey.Value, "actionsIfExpression", StringComparison.Ordinal))
+                {
+                    // TODO actionsIfExpression
+                    // var actionifexpr = definition[i].Value.AssertBoolean($"actionsIfExpression");
+                    definition.RemoveAt(i);
+                    // ActionsIfExpression = actionifexpr.Value;
+                }
+                else if (String.Equals(definitionKey.Value, "azureVariableBlock", StringComparison.Ordinal))
+                {
+                    // TODO azureVariableBlock
+                    // var actionifexpr = definition[i].Value.AssertBoolean($"azureVariableBlock");
+                    definition.RemoveAt(i);
+                    // AzureVariableBlock = actionifexpr.Value;
+                }
+                else if (String.Equals(definitionKey.Value, "azureVariableBlockScope", StringComparison.Ordinal))
+                {
+                    // TODO azureVariableBlockScope
+                    // var actionifexpr = definition[i].Value.AssertBoolean($"azureVariableBlockScope");
+                    definition.RemoveAt(i);
+                    // AzureVariableBlockScope = actionifexpr.Value;
+                }
                 else
                 {
                     i++;

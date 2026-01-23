@@ -115,6 +115,9 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Schema
                                         case TemplateConstants.CoerceRaw:
                                         case TemplateConstants.Context:
                                         case TemplateConstants.Description:
+                                        case "actionsIfExpression":
+                                        case "azureVariableBlock":
+                                        case "azureVariableBlockScope":
                                             continue;
 
                                         default:
@@ -357,6 +360,7 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.CoerceRaw, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.String, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.StringDefinitionProperties)));
+                    mappingDefinition.Properties.Add("actionsIfExpression", new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.StringDefinition, mappingDefinition);
 
                     // string-definition-properties
@@ -373,6 +377,7 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.CoerceRaw, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Sequence, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.SequenceDefinitionProperties)));
+                    mappingDefinition.Properties.Add("azureVariableBlock", new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinition, mappingDefinition);
 
                     // sequence-definition-properties
@@ -386,6 +391,8 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.CoerceRaw, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Mapping, new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.MappingDefinitionProperties)));
+                    mappingDefinition.Properties.Add("azureVariableBlock", new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add("azureVariableBlockScope", new PropertyDefinition(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.MappingDefinition, mappingDefinition);
 
                     // mapping-definition-properties
