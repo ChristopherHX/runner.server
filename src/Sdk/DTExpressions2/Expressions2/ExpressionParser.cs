@@ -30,9 +30,10 @@ namespace GitHub.DistributedTask.Expressions2
             String expression,
             ITraceWriter trace,
             IEnumerable<INamedValueInfo> namedValues,
-            IEnumerable<IFunctionInfo> functions)
+            IEnumerable<IFunctionInfo> functions,
+            Boolean allowCaseFunction = true)
         {
-            var context = new ParseContext(expression, trace, namedValues, functions, flags: Flags);
+            var context = new ParseContext(expression, trace, namedValues, functions, allowCaseFunction, flags: Flags);
             context.Trace.Info($"Parsing expression: <{expression}>");
             var node = CreateTree(context);
             // Syntax is valid, now report context names
@@ -372,6 +373,10 @@ namespace GitHub.DistributedTask.Expressions2
             {
                 throw new ParseException(ParseExceptionKind.TooManyParameters, token: @operator, expression: context.Expression);
             }
+            else if (functionInfo.Name.Equals("case", StringComparison.OrdinalIgnoreCase) && function.Parameters.Count % 2 == 0)
+            {
+                throw new ParseException(ParseExceptionKind.EvenParameters, token: @operator, expression: context.Expression);
+            }
         }
 
         /// <summary>
@@ -434,6 +439,12 @@ namespace GitHub.DistributedTask.Expressions2
             String name,
             out IFunctionInfo functionInfo)
         {
+            if (String.Equals(name, "case", StringComparison.OrdinalIgnoreCase) && !context.AllowCaseFunction)
+            {
+                functionInfo = null;
+                return false;
+            }
+
             return ((context.LexicalAnalyzer.Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.None
             ? (ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo) || (context.LexicalAnalyzer.Flags & ExpressionFlags.ExtendedFunctions) != ExpressionFlags.None && ExpressionConstants.AzureWellKnownFunctions.TryGetValue(name, out functionInfo))
             : (ExpressionConstants.AzureWellKnownFunctions.TryGetValue(name, out functionInfo) || (context.LexicalAnalyzer.Flags & ExpressionFlags.ExtendedFunctions) != ExpressionFlags.None && ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo))) ||
@@ -443,6 +454,7 @@ namespace GitHub.DistributedTask.Expressions2
         private sealed class ParseContext
         {
             public Boolean AllowUnknownKeywords;
+            public Boolean AllowCaseFunction;
             public readonly String Expression;
             public readonly Dictionary<String, IFunctionInfo> ExtensionFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
             public readonly Dictionary<String, INamedValueInfo> ExtensionNamedValues = new Dictionary<String, INamedValueInfo>(StringComparer.OrdinalIgnoreCase);
@@ -460,6 +472,7 @@ namespace GitHub.DistributedTask.Expressions2
                 IEnumerable<INamedValueInfo> namedValues,
                 IEnumerable<IFunctionInfo> functions,
                 Boolean allowUnknownKeywords = false,
+                Boolean allowCaseFunction = true,
                 ExpressionFlags flags = ExpressionFlags.None)
             {
                 Expression = expression ?? String.Empty;
@@ -481,6 +494,7 @@ namespace GitHub.DistributedTask.Expressions2
 
                 LexicalAnalyzer = new LexicalAnalyzer(Expression, flags);
                 AllowUnknownKeywords = allowUnknownKeywords;
+                AllowCaseFunction = allowCaseFunction;
             }
 
             private class NoOperationTraceWriter : ITraceWriter

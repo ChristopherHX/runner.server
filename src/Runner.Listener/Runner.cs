@@ -654,22 +654,42 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-                                    Pipelines.AgentJobRequestMessage jobRequestMessage = null;
 
-                                    // Create connection
-                                    var credMgr = HostContext.GetService<ICredentialManager>();
+                                    // Acknowledge (best-effort)
+                                    if (messageRef.ShouldAcknowledge) // Temporary feature flag
+                                    {
+                                        try
+                                        {
+                                            await _listener.AcknowledgeMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Trace.Error($"Best-effort acknowledge failed for request '{messageRef.RunnerRequestId}'");
+                                            Trace.Error(ex);
+                                        }
+                                    }
+
+                                    Pipelines.AgentJobRequestMessage jobRequestMessage = null;
                                     if (string.IsNullOrEmpty(messageRef.RunServiceUrl))
                                     {
+                                        // Connect
+                                        var credMgr = HostContext.GetService<ICredentialManager>();
                                         var creds = credMgr.LoadCredentials(allowAuthUrlV2: false);
                                         var actionsRunServer = HostContext.CreateService<IActionsRunServer>();
                                         await actionsRunServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+
+                                        // Get job message
                                         jobRequestMessage = await actionsRunServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
                                     }
                                     else
                                     {
+                                        // Connect
+                                        var credMgr = HostContext.GetService<ICredentialManager>();
                                         var credsV2 = credMgr.LoadCredentials(allowAuthUrlV2: true);
                                         var runServer = HostContext.CreateService<IRunServer>();
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), credsV2);
+
+                                        // Get job message
                                         try
                                         {
                                             jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageRef.BillingOwnerId, messageQueueLoopTokenSource.Token);
@@ -698,7 +718,10 @@ namespace GitHub.Runner.Listener
                                         }
                                     }
 
+                                    // Dispatch
                                     jobDispatcher.Run(jobRequestMessage, runOnce);
+
+                                    // Run once?
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");
@@ -876,15 +899,15 @@ namespace GitHub.Runner.Listener
 
         private async Task CheckOAuthTokenClaimsAsync(CancellationToken token)
         {
-            string[] expectedClaims = new string[]
-            {
+            string[] expectedClaims =
+            [
                 "owner_id",
                 "runner_id",
                 "runner_group_id",
                 "scale_set_id",
                 "is_ephemeral",
                 "labels"
-            };
+            ];
 
             try
             {
@@ -949,15 +972,12 @@ namespace GitHub.Runner.Listener
                                 var v2Claims = v2Jwt.ExtractClaims();
 
                                 // Log extracted claims for debugging
-                                var baselineClaimsString = string.Join(", ", baselineClaims
+                                Trace.Verbose($"Baseline token expected claims: {string.Join(", ", baselineClaims
                                     .Where(c => expectedClaims.Contains(c.Type.ToLowerInvariant()))
-                                    .Select(c => $"{c.Type}:{c.Value}"));
-                                Trace.Verbose($"Baseline token expected claims: {baselineClaimsString}");
-                                
-                                var v2ClaimsString = string.Join(", ", v2Claims
+                                    .Select(c => $"{c.Type}:{c.Value}"))}");
+                                Trace.Verbose($"V2 token expected claims: {string.Join(", ", v2Claims
                                     .Where(c => expectedClaims.Contains(c.Type.ToLowerInvariant()))
-                                    .Select(c => $"{c.Type}:{c.Value}"));
-                                Trace.Verbose($"V2 token expected claims: {v2ClaimsString}");
+                                    .Select(c => $"{c.Type}:{c.Value}"))}");
 
                                 foreach (var claim in expectedClaims)
                                 {
@@ -968,9 +988,8 @@ namespace GitHub.Runner.Listener
                                         var v2Claim = v2Claims.FirstOrDefault(c => c.Type.ToLowerInvariant() == claim);
                                         if (v2Claim?.Value != baselineClaim.Value)
                                         {
-                                            var expectedClaimString = $"Expected claim {baselineClaim.Type}:{baselineClaim.Value} does not match {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}";
                                             Trace.Info($"Token Claim mismatch between two issuers. Expected: {baselineClaim.Type}:{baselineClaim.Value}. Actual: {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
-                                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), expectedClaimString);
+                                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Expected claim {baselineClaim.Type}:{baselineClaim.Value} does not match {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
                                             break;
                                         }
                                     }
