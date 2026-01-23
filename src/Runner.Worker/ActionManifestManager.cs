@@ -332,7 +332,7 @@ namespace GitHub.Runner.Worker
             var absoluteActions = executionContext.Global.Variables.GetBoolean("system.runner.server.absolute_actions") == true;
             var result = new TemplateContext
             {
-                // Flags = flags,
+                // TODO for cutover: Flags = flags,
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, int.MaxValue), // Don't truncate error messages otherwise we might not scrub secrets correctly
                 Memory = new TemplateMemory(
@@ -340,7 +340,7 @@ namespace GitHub.Runner.Worker
                     maxEvents: 1000000,
                     maxBytes: 10 * 1024 * 1024),
                 Schema = schema,
-                // AbsoluteActions = absoluteActions,
+                // TODO for cutover: AbsoluteActions = absoluteActions,
                 // TODO: Switch to real tracewriter for cutover
                 TraceWriter = new GitHub.Actions.WorkflowParser.ObjectTemplating.EmptyTraceWriter(),
                 AllowCaseFunction = false,
