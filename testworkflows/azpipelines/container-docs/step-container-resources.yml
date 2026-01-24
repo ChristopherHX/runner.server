@@ -2,9 +2,9 @@
 resources:
   containers:
   - container: python
-    image: python:3.8
+    image: python:latest
   - container: node
-    image: node:13.2
+    image: node:latest
 
 jobs:
 - job: example
