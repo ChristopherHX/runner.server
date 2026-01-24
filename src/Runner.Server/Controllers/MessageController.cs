@@ -3159,6 +3159,10 @@ namespace Runner.Server.Controllers
                                     foreach(var v in variables) {
                                         v.Value.IsReadonly = true;
                                     }
+
+                                    // Allow override here, bug https://github.com/microsoft/azure-pipelines-agent/issues/5403
+                                    variables["AZP_AGENT_IGNORE_VSTSTASKLIB"] = "true";
+
                                     // Provide all env vars as normal variables
                                     if(env?.Length > 0) {
                                         LoadEnvSec(env, (k, v) => variables[k] = v);
