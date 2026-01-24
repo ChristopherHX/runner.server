@@ -75,6 +75,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: v${{ inputs.version }}
           commit: ${{ github.sha }}
+          immutableCreate: true # Do not publish before uploading everything
           body: |
             # Changes
             ${{ fromjson(inputs.changelog) }}
