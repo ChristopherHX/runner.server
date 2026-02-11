@@ -95,14 +95,15 @@ namespace Runner.Server.Azure.Devops
                                 continue;
                             }
                             MappingToken file;
+                            Context childContext;
                             try {
                                 try {
-                                    file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
+                                    (file, childContext) = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
                                 } catch(Exception ex) when (!(ex is TemplateValidationException)) {
                                     errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}{ex.Message}"));
                                     continue;
                                 }
-                                await ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
+                                await ParseStages(childContext, stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
                             } catch(TemplateValidationException ex) {
                                 throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}Found Errors inside Template Reference: {ex.Message}")));
                             }

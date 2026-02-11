@@ -1,6 +1,6 @@
 namespace Runner.Server.Azure.Devops
 {
-    public class LocalFileProvider : IFileProvider // TODO: Fix IFileProvider namespacing
+    public class LocalFileProvider : IFileProvider
     {
         private IDictionary<string, string> repos = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -22,17 +22,8 @@ namespace Runner.Server.Azure.Devops
             {
                 folderPath = $"{folderPath}{Path.DirectorySeparatorChar}";
             }
-            string repoName = repositoryAndRef.Split("@")[0];
-            repos[repoName] = folderPath;
+            repos[repositoryAndRef] = folderPath;
         }
-
-        public void AddRepo(string projectName, string repositoryName, string folderPath)
-        {
-            var key = $"{projectName}/{repositoryName}".ToUpper();
-            AddRepo(key, folderPath);
-        }
-
-
 
         private string ResolveFilePath(string repositoryAndRef, string path)
         {
@@ -46,8 +37,7 @@ namespace Runner.Server.Azure.Devops
 
         private string GetRepoLocalFolder(string repositoryAndRef)
         {
-            var repoName = (repositoryAndRef ?? "self").Split("@")[0];
-            return repos[repoName];
+            return repos[repositoryAndRef ?? "self"];
         }
         #endregion
     }
