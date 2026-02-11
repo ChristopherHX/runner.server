@@ -1,0 +1,36 @@
+parameters:
+  - name: releaseNumber
+    displayName: Release number (0.00.0) !!! Branch MUST exist !!!
+    type: string
+    default: '0.00.0'
+
+  - name: usePatchBranch
+    displayName: Use a Patch branch? (E.g. 'patch/0.00.0' instead of 'release/0.00.0')  !!! Branch MUST exist !!!
+    type: boolean
+    default: false
+
+  - name: API_DEPLOY
+    displayName: Build and deploy the API?
+    type: boolean
+    default: true
+
+  - name: UI_DEPLOY
+    displayName: Build and deploy the UI?
+    type: boolean
+    default: true
+
+trigger: none
+
+resources:
+  repositories:
+    - repository: API
+      type: git
+      name: myProject/API
+      ref: ${{ iif(eq(parameters.API_DEPLOY, true), format(iif(eq(parameters.usePatchBranch, true), 'patch/{0}', 'release/{0}'), parameters.releaseNumber), 'production') }}
+    - repository: UI
+      type: git
+      name: myProject/UI
+      ref: ${{ iif(eq(parameters.UI_DEPLOY, true), format(iif(eq(parameters.usePatchBranch, true), 'patch/{0}', 'release/{0}'), parameters.releaseNumber), 'production') }}
+
+steps:
+- script: echo ok

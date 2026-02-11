@@ -1314,8 +1314,6 @@ namespace Runner.Server.Azure.Devops {
 
             var pipelineroot = token.AssertMapping("root");
 
-            var childContext = context.ChildContext(pipelineroot, filenameAndRef);
-
             TemplateToken parameters = null;
             TemplateToken rawStaticVariables = null;
             foreach (var kv in pipelineroot)
@@ -1467,6 +1465,12 @@ namespace Runner.Server.Azure.Devops {
             }
 
             templateContext = CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            // bug pipelineroot.resources.repositories.*.ref can be an expression
+            // can variables be referenced there?
+            // 2026-02-11: Yes, but then the value is null/'' if you attempt to reference templates using it
+            var resources = (pipelineroot as IReadOnlyObject)["resources"] as MappingToken;
+            resources = resources != null ? await TemplateEvaluator.EvaluateAsync(templateContext, "resources", resources, 0, fileId) as MappingToken : null;
+            Context childContext = context.ChildContextWithResource(resources, filenameAndRef);
             templateContext.EvaluateVariable = async (tcontext, mapping, vars) => {
                 string template = null;
                 TemplateToken parameters = null;
