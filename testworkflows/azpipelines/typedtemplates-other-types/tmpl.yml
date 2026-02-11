@@ -58,7 +58,7 @@ parameters:
   - container: ub0
     image: ubuntu:latest
   - container: ub1
-    image: ubuntu:18.04
+    image: ubuntu:22.04
 stages:
 - ${{ parameters.stages }}
 - ${{ if ne(converttojson(parameters.legObj.b), '"true"') }}:
