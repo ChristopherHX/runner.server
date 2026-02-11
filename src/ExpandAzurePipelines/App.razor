@@ -99,8 +99,8 @@
                 TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
                 Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert
             };
-            var template = await AzureDevops.ReadTemplate(context, currentFileName);
-            var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
+            var (template, childContext) = await AzureDevops.ReadTemplate(context, currentFileName);
+            var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(childContext, template);
             var newcontent = pipeline.ToYaml();
             await _editor2.SetValue(newcontent);
         } catch(Exception ex) {
