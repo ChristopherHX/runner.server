@@ -2574,7 +2574,6 @@ namespace Runner.Server.Controllers
                         workflowParameters[kv.Key.ToString()] = kv.Value;
                     }
                 }
-                var (evaluatedRoot, childContext) = Azure.Devops.AzureDevops.ReadTemplate(context, fileRelativePath, workflowParameters).GetAwaiter().GetResult();
                 bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
                 bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
                 bool taskCacheUpdate = workflowContext.HasFeature("system.runner.server.taskCacheUpdate");
@@ -2699,6 +2698,7 @@ namespace Runner.Server.Controllers
                     return null;
                 } };
 
+                var (evaluatedRoot, childContext) = Azure.Devops.AzureDevops.ReadTemplate(context, fileRelativePath, workflowParameters).GetAwaiter().GetResult();
                 var pipeline = new Azure.Devops.Pipeline().Parse(childContext, evaluatedRoot).GetAwaiter().GetResult();
 
                 var localJobCompletedEvents = new LocalJobCompletedEvents();
