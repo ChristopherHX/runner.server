@@ -1,4 +1,5 @@
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using System;
@@ -38,7 +39,12 @@ namespace Runner.Server.Azure.Devops
             return MemberwiseClone() as Context;
         }
 
-        public Context ChildContext(MappingToken template, string path = null) {
+        public Context ChildContext(MappingToken template, string path = null)
+        {
+            return ChildContextWithResource((template as IReadOnlyObject)["resources"] as MappingToken, path);
+        }
+
+        public Context ChildContextWithResource(MappingToken resources, string path) {
             if(Repositories == null) {
                 Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             }
@@ -47,37 +53,33 @@ namespace Runner.Server.Azure.Devops
             childContext.AutoCompleteMatches = null;
             childContext.Column = 0;
             childContext.Row = 0;
-            foreach(var kv in template) {
-                switch(kv.Key.AssertString("key").Value) {
-                    case "resources":
-                        foreach(var resource in kv.Value.AssertMapping("resources")) {
-                            switch(resource.Key.AssertString("").Value) {
-                                case "repositories":
-                                    // Use a global dictionary, since resources needs to be resolved for the localcheckout step
-                                    // childContext.Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                    foreach(var rawresource in resource.Value.AssertSequence("cres")) {
-                                        string alias = null;
-                                        string name = null;
-                                        string @ref = "main";
-                                        foreach(var rkv in rawresource.AssertMapping("")) {
-                                            switch(rkv.Key.AssertString("").Value) {
-                                                case "repository":
-                                                    alias = rkv.Value.AssertLiteralString("resources.*.repository");
-                                                break;
-                                                case "name":
-                                                    name = rkv.Value.AssertLiteralString("resources.*.name");
-                                                break;
-                                                case "ref":
-                                                    @ref = rkv.Value.AssertLiteralString("resources.*.ref");
-                                                break;
-                                            }
-                                        }
-                                        childContext.Repositories[alias] = $"{name}@{@ref}";
+            if(resources != null) {
+                foreach(var resource in resources) {
+                    switch(resource.Key.AssertString("").Value) {
+                        case "repositories":
+                            // Use a global dictionary, since resources needs to be resolved for the localcheckout step
+                            // childContext.Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach(var rawresource in resource.Value.AssertSequence("cres")) {
+                                string alias = null;
+                                string name = null;
+                                string @ref = "main";
+                                foreach(var rkv in rawresource.AssertMapping("")) {
+                                    switch(rkv.Key.AssertString("").Value) {
+                                        case "repository":
+                                            alias = rkv.Value.AssertLiteralString("resources.*.repository");
+                                        break;
+                                        case "name":
+                                            name = rkv.Value.AssertLiteralString("resources.*.name");
+                                        break;
+                                        case "ref":
+                                            @ref = rkv.Value.AssertLiteralString("resources.*.ref");
+                                        break;
                                     }
-                                break;
-                            } 
-                        }
-                    break;
+                                }
+                                childContext.Repositories[alias] = $"{name}@{@ref}";
+                            }
+                        break;
+                    } 
                 }
             }
             if(path != null) {

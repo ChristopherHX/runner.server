@@ -62,9 +62,9 @@ namespace Runner.Server.Azure.Devops
         {
             Context context = GetContext();
 
-            var evaluatedRoot = await AzureDevops.ReadTemplate(context, fileRelativePath, null);
+            var (evaluatedRoot, childContext) = await AzureDevops.ReadTemplate(context, fileRelativePath, null);
 
-            var pline = await new Pipeline().Parse(context.ChildContext(evaluatedRoot, fileRelativePath), evaluatedRoot);
+            var pline = await new Pipeline().Parse(childContext, evaluatedRoot);
             pline.CheckPipelineForRuntimeFailure();
             return pline;
         }

@@ -988,8 +988,8 @@ namespace Runner.Client
                         cparameters[varname] = AzurePipelinesUtils.ConvertStringToTemplateToken(varval);
                     }
                 }
-                var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
-                var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
+                var (template, childContext) = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
+                var pipeline = await new Pipeline().Parse(childContext, template);
                 return pipeline.ToYaml();
             }
         }

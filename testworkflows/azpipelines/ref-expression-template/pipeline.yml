@@ -1,0 +1,45 @@
+# LOCALREPOSITORY: repo1@invalid=ref-expression-template/API
+# LOCALREPOSITORY: repo2@invalid=ref-expression-template/UI
+
+parameters:
+  - name: releaseNumber
+    displayName: Release number (0.00.0) !!! Branch MUST exist !!!
+    type: string
+    default: '0.00.0'
+
+  - name: usePatchBranch
+    displayName: Use a Patch branch? (E.g. 'patch/0.00.0' instead of 'release/0.00.0')  !!! Branch MUST exist !!!
+    type: boolean
+    default: false
+
+  - name: API_DEPLOY
+    displayName: Build and deploy the API?
+    type: boolean
+    default: true
+
+  - name: UI_DEPLOY
+    displayName: Build and deploy the UI?
+    type: boolean
+    default: true
+
+trigger: none
+
+variables:
+- template: vars.yml@API
+- name: ref
+  value: ${{ iif(eq(parameters.UI_DEPLOY, true), format(iif(eq(parameters.usePatchBranch, true), 'patch/{0}', 'release/{0}'), parameters.releaseNumber), 'production') }}
+
+resources:
+  repositories:
+    - repository: API
+      type: git
+      name: repo1
+      ref: ${{ coalesce(variables.ref, 'invalid') }}
+    - repository: UI
+      type: git
+      name: repo2
+      ref: ${{ coalesce(variables.ref, 'invalid') }}
+
+steps:
+- script: echo ok
+- template: steps.yml@UI

@@ -317,8 +317,8 @@ namespace Runner.Server.Azure.Devops {
                         throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[2].Key)}Unexpected yaml keys {(mstep[2].Key as StringToken)?.Value} after template reference")});
                     }
                     try {
-                        var file = await ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
-                        await ParseSteps(context.ChildContext(file, primaryValue), steps, (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence(""));
+                        var (file, childContext) = await ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
+                        await ParseSteps(childContext, steps, (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence(""));
                     } catch(TemplateValidationException ex) {
                         throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}Found Errors inside Template Reference: {ex.Message}")));
                     }
@@ -1307,14 +1307,12 @@ namespace Runner.Server.Azure.Devops {
             }
         }
         
-        public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null)
+        public static async Task<(MappingToken, Context)> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null)
         {
             var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
             var (errorTemplateFileName, token) = await ParseTemplate(context, filenameAndRef, schemaName);
 
             var pipelineroot = token.AssertMapping("root");
-
-            var childContext = context.ChildContext(pipelineroot, filenameAndRef);
 
             TemplateToken parameters = null;
             TemplateToken rawStaticVariables = null;
@@ -1467,6 +1465,12 @@ namespace Runner.Server.Azure.Devops {
             }
 
             templateContext = CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            // bug pipelineroot.resources.repositories.*.ref can be an expression
+            // can variables be referenced there?
+            // 2026-02-11: Yes, but then the value is null/'' if you attempt to reference templates using it
+            var resources = (pipelineroot as IReadOnlyObject)["resources"] as MappingToken;
+            resources = resources != null ? await TemplateEvaluator.EvaluateAsync(templateContext, "resources", resources, 0, fileId) as MappingToken : null;
+            Context childContext = context.ChildContextWithResource(resources, filenameAndRef);
             templateContext.EvaluateVariable = async (tcontext, mapping, vars) => {
                 string template = null;
                 TemplateToken parameters = null;
@@ -1507,7 +1511,7 @@ namespace Runner.Server.Azure.Devops {
                 else if (template != null)
                 {
                     var evalp = parameters;
-                    var file = await ReadTemplate(childContext, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
+                    var (file, schildContext) = await ReadTemplate(childContext, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                     IDictionary<string, VariableValue> rvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
                     var vartkn = (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First();
                     ParseVariables(rvars, vartkn);
@@ -1530,7 +1534,7 @@ namespace Runner.Server.Azure.Devops {
             var evaluatedResult = await TemplateEvaluator.EvaluateAsync(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
             templateContext.Errors.Check();
             context.TraceWriter?.Verbose("{0}", evaluatedResult.ToContextData().ToJToken().ToString());
-            return evaluatedResult.AssertMapping("root");
+            return (evaluatedResult.AssertMapping("root"), childContext);
         }
 
         public static IEnumerable<TemplateToken> NormalizeVariableDefinition(TemplateToken vartkn)

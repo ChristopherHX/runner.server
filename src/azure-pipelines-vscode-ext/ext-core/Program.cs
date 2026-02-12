@@ -87,7 +87,7 @@ public partial class MyClass {
     [MethodImpl(MethodImplOptions.NoInlining)]
     [JSExport]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent, string schema) {
-        var context = new Runner.Server.Azure.Devops.Context {
+        var context = new Context {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
@@ -100,14 +100,14 @@ public partial class MyClass {
             foreach(var kv in JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters)) {
                 cparameters[kv.Key] = AzurePipelinesUtils.ConvertStringToTemplateToken(kv.Value);
             }
-            var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters, schema);
-            var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
+            var (template, childContext) = await AzureDevops.ReadTemplate(context, currentFileName, cparameters, schema);
+            var pipeline = await new Pipeline().Parse(childContext, template);
             yaml = pipeline.ToYaml();
             // The errors generated here shouldn't prevent the preview to show the result
             pipeline.CheckPipelineForRuntimeFailure();
             return yaml;
         } catch(TemplateValidationException ex) when(returnErrorContent) {
-            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+            var fileIdReplacer = new Regex("FileId: (\\d+)");
             var allErrors = new List<string>();
             foreach(var error in ex.Errors) {
                 var errorContent = fileIdReplacer.Replace(error.Message, match => {
@@ -118,7 +118,7 @@ public partial class MyClass {
             await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = allErrors }));
             return yaml;
         } catch(Exception ex) {
-            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+            var fileIdReplacer = new Regex("FileId: (\\d+)");
             var errorContent = fileIdReplacer.Replace(ex.Message, match => {
                 return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
             });
