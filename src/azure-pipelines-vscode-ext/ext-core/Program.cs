@@ -12,11 +12,13 @@ using GitHub.DistributedTask.ObjectTemplating.Schema;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Sdk.Actions;
+using System.Runtime.Versioning;
 
 while (true) {
     await Interop.Sleep(10 * 60 * 1000);
 }
 
+[SupportedOSPlatform("browser")]
 public partial class MyClass {
     
     public class MyFileProvider : IFileProvider
