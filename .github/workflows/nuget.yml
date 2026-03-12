@@ -114,7 +114,6 @@ jobs:
     - name: Test
       run: |
         set -x
-        Runner.Client -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted --var ACTIONS_STEP_DEBUG=true || Runner.Client -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted --var ACTIONS_STEP_DEBUG=true -v
         Runner.Client -C testworkflows/workflowerrors || :
         Runner.Client -C testworkflows/workflowerrors --trace --var system.runner.server.sendlostevents=true || :
         Runner.Client -W testworkflows/testlocalcheckout.yml
