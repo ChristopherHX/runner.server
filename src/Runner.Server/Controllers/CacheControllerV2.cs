@@ -67,7 +67,7 @@ namespace Runner.Server.Controllers
                         {
                             Ok = true,
                             MatchedKey = record.Key,
-                            SignedDownloadUrl = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "cache/" + record.Storage, write: true)
+                            SignedDownloadUrl = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "cache/" + record.Storage)
                         };
                         return formatter.Format(resp);
                     }
