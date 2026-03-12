@@ -40,7 +40,7 @@ namespace Runner.Server.Controllers
                 return NotFound();
             }
             var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage());
-                Directory.CreateDirectory(_targetFilePath);
+            Directory.CreateDirectory(Path.Combine(_targetFilePath, Path.GetDirectoryName(storagePath)));
             if(comp == "block" || comp == "appendBlock" || comp == null) {
                 using(var targetStream = new FileStream(Path.Combine(_targetFilePath, string.IsNullOrWhiteSpace(blockid) ? storagePath : $"{storagePath}-{System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(blockid))}"), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
                     await Request.Body.CopyToAsync(targetStream);
