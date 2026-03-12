@@ -1,0 +1,27 @@
+on: push
+jobs:
+  _:
+    runs-on: self-hosted
+    steps:
+    - name: Create Text
+      run: |
+        echo "Hello World" > hello.txt
+    - uses: actions/upload-artifact@v7
+      with:
+        name: x
+        path: hello.txt
+    - uses: actions/download-artifact@v8
+      with:
+        name: x
+        path: out
+    - uses: actions/github-script@v8
+      id: readFile
+      with:
+        script: |
+          const fs = require("fs")
+          return fs.readFileSync("out/hello.txt", { encoding: 'utf-8'});
+    - name: ${{ fromjson(steps.readFile.outputs.result) }}
+      if: |
+        fromjson(steps.readFile.outputs.result) != 'Hello World
+        '
+      run: exit 1
