@@ -74,10 +74,10 @@ namespace Runner.Server
                 b.UseInMemoryDatabase("Agents");
                 var db = new SqLiteDb(b.Options);
                 foreach(var rec in db.ArtifactRecords) {
-                    AzureBlobStorageContoller.DeleteBlobFilePath("artifacts/" + rec.StoreName);
+                    AzureBlobStorageController.DeleteBlobFilePath("artifacts/" + rec.StoreName);
                 }
                 foreach(var cache in db.Caches) {
-                    AzureBlobStorageContoller.DeleteBlobFilePath("cache/" + cache.Storage);
+                    AzureBlobStorageController.DeleteBlobFilePath("cache/" + cache.Storage);
                 }
                 return Task.CompletedTask;
             }
