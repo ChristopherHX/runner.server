@@ -1,0 +1,117 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
+using Google.Protobuf;
+using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.AspNetCore.Http.Extensions;
+using Runner.Server.Models;
+using System.Linq;
+using System.Security.Cryptography;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Xml.Linq;
+
+namespace Runner.Server.Controllers
+{
+
+    [ApiController]
+    [Route("_apis/v1/blob")]
+    public class AzureBlobStorageContoller : ControllerBase {
+
+        private static string CreateSignature(string storagePath, string contentType, string contentDisposition, bool write = false) {
+            using var rsa = RSA.Create(Startup.AccessTokenParameter);
+            return Base64UrlEncoder.Encode(rsa.SignData(Encoding.UTF8.GetBytes($"storagePath={storagePath}&write={write}&contentType={contentType}&contentDisposition={contentDisposition}"), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+        }
+
+        private bool VerifySignature(string sig, string storagePath, string contentType, string contentDisposition, bool write = false) {
+            using var rsa = RSA.Create(Startup.AccessTokenParameter);
+            return rsa.VerifyData(Encoding.UTF8.GetBytes($"storagePath={storagePath}&write={write}&contentType={contentType}&contentDisposition={contentDisposition}"), Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        }
+
+        public static string CreateSignedUrl(string serverUrl, string storagePath, string contentType = null, string contentDisposition = null, bool write = false)
+        {
+            return new Uri(new Uri(serverUrl), $"_apis/v1/blob?sig={CreateSignature(storagePath, contentType ?? "", contentDisposition ?? "", write)}&storagePath={Uri.EscapeDataString(storagePath)}&contentType={Uri.EscapeDataString(contentType ?? "")}&contentDisposition={Uri.EscapeDataString(contentDisposition ?? "")}").ToString();
+        }
+
+        [HttpPut]
+        [AllowAnonymous]
+        public async Task<IActionResult> Upload(string storagePath, string contentType, string contentDisposition, string sig, string comp = null, bool seal = false, string blockid = null) {
+            if(string.IsNullOrEmpty(sig) || !VerifySignature(sig, storagePath, contentType, contentDisposition, true)) {
+                return NotFound();
+            }
+            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage());
+                Directory.CreateDirectory(_targetFilePath);
+            if(comp == "block" || comp == "appendBlock" || comp == null) {
+                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, string.IsNullOrWhiteSpace(blockid) ? storagePath : $"{storagePath}-{System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(blockid))}"), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
+                    await Request.Body.CopyToAsync(targetStream);
+                }
+                return Created(HttpContext.Request.GetEncodedUrl(), null);
+            }
+            if(comp == "blocklist") {
+                XElement blockList = await XElement.LoadAsync(Request.Body, LoadOptions.None, Request.HttpContext.RequestAborted);
+                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, storagePath), FileMode.Create, FileAccess.Write, FileShare.Write))
+                foreach(var block in from item in blockList.Descendants("Latest") select item.Value) {
+                    var filename = Path.Combine(_targetFilePath, $"{storagePath}-{Convert.ToBase64String(Encoding.UTF8.GetBytes(block))}");
+                    using(var sourceStream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                        await sourceStream.CopyToAsync(targetStream);
+                    }
+                    System.IO.File.Delete(filename);
+                }
+                return Created(HttpContext.Request.GetEncodedUrl(), null);
+            }
+            return Ok();
+        }
+
+        public static string GetBlobFilePath(string storagePath)
+        {
+            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), storagePath);
+            if(System.IO.File.Exists(_targetFilePath))
+            {
+                return _targetFilePath;
+            }
+            var _targetRoot = Path.GetFileName(_targetFilePath);
+            foreach(var block in Directory.EnumerateFiles(Path.GetDirectoryName(_targetFilePath)))
+            {
+                var bfn = Path.GetFileName(block);
+                if(bfn.StartsWith(_targetRoot + "-"))
+                {
+                    return block;
+                }
+            }
+            return null;
+        }
+
+        public static void DeleteBlobFilePath(string storagePath)
+        {
+            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), storagePath);
+            System.IO.File.Delete(_targetFilePath);
+            var _targetRoot = Path.GetFileName(_targetFilePath);
+            foreach(var block in Directory.EnumerateFiles(Path.GetDirectoryName(_targetFilePath)))
+            {
+                var bfn = Path.GetFileName(block);
+                if(bfn.StartsWith(_targetRoot + "-"))
+                {
+                    System.IO.File.Delete(block);
+                }
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult Download(string storagePath, string contentType, string contentDisposition, string sig) {
+            if(string.IsNullOrEmpty(sig) || !VerifySignature(sig, storagePath, contentType, contentDisposition, false)) {
+                return NotFound();
+            }
+            var _targetFilePath = GetBlobFilePath(storagePath);
+            if(string.IsNullOrWhiteSpace(_targetFilePath)) {
+                return NotFound();
+            }
+            Response.Headers.ContentType = contentType;
+            Response.Headers.ContentDisposition = contentDisposition;
+            return new FileStreamResult(System.IO.File.OpenRead(_targetFilePath), contentType) { EnableRangeProcessing = true };
+        }
+    }
+}

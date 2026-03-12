@@ -26,23 +26,21 @@ namespace Runner.Server.Controllers {
 
         [HttpDelete("artifacts")]
         public void DeleteArtifacts() {
-            var artifactspath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
             var records = db.ArtifactRecords.ToArray();
             db.ArtifactRecords.RemoveRange(records);
             db.SaveChanges();
             foreach(var rec in records) {
-                System.IO.File.Delete(Path.Combine(artifactspath, rec.StoreName));
+                AzureBlobStorageContoller.DeleteBlobFilePath("artifacts/" + rec.StoreName);
             }
         }
 
         [HttpDelete("cache")]
         public void DeleteCache() {
-            var cachepath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
             var caches = db.Caches.ToArray();
             db.Caches.RemoveRange(caches);
             db.SaveChanges();
             foreach(var cache in caches) {
-                System.IO.File.Delete(Path.Combine(cachepath, cache.Storage));
+                AzureBlobStorageContoller.DeleteBlobFilePath("cache/" + cache.Storage);
             }
         }
     }

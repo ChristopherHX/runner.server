@@ -70,12 +70,13 @@ namespace Runner.Server.Controllers {
                         var ofile = await (from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where f.FileName.ToLower() == file.FileName.ToLower() select f).FirstOrDefaultAsync();
                         if(ofile != null) {
                             try {
-                                System.IO.File.Delete(Path.Combine(_targetFilePath, ofile.StoreName));
+                                AzureBlobStorageContoller.DeleteBlobFilePath("artifacts/" + ofile.StoreName);
                             } catch {
 
                             }
                             ofile.StoreName = file.StoreName;
                             ofile.GZip = file.GZip;
+                            ofile.ContentType = file.ContentType;
                             _context.Remove(file);
                         } else {
                             file.FileContainer = filecontainer;
