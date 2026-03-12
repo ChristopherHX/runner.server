@@ -71,7 +71,7 @@ namespace Runner.Server.Controllers {
                     var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault()
                         ?? (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = record.Key, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "cache/" + record.Storage) });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = record.Key, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = AzureBlobStorageController.CreateSignedUrl(ServerUrl, "cache/" + record.Storage) });
                     }
                 }
             }

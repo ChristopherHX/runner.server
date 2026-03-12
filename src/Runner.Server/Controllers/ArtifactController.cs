@@ -70,7 +70,7 @@ namespace Runner.Server.Controllers {
                         var ofile = await (from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where f.FileName.ToLower() == file.FileName.ToLower() select f).FirstOrDefaultAsync();
                         if(ofile != null) {
                             try {
-                                AzureBlobStorageContoller.DeleteBlobFilePath("artifacts/" + ofile.StoreName);
+                                AzureBlobStorageController.DeleteBlobFilePath("artifacts/" + ofile.StoreName);
                             } catch {
 
                             }

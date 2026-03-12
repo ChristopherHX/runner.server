@@ -35,7 +35,7 @@ namespace Runner.Server.Controllers
             var resp = new Github.Actions.Results.Api.V1.CreateCacheEntryResponse
             {
                 Ok = true,
-                SignedUploadUrl = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "cache/" + filename, write: true)
+                SignedUploadUrl = AzureBlobStorageController.CreateSignedUrl(ServerUrl, "cache/" + filename, write: true)
             };
             return formatter.Format(resp);
         }
@@ -67,7 +67,7 @@ namespace Runner.Server.Controllers
                         {
                             Ok = true,
                             MatchedKey = record.Key,
-                            SignedDownloadUrl = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "cache/" + record.Storage)
+                            SignedDownloadUrl = AzureBlobStorageController.CreateSignedUrl(ServerUrl, "cache/" + record.Storage)
                         };
                         return formatter.Format(resp);
                     }

@@ -30,7 +30,7 @@ namespace Runner.Server.Controllers {
             db.ArtifactRecords.RemoveRange(records);
             db.SaveChanges();
             foreach(var rec in records) {
-                AzureBlobStorageContoller.DeleteBlobFilePath("artifacts/" + rec.StoreName);
+                AzureBlobStorageController.DeleteBlobFilePath("artifacts/" + rec.StoreName);
             }
         }
 
@@ -40,7 +40,7 @@ namespace Runner.Server.Controllers {
             db.Caches.RemoveRange(caches);
             db.SaveChanges();
             foreach(var cache in caches) {
-                AzureBlobStorageContoller.DeleteBlobFilePath("cache/" + cache.Storage);
+                AzureBlobStorageController.DeleteBlobFilePath("cache/" + cache.Storage);
             }
         }
     }

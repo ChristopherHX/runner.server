@@ -61,7 +61,7 @@ namespace Runner.Server.Controllers
             var resp = new Github.Actions.Results.Api.V1.CreateArtifactResponse
             {
                 Ok = true,
-                SignedUploadUrl = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "artifacts/" + record.StoreName, write: true)
+                SignedUploadUrl = AzureBlobStorageController.CreateSignedUrl(ServerUrl, "artifacts/" + record.StoreName, write: true)
             };
             return formatter.Format(resp);
         }
@@ -109,7 +109,7 @@ namespace Runner.Server.Controllers
             var file = await (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == runid && fileContainer.Files.Count == 1 && (fileContainer.Files.FirstOrDefault().FileName.ToLower() == $"{body.Name}.zip".ToLower() || fileContainer.Files.FirstOrDefault().ContentType != null) orderby fileContainer.Container.Attempt.Attempt descending select fileContainer.Files.FirstOrDefault()).FirstAsync();
             var resp = new Github.Actions.Results.Api.V1.GetSignedArtifactURLResponse
             {
-                SignedUrl = AzureBlobStorageContoller.CreateSignedUrl(ServerUrl, "artifacts/" + file.StoreName, contentType: file.ContentType, contentDisposition: new ContentDisposition(DispositionTypeNames.Inline) { FileName = file.FileName }.ToString())
+                SignedUrl = AzureBlobStorageController.CreateSignedUrl(ServerUrl, "artifacts/" + file.StoreName, contentType: string.IsNullOrWhiteSpace(file.ContentType) ? "application/zip" : file.ContentType, contentDisposition: new ContentDisposition(DispositionTypeNames.Inline) { FileName = file.FileName }.ToString())
             };
             return formatter.Format(resp);
         }
@@ -126,7 +126,7 @@ namespace Runner.Server.Controllers
             }
             _context.ArtifactRecords.Remove(res.file);
             _context.ArtifactFileContainer.Remove(res.fileContainer);
-            AzureBlobStorageContoller.DeleteBlobFilePath("artifacts/" + res.file.StoreName);
+            AzureBlobStorageController.DeleteBlobFilePath("artifacts/" + res.file.StoreName);
             await _context.SaveChangesAsync();
 
             var resp = new Github.Actions.Results.Api.V1.DeleteArtifactResponse {

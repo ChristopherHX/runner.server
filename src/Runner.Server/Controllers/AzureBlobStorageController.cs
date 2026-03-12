@@ -16,14 +16,14 @@ namespace Runner.Server.Controllers
 
     [ApiController]
     [Route("_apis/v1/blob")]
-    public class AzureBlobStorageContoller : ControllerBase {
+    public class AzureBlobStorageController : ControllerBase {
 
         private static string CreateSignature(string storagePath, string contentType, string contentDisposition, bool write = false) {
             using var rsa = RSA.Create(Startup.AccessTokenParameter);
             return Base64UrlEncoder.Encode(rsa.SignData(Encoding.UTF8.GetBytes($"storagePath={storagePath}&write={write}&contentType={contentType}&contentDisposition={contentDisposition}"), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
         }
 
-        private bool VerifySignature(string sig, string storagePath, string contentType, string contentDisposition, bool write = false) {
+        private static bool VerifySignature(string sig, string storagePath, string contentType, string contentDisposition, bool write = false) {
             using var rsa = RSA.Create(Startup.AccessTokenParameter);
             return rsa.VerifyData(Encoding.UTF8.GetBytes($"storagePath={storagePath}&write={write}&contentType={contentType}&contentDisposition={contentDisposition}"), Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         }
