@@ -1,13 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Configuration;
-using Google.Protobuf;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using System.IO;
 using Microsoft.AspNetCore.Http.Extensions;
-using Runner.Server.Models;
 using System.Linq;
 using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
@@ -109,9 +106,10 @@ namespace Runner.Server.Controllers
             if(string.IsNullOrWhiteSpace(_targetFilePath)) {
                 return NotFound();
             }
-            Response.Headers.ContentType = contentType;
-            Response.Headers.ContentDisposition = contentDisposition;
-            return new FileStreamResult(System.IO.File.OpenRead(_targetFilePath), contentType) { EnableRangeProcessing = true };
+            if(contentDisposition != null) {
+                Response.Headers.ContentDisposition = contentDisposition;
+            }
+            return new FileStreamResult(System.IO.File.OpenRead(_targetFilePath), contentType ?? "application/octet-stream") { EnableRangeProcessing = true };
         }
     }
 }
