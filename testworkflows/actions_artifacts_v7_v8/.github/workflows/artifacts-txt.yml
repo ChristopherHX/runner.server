@@ -17,6 +17,7 @@ jobs:
     - uses: actions/github-script@v8
       id: readFile
       with:
+        github-token: none
         script: |
           const fs = require("fs")
           return fs.readFileSync("out/hello.txt", { encoding: 'utf-8'});
