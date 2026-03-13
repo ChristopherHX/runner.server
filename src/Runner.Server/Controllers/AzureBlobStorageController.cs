@@ -19,25 +19,31 @@ namespace Runner.Server.Controllers
     [Route("_apis/v1/blob")]
     public class AzureBlobStorageController : ControllerBase {
 
-        private static string CreateSignature(string storagePath, string contentType, string contentDisposition, string contentEncoding, bool write = false) {
-            using var rsa = RSA.Create(Startup.AccessTokenParameter);
-            return Base64UrlEncoder.Encode(rsa.SignData(Encoding.UTF8.GetBytes($"storagePath={storagePath}&write={write}&contentType={contentType}&contentDisposition={contentDisposition}&contentEncoding={contentEncoding}"), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+        private static string GenerateQuery(string storagePath, string contentType, string contentDisposition, string contentEncoding, bool write = false)
+        {
+            return $"storagePath={Uri.EscapeDataString(storagePath)}&contentType={Uri.EscapeDataString(contentType ?? "")}&contentDisposition={Uri.EscapeDataString(contentDisposition ?? "")}&contentEncoding={Uri.EscapeDataString(contentEncoding ?? "")}";
         }
 
-        private static bool VerifySignature(string sig, string storagePath, string contentType, string contentDisposition, string contentEncoding, bool write = false) {
+        private static string CreateSignature(string query) {
             using var rsa = RSA.Create(Startup.AccessTokenParameter);
-            return rsa.VerifyData(Encoding.UTF8.GetBytes($"storagePath={storagePath}&write={write}&contentType={contentType}&contentDisposition={contentDisposition}&contentEncoding={contentEncoding}"), Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            return Base64UrlEncoder.Encode(rsa.SignData(Encoding.UTF8.GetBytes(query), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+        }
+
+        private static bool VerifySignature(string sig, string query) {
+            using var rsa = RSA.Create(Startup.AccessTokenParameter);
+            return rsa.VerifyData(Encoding.UTF8.GetBytes(query), Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         }
 
         public static string CreateSignedUrl(string serverUrl, string storagePath, string contentType = null, string contentDisposition = null, string contentEncoding = null, bool write = false)
         {
-            return new Uri(new Uri(serverUrl), $"_apis/v1/blob?sig={CreateSignature(storagePath, contentType ?? "", contentDisposition ?? "", contentEncoding ?? "", write)}&storagePath={Uri.EscapeDataString(storagePath)}&contentType={Uri.EscapeDataString(contentType ?? "")}&contentDisposition={Uri.EscapeDataString(contentDisposition ?? "")}&contentEncoding={Uri.EscapeDataString(contentEncoding ?? "")}").ToString();
+            var query = GenerateQuery(storagePath, contentType ?? "", contentDisposition ?? "", contentEncoding ?? "", write);
+            return new Uri(new Uri(serverUrl), $"_apis/v1/blob?sig={CreateSignature(query)}&{query}").ToString();
         }
 
         [HttpPut]
         [AllowAnonymous]
         public async Task<IActionResult> Upload(string storagePath, string contentType, string contentDisposition, string contentEncoding, string sig, string comp = null, bool seal = false, string blockid = null) {
-            if(string.IsNullOrEmpty(sig) || !VerifySignature(sig, storagePath, contentType, contentDisposition, contentEncoding, true)) {
+            if(string.IsNullOrEmpty(sig) || !VerifySignature(sig, GenerateQuery(storagePath, contentType, contentDisposition, contentEncoding, true))) {
                 return NotFound();
             }
             var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage());
@@ -97,7 +103,7 @@ namespace Runner.Server.Controllers
         [AllowAnonymous]
         [HttpGet]
         public IActionResult Download(string storagePath, string contentType, string contentDisposition, string contentEncoding, string sig) {
-            if(string.IsNullOrEmpty(sig) || !VerifySignature(sig, storagePath, contentType, contentDisposition, contentEncoding, false)) {
+            if(string.IsNullOrEmpty(sig) || !VerifySignature(sig, GenerateQuery(storagePath, contentType, contentDisposition, contentEncoding, false))) {
                 return NotFound();
             }
             var _targetFilePath = GetBlobFilePath(storagePath);
