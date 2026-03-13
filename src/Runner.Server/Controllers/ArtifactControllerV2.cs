@@ -4,20 +4,11 @@ using Microsoft.Extensions.Configuration;
 using Google.Protobuf;
 using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Http;
 using System.IO;
-using System.Reflection;
-using Google.Protobuf.Reflection;
-using Microsoft.AspNetCore.Http.Extensions;
 using Runner.Server.Models;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using GitHub.Actions.Pipelines.WebApi;
-using System.Security.Cryptography;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Xml.Linq;
 using System.Net.Mime;
 
 namespace Runner.Server.Controllers
@@ -42,13 +33,12 @@ namespace Runner.Server.Controllers
             var jobInfo = (from j in _context.Jobs where j.JobId == guid select new { j.runid, j.WorkflowRunAttempt.Attempt }).FirstOrDefault();
             var artifacts = new ArtifactController(_context, Configuration);
             var fname = $"{body.Name}.zip";
-            if(!string.IsNullOrWhiteSpace(body.MimeType) && body.MimeType != "application/zip")
+            if(!string.IsNullOrWhiteSpace(body.MimeType) && (body.MimeType != "application/zip" || body.Name.ToLower().EndsWith(".zip")))
             {
                 fname = body.Name;
             }
             var container = await artifacts.CreateContainer(jobInfo.runid, jobInfo.Attempt, new CreateActionsStorageArtifactParameters() { Name = body.Name }, jobInfo.Attempt);
             if(_context.Entry(container).Collection(c => c.Files).Query().Any()) {
-                //var files = _context.Entry(container).Collection(c => c.Files).Query().ToList();
                 // Duplicated Artifact of the same name in the same Attempt => fail
                 return formatter.Format(new Github.Actions.Results.Api.V1.CreateArtifactResponse() {
                     Ok = false
