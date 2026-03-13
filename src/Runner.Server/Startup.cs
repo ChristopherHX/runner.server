@@ -91,6 +91,7 @@ namespace Runner.Server
 
             services.AddControllers(options => {
                 // options.InputFormatters.Add(new LogFormatter());
+                options.OutputFormatters.Add(new ProtobufOutputFormatter());
             }).AddNewtonsoftJson();
             services.AddSwaggerGen(c =>
             {
