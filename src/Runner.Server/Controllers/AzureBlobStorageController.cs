@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Xml.Linq;
+using System.Collections.Generic;
 
 namespace Runner.Server.Controllers
 {
@@ -62,12 +63,12 @@ namespace Runner.Server.Controllers
             return Ok();
         }
 
-        public static string GetBlobFilePath(string storagePath)
+        private static IEnumerable<string> GetBlobFilePaths(string storagePath)
         {
             var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), storagePath);
             if(System.IO.File.Exists(_targetFilePath))
             {
-                return _targetFilePath;
+                yield return _targetFilePath;
             }
             var _targetRoot = Path.GetFileName(_targetFilePath);
             foreach(var block in Directory.EnumerateFiles(Path.GetDirectoryName(_targetFilePath)))
@@ -75,24 +76,21 @@ namespace Runner.Server.Controllers
                 var bfn = Path.GetFileName(block);
                 if(bfn.StartsWith(_targetRoot + "-"))
                 {
-                    return block;
+                    yield return block;
                 }
             }
-            return null;
+        }
+
+        public static string GetBlobFilePath(string storagePath)
+        {
+            return GetBlobFilePaths(storagePath).FirstOrDefault();
         }
 
         public static void DeleteBlobFilePath(string storagePath)
         {
-            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), storagePath);
-            System.IO.File.Delete(_targetFilePath);
-            var _targetRoot = Path.GetFileName(_targetFilePath);
-            foreach(var block in Directory.EnumerateFiles(Path.GetDirectoryName(_targetFilePath)))
+            foreach(var block in GetBlobFilePaths(storagePath))
             {
-                var bfn = Path.GetFileName(block);
-                if(bfn.StartsWith(_targetRoot + "-"))
-                {
-                    System.IO.File.Delete(block);
-                }
+                System.IO.File.Delete(block);
             }
         }
 
