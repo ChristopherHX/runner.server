@@ -5,5 +5,6 @@ namespace Runner.Server.Models {
         public string FileName {get;set;}
         public string StoreName {get;set;}
         public bool GZip {get;set;}
+        public string ContentType {get;set;}
     }
 }

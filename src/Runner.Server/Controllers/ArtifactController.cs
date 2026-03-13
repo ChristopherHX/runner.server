@@ -70,12 +70,13 @@ namespace Runner.Server.Controllers {
                         var ofile = await (from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where f.FileName.ToLower() == file.FileName.ToLower() select f).FirstOrDefaultAsync();
                         if(ofile != null) {
                             try {
-                                System.IO.File.Delete(Path.Combine(_targetFilePath, ofile.StoreName));
+                                AzureBlobStorageController.DeleteBlobFilePath("artifacts/" + ofile.StoreName);
                             } catch {
 
                             }
                             ofile.StoreName = file.StoreName;
                             ofile.GZip = file.GZip;
+                            ofile.ContentType = file.ContentType;
                             _context.Remove(file);
                         } else {
                             file.FileContainer = filecontainer;
@@ -194,6 +195,7 @@ namespace Runner.Server.Controllers {
             }
         }
 
+        // TODO Remove insecure, once AzureBlob Adapter supports ContentEncoding
         // Filename have to be in query, because the azure load balancer converts all %2f components to path seperator /
         [HttpGet("artifact/{id}")]
         [AllowAnonymous]
@@ -204,15 +206,16 @@ namespace Runner.Server.Controllers {
             }
             if(container.FileName?.Length > 0) {
                 var lastPathSep = container.FileName.LastIndexOfAny(new [] { '/', '\\' }) + 1;
-                var content = new ContentDisposition();
-                content.DispositionType = DispositionTypeNames.Attachment;
-                content.FileName = container.FileName.Substring(lastPathSep);
-                Response.Headers.Add("Content-Disposition", content.ToString());
+                Response.Headers.ContentDisposition = new ContentDisposition
+                {
+                    DispositionType = DispositionTypeNames.Attachment,
+                    FileName = container.FileName.Substring(lastPathSep)
+                }.ToString();
             }
             if(container.GZip) {
-                Response.Headers.Add("Content-Encoding", "gzip");
+                Response.Headers.ContentEncoding = "gzip";
             }
-            return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, container.StoreName)), "application/octet-stream") { EnableRangeProcessing = true };
+            return new FileStreamResult(System.IO.File.OpenRead(AzureBlobStorageController.GetBlobFilePath("artifacts/" + container.StoreName)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
     }
