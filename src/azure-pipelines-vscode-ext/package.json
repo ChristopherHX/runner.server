@@ -358,7 +358,7 @@
 		]
 	},
 	"scripts": {
-		"build": "dotnet build ext-core -c Release -o build && npx webpack",
+		"build": "dotnet build ext-core -p:AZURE_PIPELINES_TOOLS_WORKAROUND=1 -c Release -o build && npx webpack",
 		"test": "npm run build && node ./test/runTest.js"
 	},
 	"devDependencies": {

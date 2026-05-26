@@ -48,7 +48,7 @@
         <DefineConstants>$(DefineConstants);HAVE_YAML_DOTNET_FORK</DefineConstants>
     </PropertyGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="'$(AZURE_PIPELINES_TOOLS_WORKAROUND)' != '1'">
         <EmbeddedResource Include="DTPipelines\workflow-v1.0.json">
             <LogicalName>GitHub.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json</LogicalName>
         </EmbeddedResource>
