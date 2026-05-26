@@ -1,0 +1,46 @@
+trigger: none
+pr: none
+
+variables:
+  Tag: $[ substring(variables['Build.SourceVersion'], 0, 7) ]
+  ShortHash: $[ substring(variables['Build.SourceVersion'], 0, 7) ]
+  StaticSubstring: $[ substring('abcdef1234567890', 0, 7) ]
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- checkout: none
+
+- bash: |
+    set -euo pipefail
+
+    echo "Build.SourceVersion: ${SOURCE_VERSION}"
+    echo "Tag: ${TAG_VALUE}"
+    echo "ShortHash: ${SHORT_HASH_VALUE}"
+    echo "StaticSubstring: ${STATIC_SUBSTRING_VALUE}"
+
+    expected_short_hash="${SOURCE_VERSION:0:7}"
+
+    if [ "${TAG_VALUE}" != "${expected_short_hash}" ]; then
+      echo "##vso[task.logissue type=error]Tag did not match expected short hash '${expected_short_hash}'"
+      exit 1
+    fi
+
+    if [ "${SHORT_HASH_VALUE}" != "${expected_short_hash}" ]; then
+      echo "##vso[task.logissue type=error]ShortHash did not match expected short hash '${expected_short_hash}'"
+      exit 1
+    fi
+
+    if [ "${STATIC_SUBSTRING_VALUE}" != "abcdef1" ]; then
+      echo "##vso[task.logissue type=error]StaticSubstring did not match expected value 'abcdef1'"
+      exit 1
+    fi
+
+    echo "substring runtime expressions evaluated successfully."
+  displayName: 'Test: substring runtime expression'
+  env:
+    SOURCE_VERSION: $(Build.SourceVersion)
+    TAG_VALUE: $(Tag)
+    SHORT_HASH_VALUE: $(ShortHash)
+    STATIC_SUBSTRING_VALUE: $(StaticSubstring)
