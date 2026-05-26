@@ -1,0 +1,11 @@
+trigger: none
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- ${{ if ne(substring('Hello small World', 6, 5), 'small') }}:
+  - fail: true
+- ${{ else }}:
+  - bash: echo "substring function works as expected"
