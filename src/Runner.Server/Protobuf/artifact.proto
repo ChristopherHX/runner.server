@@ -11,6 +11,7 @@ message CreateArtifactRequest {
     string name = 3;
     google.protobuf.Timestamp expires_at = 4;
     int32 version = 5;
+    google.protobuf.StringValue mime_type = 6;
 }
 
 message CreateArtifactResponse {

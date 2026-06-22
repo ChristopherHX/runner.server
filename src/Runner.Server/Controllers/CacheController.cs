@@ -71,19 +71,11 @@ namespace Runner.Server.Controllers {
                     var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault()
                         ?? (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = record.Key, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{record.Id}").ToString() });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = record.Key, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = AzureBlobStorageController.CreateSignedUrl(ServerUrl, "cache/" + record.Storage) });
                     }
                 }
             }
             return NoContent();
-        }
-
-        [HttpGet("get/{cacheId}")]
-        [Produces("application/octet-stream", Type = typeof(IActionResult))]
-        [AllowAnonymous]
-        public IActionResult GetCacheEntry(int cacheId) {
-            var record = _context.Caches.Find(cacheId);
-            return new FileStreamResult(System.IO.File.OpenRead(System.IO.Path.Combine(_targetFilePath, record.Storage)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
         [HttpPatch("caches/{cacheId}")]

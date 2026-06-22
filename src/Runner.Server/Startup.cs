@@ -44,6 +44,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using GitHub.Services.WebApi;
 using Swashbuckle.AspNetCore.Newtonsoft;
 using Runner.Server.Services;
+using Runner.Server.Controllers;
 
 namespace Runner.Server
 {
@@ -71,14 +72,12 @@ namespace Runner.Server
             {
                 var b = new DbContextOptionsBuilder<SqLiteDb>();
                 b.UseInMemoryDatabase("Agents");
-                var artifactspath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
-                var cachepath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
                 var db = new SqLiteDb(b.Options);
                 foreach(var rec in db.ArtifactRecords) {
-                    File.Delete(Path.Combine(artifactspath, rec.StoreName));
+                    AzureBlobStorageController.DeleteBlobFilePath("artifacts/" + rec.StoreName);
                 }
                 foreach(var cache in db.Caches) {
-                    File.Delete(Path.Combine(cachepath, cache.Storage));
+                    AzureBlobStorageController.DeleteBlobFilePath("cache/" + cache.Storage);
                 }
                 return Task.CompletedTask;
             }
@@ -92,6 +91,7 @@ namespace Runner.Server
 
             services.AddControllers(options => {
                 // options.InputFormatters.Add(new LogFormatter());
+                options.OutputFormatters.Add(new ProtobufOutputFormatter());
             }).AddNewtonsoftJson();
             services.AddSwaggerGen(c =>
             {

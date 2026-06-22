@@ -26,41 +26,42 @@ namespace Github.Actions.Results.Api.V1 {
           string.Concat(
             "Cg5hcnRpZmFjdC5wcm90bxIdZ2l0aHViLmFjdGlvbnMucmVzdWx0cy5hcGku",
             "djEaH2dvb2dsZS9wcm90b2J1Zi90aW1lc3RhbXAucHJvdG8aHmdvb2dsZS9w",
-            "cm90b2J1Zi93cmFwcGVycy5wcm90byKsAQoVQ3JlYXRlQXJ0aWZhY3RSZXF1",
+            "cm90b2J1Zi93cmFwcGVycy5wcm90byLdAQoVQ3JlYXRlQXJ0aWZhY3RSZXF1",
             "ZXN0Eh8KF3dvcmtmbG93X3J1bl9iYWNrZW5kX2lkGAEgASgJEiMKG3dvcmtm",
             "bG93X2pvYl9ydW5fYmFja2VuZF9pZBgCIAEoCRIMCgRuYW1lGAMgASgJEi4K",
             "CmV4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1w",
-            "Eg8KB3ZlcnNpb24YBSABKAUiPwoWQ3JlYXRlQXJ0aWZhY3RSZXNwb25zZRIK",
-            "CgJvaxgBIAEoCBIZChFzaWduZWRfdXBsb2FkX3VybBgCIAEoCSKnAQoXRmlu",
-            "YWxpemVBcnRpZmFjdFJlcXVlc3QSHwoXd29ya2Zsb3dfcnVuX2JhY2tlbmRf",
-            "aWQYASABKAkSIwobd29ya2Zsb3dfam9iX3J1bl9iYWNrZW5kX2lkGAIgASgJ",
-            "EgwKBG5hbWUYAyABKAkSDAoEc2l6ZRgEIAEoAxIqCgRoYXNoGAUgASgLMhwu",
-            "Z29vZ2xlLnByb3RvYnVmLlN0cmluZ1ZhbHVlIjsKGEZpbmFsaXplQXJ0aWZh",
-            "Y3RSZXNwb25zZRIKCgJvaxgBIAEoCBITCgthcnRpZmFjdF9pZBgCIAEoAyK/",
-            "AQoUTGlzdEFydGlmYWN0c1JlcXVlc3QSHwoXd29ya2Zsb3dfcnVuX2JhY2tl",
-            "bmRfaWQYASABKAkSIwobd29ya2Zsb3dfam9iX3J1bl9iYWNrZW5kX2lkGAIg",
-            "ASgJEjEKC25hbWVfZmlsdGVyGAMgASgLMhwuZ29vZ2xlLnByb3RvYnVmLlN0",
-            "cmluZ1ZhbHVlEi4KCWlkX2ZpbHRlchgEIAEoCzIbLmdvb2dsZS5wcm90b2J1",
-            "Zi5JbnQ2NFZhbHVlInEKFUxpc3RBcnRpZmFjdHNSZXNwb25zZRJYCglhcnRp",
-            "ZmFjdHMYASADKAsyRS5naXRodWIuYWN0aW9ucy5yZXN1bHRzLmFwaS52MS5M",
-            "aXN0QXJ0aWZhY3RzUmVzcG9uc2VfTW9ub2xpdGhBcnRpZmFjdCLPAQomTGlz",
-            "dEFydGlmYWN0c1Jlc3BvbnNlX01vbm9saXRoQXJ0aWZhY3QSHwoXd29ya2Zs",
-            "b3dfcnVuX2JhY2tlbmRfaWQYASABKAkSIwobd29ya2Zsb3dfam9iX3J1bl9i",
-            "YWNrZW5kX2lkGAIgASgJEhMKC2RhdGFiYXNlX2lkGAMgASgDEgwKBG5hbWUY",
-            "BCABKAkSDAoEc2l6ZRgFIAEoAxIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29v",
-            "Z2xlLnByb3RvYnVmLlRpbWVzdGFtcCJxChtHZXRTaWduZWRBcnRpZmFjdFVS",
-            "TFJlcXVlc3QSHwoXd29ya2Zsb3dfcnVuX2JhY2tlbmRfaWQYASABKAkSIwob",
-            "d29ya2Zsb3dfam9iX3J1bl9iYWNrZW5kX2lkGAIgASgJEgwKBG5hbWUYAyAB",
-            "KAkiMgocR2V0U2lnbmVkQXJ0aWZhY3RVUkxSZXNwb25zZRISCgpzaWduZWRf",
-            "dXJsGAEgASgJImsKFURlbGV0ZUFydGlmYWN0UmVxdWVzdBIfChd3b3JrZmxv",
-            "d19ydW5fYmFja2VuZF9pZBgBIAEoCRIjCht3b3JrZmxvd19qb2JfcnVuX2Jh",
-            "Y2tlbmRfaWQYAiABKAkSDAoEbmFtZRgDIAEoCSI5ChZEZWxldGVBcnRpZmFj",
-            "dFJlc3BvbnNlEgoKAm9rGAEgASgIEhMKC2FydGlmYWN0X2lkGAIgASgDYgZw",
-            "cm90bzM="));
+            "Eg8KB3ZlcnNpb24YBSABKAUSLwoJbWltZV90eXBlGAYgASgLMhwuZ29vZ2xl",
+            "LnByb3RvYnVmLlN0cmluZ1ZhbHVlIj8KFkNyZWF0ZUFydGlmYWN0UmVzcG9u",
+            "c2USCgoCb2sYASABKAgSGQoRc2lnbmVkX3VwbG9hZF91cmwYAiABKAkipwEK",
+            "F0ZpbmFsaXplQXJ0aWZhY3RSZXF1ZXN0Eh8KF3dvcmtmbG93X3J1bl9iYWNr",
+            "ZW5kX2lkGAEgASgJEiMKG3dvcmtmbG93X2pvYl9ydW5fYmFja2VuZF9pZBgC",
+            "IAEoCRIMCgRuYW1lGAMgASgJEgwKBHNpemUYBCABKAMSKgoEaGFzaBgFIAEo",
+            "CzIcLmdvb2dsZS5wcm90b2J1Zi5TdHJpbmdWYWx1ZSI7ChhGaW5hbGl6ZUFy",
+            "dGlmYWN0UmVzcG9uc2USCgoCb2sYASABKAgSEwoLYXJ0aWZhY3RfaWQYAiAB",
+            "KAMivwEKFExpc3RBcnRpZmFjdHNSZXF1ZXN0Eh8KF3dvcmtmbG93X3J1bl9i",
+            "YWNrZW5kX2lkGAEgASgJEiMKG3dvcmtmbG93X2pvYl9ydW5fYmFja2VuZF9p",
+            "ZBgCIAEoCRIxCgtuYW1lX2ZpbHRlchgDIAEoCzIcLmdvb2dsZS5wcm90b2J1",
+            "Zi5TdHJpbmdWYWx1ZRIuCglpZF9maWx0ZXIYBCABKAsyGy5nb29nbGUucHJv",
+            "dG9idWYuSW50NjRWYWx1ZSJxChVMaXN0QXJ0aWZhY3RzUmVzcG9uc2USWAoJ",
+            "YXJ0aWZhY3RzGAEgAygLMkUuZ2l0aHViLmFjdGlvbnMucmVzdWx0cy5hcGku",
+            "djEuTGlzdEFydGlmYWN0c1Jlc3BvbnNlX01vbm9saXRoQXJ0aWZhY3QizwEK",
+            "Jkxpc3RBcnRpZmFjdHNSZXNwb25zZV9Nb25vbGl0aEFydGlmYWN0Eh8KF3dv",
+            "cmtmbG93X3J1bl9iYWNrZW5kX2lkGAEgASgJEiMKG3dvcmtmbG93X2pvYl9y",
+            "dW5fYmFja2VuZF9pZBgCIAEoCRITCgtkYXRhYmFzZV9pZBgDIAEoAxIMCgRu",
+            "YW1lGAQgASgJEgwKBHNpemUYBSABKAMSLgoKY3JlYXRlZF9hdBgGIAEoCzIa",
+            "Lmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAicQobR2V0U2lnbmVkQXJ0aWZh",
+            "Y3RVUkxSZXF1ZXN0Eh8KF3dvcmtmbG93X3J1bl9iYWNrZW5kX2lkGAEgASgJ",
+            "EiMKG3dvcmtmbG93X2pvYl9ydW5fYmFja2VuZF9pZBgCIAEoCRIMCgRuYW1l",
+            "GAMgASgJIjIKHEdldFNpZ25lZEFydGlmYWN0VVJMUmVzcG9uc2USEgoKc2ln",
+            "bmVkX3VybBgBIAEoCSJrChVEZWxldGVBcnRpZmFjdFJlcXVlc3QSHwoXd29y",
+            "a2Zsb3dfcnVuX2JhY2tlbmRfaWQYASABKAkSIwobd29ya2Zsb3dfam9iX3J1",
+            "bl9iYWNrZW5kX2lkGAIgASgJEgwKBG5hbWUYAyABKAkiOQoWRGVsZXRlQXJ0",
+            "aWZhY3RSZXNwb25zZRIKCgJvaxgBIAEoCBITCgthcnRpZmFjdF9pZBgCIAEo",
+            "A2IGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.TimestampReflection.Descriptor, global::Google.Protobuf.WellKnownTypes.WrappersReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.CreateArtifactRequest), global::Github.Actions.Results.Api.V1.CreateArtifactRequest.Parser, new[]{ "WorkflowRunBackendId", "WorkflowJobRunBackendId", "Name", "ExpiresAt", "Version" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.CreateArtifactRequest), global::Github.Actions.Results.Api.V1.CreateArtifactRequest.Parser, new[]{ "WorkflowRunBackendId", "WorkflowJobRunBackendId", "Name", "ExpiresAt", "Version", "MimeType" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.CreateArtifactResponse), global::Github.Actions.Results.Api.V1.CreateArtifactResponse.Parser, new[]{ "Ok", "SignedUploadUrl" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.FinalizeArtifactRequest), global::Github.Actions.Results.Api.V1.FinalizeArtifactRequest.Parser, new[]{ "WorkflowRunBackendId", "WorkflowJobRunBackendId", "Name", "Size", "Hash" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.FinalizeArtifactResponse), global::Github.Actions.Results.Api.V1.FinalizeArtifactResponse.Parser, new[]{ "Ok", "ArtifactId" }, null, null, null, null),
@@ -117,6 +118,7 @@ namespace Github.Actions.Results.Api.V1 {
       name_ = other.name_;
       expiresAt_ = other.expiresAt_ != null ? other.expiresAt_.Clone() : null;
       version_ = other.version_;
+      MimeType = other.MimeType;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -186,6 +188,20 @@ namespace Github.Actions.Results.Api.V1 {
       }
     }
 
+    /// <summary>Field number for the "mime_type" field.</summary>
+    public const int MimeTypeFieldNumber = 6;
+    private static readonly pb::FieldCodec<string> _single_mimeType_codec = pb::FieldCodec.ForClassWrapper<string>(50);
+    private string mimeType_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public string MimeType {
+      get { return mimeType_; }
+      set {
+        mimeType_ = value;
+      }
+    }
+
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -206,6 +222,7 @@ namespace Github.Actions.Results.Api.V1 {
       if (Name != other.Name) return false;
       if (!object.Equals(ExpiresAt, other.ExpiresAt)) return false;
       if (Version != other.Version) return false;
+      if (MimeType != other.MimeType) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -218,6 +235,7 @@ namespace Github.Actions.Results.Api.V1 {
       if (Name.Length != 0) hash ^= Name.GetHashCode();
       if (expiresAt_ != null) hash ^= ExpiresAt.GetHashCode();
       if (Version != 0) hash ^= Version.GetHashCode();
+      if (mimeType_ != null) hash ^= MimeType.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -256,6 +274,9 @@ namespace Github.Actions.Results.Api.V1 {
         output.WriteRawTag(40);
         output.WriteInt32(Version);
       }
+      if (mimeType_ != null) {
+        _single_mimeType_codec.WriteTagAndValue(output, MimeType);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -286,6 +307,9 @@ namespace Github.Actions.Results.Api.V1 {
         output.WriteRawTag(40);
         output.WriteInt32(Version);
       }
+      if (mimeType_ != null) {
+        _single_mimeType_codec.WriteTagAndValue(ref output, MimeType);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -310,6 +334,9 @@ namespace Github.Actions.Results.Api.V1 {
       }
       if (Version != 0) {
         size += 1 + pb::CodedOutputStream.ComputeInt32Size(Version);
+      }
+      if (mimeType_ != null) {
+        size += _single_mimeType_codec.CalculateSizeWithTag(MimeType);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -341,6 +368,11 @@ namespace Github.Actions.Results.Api.V1 {
       if (other.Version != 0) {
         Version = other.Version;
       }
+      if (other.mimeType_ != null) {
+        if (mimeType_ == null || other.MimeType != "") {
+          MimeType = other.MimeType;
+        }
+      }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
 
@@ -352,7 +384,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -379,6 +415,13 @@ namespace Github.Actions.Results.Api.V1 {
             Version = input.ReadInt32();
             break;
           }
+          case 50: {
+            string value = _single_mimeType_codec.Read(input);
+            if (mimeType_ == null || value != "") {
+              MimeType = value;
+            }
+            break;
+          }
         }
       }
     #endif
@@ -390,7 +433,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -415,6 +462,13 @@ namespace Github.Actions.Results.Api.V1 {
           }
           case 40: {
             Version = input.ReadInt32();
+            break;
+          }
+          case 50: {
+            string value = _single_mimeType_codec.Read(ref input);
+            if (mimeType_ == null || value != "") {
+              MimeType = value;
+            }
             break;
           }
         }
@@ -609,7 +663,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -632,7 +690,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -925,7 +987,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -963,7 +1029,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -1182,7 +1252,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -1205,7 +1279,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -1471,7 +1549,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -1508,7 +1590,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -1686,7 +1772,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -1705,7 +1795,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -2024,7 +2118,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -2066,7 +2164,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -2318,7 +2420,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -2345,7 +2451,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -2524,7 +2634,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -2543,7 +2657,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -2772,7 +2890,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -2799,7 +2921,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
@@ -3007,7 +3133,11 @@ namespace Github.Actions.Results.Api.V1 {
     #else
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
@@ -3030,7 +3160,11 @@ namespace Github.Actions.Results.Api.V1 {
     void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
       uint tag;
       while ((tag = input.ReadTag()) != 0) {
-        switch(tag) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
